@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import AssetCard from './AssetCard'
 import { assetService } from '../../services/assetService'
 import { useUIStore } from '../../store/uiStore'
+import { Loader2 } from 'lucide-react'
 
 function AssetGrid({ selectedAsset, onSelectAsset, typeFilter = '', chatFilter = '' }) {
   const [assets, setAssets] = useState([])
@@ -35,7 +36,10 @@ function AssetGrid({ selectedAsset, onSelectAsset, typeFilter = '', chatFilter =
   if (loading && assets.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
-        <span className="text-gray-400">{t('loading')}</span>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={24} className="text-violet-500 animate-spin" />
+          <span className="text-white/30 text-sm">{t('loading')}</span>
+        </div>
       </div>
     )
   }
@@ -43,13 +47,13 @@ function AssetGrid({ selectedAsset, onSelectAsset, typeFilter = '', chatFilter =
   if (assets.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
-        <span className="text-gray-400">{t('noAssets')}</span>
+        <span className="text-white/20 text-sm">{t('noAssets')}</span>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {assets.map((asset) => (
           <AssetCard
@@ -66,9 +70,16 @@ function AssetGrid({ selectedAsset, onSelectAsset, typeFilter = '', chatFilter =
           <button
             onClick={() => setPage(page + 1)}
             disabled={loading}
-            className="btn-secondary disabled:opacity-50"
+            className="btn-outline disabled:opacity-50 flex items-center gap-2"
           >
-            {loading ? t('loading') : 'Load More'}
+            {loading ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                {t('loading')}
+              </>
+            ) : (
+              'Load More'
+            )}
           </button>
         </div>
       )}

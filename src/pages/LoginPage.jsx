@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Globe, Eye, EyeOff } from 'lucide-react'
+import { Globe, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
@@ -17,9 +17,9 @@ function LoginPage() {
   const [error, setError] = useState('')
 
   const t = {
-    title:       isAr ? 'تسجيل الدخول' : 'Sign in',
-    subtitle:    isAr ? 'أهلاً بك في Wazza' : 'Welcome back to Wazza',
-    email:       isAr ? 'البريد الإلكتروني' : 'Email',
+    title:       isAr ? 'تسجيل الدخول' : 'Welcome back',
+    subtitle:    isAr ? 'أهلاً بك في Wazza' : 'Sign in to your Wazza account',
+    email:       isAr ? 'البريد الإلكتروني' : 'Email address',
     password:    isAr ? 'كلمة المرور' : 'Password',
     submit:      isAr ? 'تسجيل الدخول' : 'Sign in',
     noAccount:   isAr ? 'ليس لديك حساب؟' : "Don't have an account?",
@@ -43,54 +43,61 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center p-4" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden" dir={isAr ? 'rtl' : 'ltr'}>
+      {/* Background orbs */}
+      <div className="gradient-orb w-[500px] h-[500px] bg-violet-600 -top-40 -left-40 animate-float" />
+      <div className="gradient-orb w-[400px] h-[400px] bg-cyan-600 -bottom-20 -right-20 animate-float" style={{ animationDelay: '3s' }} />
 
+      <div className="w-full max-w-md relative z-10 animate-scaleIn">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <Globe className="text-[#6c63ff]" size={32} />
-          <h1 className="text-2xl font-bold text-white">WAZZA</h1>
+        <div className="flex items-center justify-center gap-3 mb-10">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
+            <Sparkles className="text-white" size={20} />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            <span className="gradient-text">WAZZA</span>
+          </h1>
         </div>
 
         {/* Card */}
-        <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-8">
+        <div className="glass p-8 shadow-2xl shadow-black/50">
           <h2 className="text-xl font-semibold text-white mb-1">{t.title}</h2>
-          <p className="text-gray-400 text-sm mb-6">{t.subtitle}</p>
+          <p className="text-white/40 text-sm mb-6">{t.subtitle}</p>
 
           {error && (
-            <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            <div className="mb-5 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm animate-fadeIn">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm text-gray-300 mb-1">{t.email}</label>
+              <label className="block text-sm text-white/60 mb-2 font-medium">{t.email}</label>
               <input
                 type="email"
                 required
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full bg-[#0f0f0f] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#6c63ff] transition-colors"
+                className="w-full input-glass"
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-gray-300 mb-1">{t.password}</label>
+              <label className="block text-sm text-white/60 mb-2 font-medium">{t.password}</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full bg-[#0f0f0f] border border-[#2a2a3e] rounded-lg px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#6c63ff] transition-colors ltr:pr-10 rtl:pl-10"
+                  className="w-full input-glass ltr:pr-10 rtl:pl-10"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 ltr:right-3 rtl:left-3 flex items-center text-gray-500 hover:text-gray-300"
+                  className="absolute inset-y-0 ltr:right-3 rtl:left-3 flex items-center text-white/30 hover:text-white/60 transition-colors"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -98,7 +105,7 @@ function LoginPage() {
             </div>
 
             <div className="flex justify-end">
-              <Link to="/forgot-password" className="text-xs text-[#6c63ff] hover:underline">
+              <Link to="/forgot-password" className="text-xs text-violet-400 hover:text-violet-300 transition-colors">
                 {t.forgot}
               </Link>
             </div>
@@ -106,7 +113,7 @@ function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg transition-colors"
+              className="w-full btn-gradient py-3 rounded-xl font-medium"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -117,9 +124,9 @@ function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-400">
+          <p className="mt-6 text-center text-sm text-white/40">
             {t.noAccount}{' '}
-            <Link to="/register" className="text-[#6c63ff] hover:underline font-medium">
+            <Link to="/register" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
               {t.register}
             </Link>
           </p>
@@ -128,7 +135,7 @@ function LoginPage() {
         {/* Language toggle */}
         <button
           onClick={() => setLanguage(isAr ? 'en' : 'ar')}
-          className="mt-4 mx-auto flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          className="mt-6 mx-auto flex items-center gap-2 text-xs text-white/30 hover:text-white/60 transition-colors"
         >
           <Globe size={12} />
           {isAr ? 'English' : 'العربية'}

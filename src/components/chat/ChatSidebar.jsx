@@ -120,46 +120,47 @@ function ChatSidebar() {
   )
 
   return (
-    <div className="w-64 h-full flex flex-col bg-[#0d0d1a] border-r border-[#1e1e2e] flex-shrink-0">
+    <div className="w-72 h-full flex flex-col bg-slate-900/50 backdrop-blur-xl border-r border-white/[0.06] flex-shrink-0 relative">
       {/* New chat button */}
-      <div className="p-3 border-b border-[#1e1e2e]">
+      <div className="p-4 border-b border-white/[0.06]">
         <button
           onClick={handleNewChat}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
-            bg-[#6c63ff] hover:bg-[#5a52e0] text-white text-sm font-medium transition-colors"
+            bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] hover:border-violet-500/30
+            text-white text-sm font-medium transition-all duration-300 group"
         >
-          <Plus size={16} />
+          <Plus size={16} className="text-violet-400 group-hover:scale-110 transition-transform" />
           {t('newChat')}
         </button>
       </div>
 
       {/* Search */}
-      <div className="px-3 py-2">
+      <div className="px-4 py-3">
         <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
           <input
             type="text"
             placeholder={t('search')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#13131f] border border-[#2a2a3e] rounded-lg pl-8 pr-3 py-2
-              text-sm text-white placeholder-gray-600 focus:border-[#6c63ff] focus:outline-none transition-colors"
+            className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl pl-9 pr-3 py-2
+              text-sm text-white placeholder-white/20 focus:border-violet-500/30 focus:outline-none focus:bg-white/[0.05] transition-all"
           />
         </div>
       </div>
 
       {/* Chat list */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-2 pb-2">
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-3 pb-3">
         {loadingChats ? (
           <div className="space-y-2 mt-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 rounded-xl bg-[#13131f] animate-pulse" />
+              <div key={i} className="h-14 rounded-xl bg-white/[0.03] animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 gap-2">
-            <MessageSquare size={20} className="text-gray-600" />
-            <p className="text-gray-600 text-xs">{t('noChats')}</p>
+            <MessageSquare size={20} className="text-white/10" />
+            <p className="text-white/20 text-xs">{t('noChats')}</p>
           </div>
         ) : (
           <div className="space-y-1 mt-1">
@@ -167,14 +168,13 @@ function ChatSidebar() {
               <div
                 key={chat.id}
                 onClick={() => editingId !== chat.id && handleSelectChat(chat.id)}
-                className={`group relative px-3 py-2.5 rounded-xl cursor-pointer transition-colors ${
+                className={`group relative px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-300 ${
                   currentChatId === chat.id
-                    ? 'bg-[#6c63ff]/20 border border-[#6c63ff]/40'
-                    : 'hover:bg-[#13131f] border border-transparent'
+                    ? 'bg-violet-500/10 border border-violet-500/20'
+                    : 'hover:bg-white/[0.03] border border-transparent'
                 }`}
               >
                 {editingId === chat.id ? (
-                  /* Inline rename input */
                   <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <input
                       ref={editInputRef}
@@ -184,54 +184,56 @@ function ChatSidebar() {
                         if (e.key === 'Enter') saveEditing()
                         if (e.key === 'Escape') cancelEditing()
                       }}
-                      className="flex-1 bg-[#0f0f1a] border border-[#6c63ff] rounded-lg px-2 py-1
+                      className="flex-1 bg-slate-950 border border-violet-500/40 rounded-lg px-2 py-1
                         text-sm text-white outline-none min-w-0"
                     />
                     <button
                       onClick={saveEditing}
-                      className="p-1 rounded-lg hover:bg-green-500/20 text-green-400 flex-shrink-0"
+                      className="p-1 rounded-lg hover:bg-emerald-500/20 text-emerald-400 flex-shrink-0 transition-colors"
                     >
                       <Check size={13} />
                     </button>
                     <button
                       onClick={cancelEditing}
-                      className="p-1 rounded-lg hover:bg-red-500/20 text-red-400 flex-shrink-0"
+                      className="p-1 rounded-lg hover:bg-rose-500/20 text-rose-400 flex-shrink-0 transition-colors"
                     >
                       <X size={13} />
                     </button>
                   </div>
                 ) : (
-                  /* Normal view */
-                  <div className="flex items-center gap-2 pr-14">
-                    <MessageSquare
-                      size={13}
-                      className={`flex-shrink-0 ${currentChatId === chat.id ? 'text-[#6c63ff]' : 'text-gray-500'}`}
-                    />
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                      currentChatId === chat.id
+                        ? 'bg-violet-500/20 text-violet-400'
+                        : 'bg-white/[0.04] text-white/30'
+                    }`}>
+                      <MessageSquare size={14} />
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-gray-200 truncate">
+                      <p className="text-sm text-white/80 truncate font-medium">
                         {chat.title || `Chat #${chat.id}`}
                       </p>
-                      <p className="text-xs text-gray-600 mt-0.5">
+                      <p className="text-xs text-white/25 mt-0.5">
                         {formatRelative(chat.created_at)}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* Action buttons (rename + delete) — only in normal view */}
+                {/* Action buttons */}
                 {editingId !== chat.id && (
                   <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <button
                       onClick={(e) => startEditing(e, chat)}
-                      className="p-1 rounded-lg hover:bg-[#6c63ff]/20 text-gray-500 hover:text-[#6c63ff] transition-all"
+                      className="p-1.5 rounded-lg hover:bg-violet-500/20 text-white/20 hover:text-violet-400 transition-all"
                     >
-                      <Pencil size={12} />
+                      <Pencil size={11} />
                     </button>
                     <button
                       onClick={(e) => handleDeleteChat(e, chat.id)}
-                      className="p-1 rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400 transition-all"
+                      className="p-1.5 rounded-lg hover:bg-rose-500/20 text-white/20 hover:text-rose-400 transition-all"
                     >
-                      <Trash2 size={12} />
+                      <Trash2 size={11} />
                     </button>
                   </div>
                 )}

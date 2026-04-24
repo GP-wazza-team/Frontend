@@ -17,14 +17,12 @@ function ChatPage() {
     }
   }, [])
 
-  // onSubmit receives (prompt: string, attachmentFile: File | null)
   const handleSendPrompt = async (prompt, attachmentFile = null) => {
     if (loading) return
 
     try {
       setLoading(true)
 
-      // auto-create a chat if none selected
       let chatId = currentChatId
       if (!chatId) {
         const chat = await chatService.createChat()
@@ -36,7 +34,6 @@ function ChatPage() {
         }))
       }
 
-      // auto-title the chat from the first message
       const title = prompt.length > 50 ? prompt.slice(0, 50).trimEnd() + '…' : prompt || 'Image upload'
       chatService.renameChat(chatId, title).then((updated) => {
         useChatStore.setState((state) => ({
@@ -44,7 +41,6 @@ function ChatPage() {
         }))
       }).catch(() => {})
 
-      // Upload attachment if present, get permanent S3 URL
       let imageAttachmentUrl = null
       let attachmentPreviewUrl = null
       if (attachmentFile) {
@@ -53,11 +49,9 @@ function ChatPage() {
           imageAttachmentUrl = await assetService.uploadImage(attachmentFile, chatId)
         } catch (err) {
           console.error('Failed to upload attachment:', err)
-          // continue without attachment rather than blocking the request
         }
       }
 
-      // add user message immediately with image preview
       addMessage({
         role: 'user',
         content: prompt,
@@ -65,10 +59,8 @@ function ChatPage() {
         created_at: new Date().toISOString(),
       })
 
-      // call the generate endpoint
       const result = await generateService.generate(chatId, prompt, imageAttachmentUrl)
 
-      // build media array from result
       const media = []
       if (result.image_urls?.length > 0) {
         result.image_urls.forEach((url) => media.push({ type: 'image', url }))
@@ -77,7 +69,6 @@ function ChatPage() {
         media.push({ type: 'video', url: result.video_url })
       }
 
-      // reload messages from DB to get the saved assistant message
       try {
         const freshMessages = await chatService.getMessages(chatId)
         if (Array.isArray(freshMessages) && freshMessages.length > 0) {
@@ -111,9 +102,10 @@ function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden relative">
       <ChatSidebar />
-      <div className="flex-1 flex flex-col min-w-0 bg-[#0a0a0f]">
+      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.05),_transparent_60%)] pointer-events-none" />
         <ChatMessages messages={messages} loading={loading} />
         <PromptInput onSubmit={handleSendPrompt} disabled={loading} />
       </div>

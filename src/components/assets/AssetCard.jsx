@@ -1,8 +1,6 @@
 import React from 'react'
 import { FileText, Music, Video, Image as ImageIcon } from 'lucide-react'
 
-// Backend asset fields: { id, chat_id, run_id, asset_type, provider, model_name, storage_url, public_url, created_at, metadata }
-
 function AssetCard({ asset, isSelected, onSelect }) {
   const type = asset.asset_type || 'file'
 
@@ -20,26 +18,26 @@ function AssetCard({ asset, isSelected, onSelect }) {
   return (
     <div
       onClick={() => onSelect(asset)}
-      className={`cursor-pointer rounded-lg overflow-hidden transition-all ${
-        isSelected ? 'ring-2 ring-[#6c63ff] scale-105' : 'hover:scale-105'
+      className={`cursor-pointer rounded-2xl overflow-hidden transition-all duration-300 group ${
+        isSelected ? 'ring-2 ring-violet-500 scale-[1.02]' : 'hover:scale-[1.02]'
       }`}
     >
-      <div className="bg-[#1a1a2e] border border-[#2a2a3e] aspect-square flex items-center justify-center relative group">
+      <div className="bg-white/[0.03] border border-white/[0.06] aspect-square flex items-center justify-center relative overflow-hidden">
         {type === 'image' && asset.public_url ? (
           <img
             src={asset.public_url}
             alt={label}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center text-gray-400 group-hover:text-[#6c63ff] transition-colors">
+          <div className="flex flex-col items-center justify-center text-white/20 group-hover:text-violet-400 transition-colors duration-300">
             {getIcon()}
-            <p className="text-xs mt-2 text-center px-2 truncate uppercase">{type}</p>
+            <p className="text-xs mt-2 text-center px-2 truncate uppercase font-medium">{type}</p>
           </div>
         )}
 
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end p-2">
-          <p className="text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity truncate w-full">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+          <p className="text-xs text-white font-medium truncate w-full">
             {label}
           </p>
         </div>

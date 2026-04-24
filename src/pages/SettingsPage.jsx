@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { CheckCircle, AlertCircle } from 'lucide-react'
+import { CheckCircle, AlertCircle, Settings, Globe, Server, Info } from 'lucide-react'
 import { useUIStore } from '../store/uiStore'
 import { dashboardService } from '../services/dashboardService'
 
@@ -23,80 +23,133 @@ function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">{t('settings')}</h1>
-        <p className="text-gray-400">Configure your platform preferences</p>
+    <div className="p-8 space-y-8 max-w-3xl mx-auto animate-slideUp">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500/20 to-rose-500/20 border border-violet-500/20 flex items-center justify-center">
+          <Settings className="text-violet-400" size={24} />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-white">{t('settings')}</h1>
+          <p className="text-white/30 text-sm">Configure your platform preferences</p>
+        </div>
       </div>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4">{t('language')}</h3>
+      {/* Language */}
+      <div className="glass p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+            <Globe size={18} className="text-violet-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-white">{t('language')}</h3>
+        </div>
         <div className="space-y-3">
           <button
             onClick={() => setLanguage('ar')}
-            className={`w-full px-4 py-3 rounded-lg border transition-colors text-left ${
+            className={`w-full px-5 py-4 rounded-xl border transition-all duration-300 text-left flex items-center gap-4 ${
               language === 'ar'
-                ? 'border-[#6c63ff] bg-[#6c63ff]/10'
-                : 'border-[#2a2a3e] hover:border-[#6c63ff]'
+                ? 'border-violet-500/40 bg-violet-500/10 shadow-lg shadow-violet-500/10'
+                : 'border-white/[0.06] hover:border-violet-500/30 hover:bg-white/[0.03]'
             }`}
           >
-            <p className="font-medium">العربية</p>
-            <p className="text-sm text-gray-400">Arabic (RTL)</p>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
+              language === 'ar' ? 'bg-violet-500/20 text-violet-400' : 'bg-white/[0.04] text-white/30'
+            }`}>
+              ع
+            </div>
+            <div>
+              <p className="font-medium text-white">العربية</p>
+              <p className="text-sm text-white/30">Arabic (RTL)</p>
+            </div>
+            {language === 'ar' && (
+              <CheckCircle size={20} className="text-violet-400 ltr:ml-auto rtl:mr-auto" />
+            )}
           </button>
           <button
             onClick={() => setLanguage('en')}
-            className={`w-full px-4 py-3 rounded-lg border transition-colors text-left ${
+            className={`w-full px-5 py-4 rounded-xl border transition-all duration-300 text-left flex items-center gap-4 ${
               language === 'en'
-                ? 'border-[#6c63ff] bg-[#6c63ff]/10'
-                : 'border-[#2a2a3e] hover:border-[#6c63ff]'
+                ? 'border-violet-500/40 bg-violet-500/10 shadow-lg shadow-violet-500/10'
+                : 'border-white/[0.06] hover:border-violet-500/30 hover:bg-white/[0.03]'
             }`}
           >
-            <p className="font-medium">English</p>
-            <p className="text-sm text-gray-400">English (LTR)</p>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
+              language === 'en' ? 'bg-violet-500/20 text-violet-400' : 'bg-white/[0.04] text-white/30'
+            }`}>
+              A
+            </div>
+            <div>
+              <p className="font-medium text-white">English</p>
+              <p className="text-sm text-white/30">English (LTR)</p>
+            </div>
+            {language === 'en' && (
+              <CheckCircle size={20} className="text-violet-400 ltr:ml-auto rtl:mr-auto" />
+            )}
           </button>
         </div>
       </div>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4">{t('apiStatus')}</h3>
+      {/* API Status */}
+      <div className="glass p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <Server size={18} className="text-emerald-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-white">{t('apiStatus')}</h3>
+        </div>
 
         <div
-          className={`p-4 rounded-lg border flex items-start gap-3 ${
+          className={`p-5 rounded-xl border flex items-start gap-4 ${
             apiConnected
-              ? 'border-green-500/30 bg-green-500/10'
-              : 'border-red-500/30 bg-red-500/10'
+              ? 'border-emerald-500/20 bg-emerald-500/5'
+              : 'border-rose-500/20 bg-rose-500/5'
           }`}
         >
           {apiConnected ? (
-            <CheckCircle className="text-green-400 flex-shrink-0 mt-0.5" size={20} />
+            <CheckCircle className="text-emerald-400 flex-shrink-0 mt-0.5" size={22} />
           ) : (
-            <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+            <AlertCircle className="text-rose-400 flex-shrink-0 mt-0.5" size={22} />
           )}
           <div>
-            <p className="font-medium">
+            <p className="font-medium text-white">
               {apiConnected ? t('connected') : t('disconnected')}
             </p>
-            {health?.message && <p className="text-sm text-gray-400 mt-1">{health.message}</p>}
+            {health?.message && <p className="text-sm text-white/30 mt-1">{health.message}</p>}
             {health?.version && (
-              <p className="text-sm text-gray-400 mt-1">Version: {health.version}</p>
+              <p className="text-sm text-white/30 mt-1">Version: {health.version}</p>
             )}
           </div>
         </div>
 
         <button
           onClick={checkApiHealth}
-          className="mt-4 btn-secondary"
+          className="mt-4 btn-outline text-sm"
         >
           Refresh Status
         </button>
       </div>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4">About</h3>
-        <div className="space-y-2 text-gray-400 text-sm">
-          <p>WAZZA AI Platform v1.0.0</p>
-          <p>React + Vite frontend</p>
-          <p>FastAPI backend</p>
+      {/* About */}
+      <div className="glass p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+            <Info size={18} className="text-cyan-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-white">About</h3>
+        </div>
+        <div className="space-y-3 text-white/30 text-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+            <p>WAZZA AI Platform v1.0.0</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            <p>React + Vite frontend</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <p>FastAPI backend</p>
+          </div>
         </div>
       </div>
     </div>
