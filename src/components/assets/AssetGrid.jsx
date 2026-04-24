@@ -37,8 +37,8 @@ function AssetGrid({ selectedAsset, onSelectAsset, typeFilter = '', chatFilter =
     return (
       <div className="flex justify-center items-center h-64">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 size={24} className="text-violet-500 animate-spin" />
-          <span className="text-white/30 text-sm">{t('loading')}</span>
+          <Loader2 size={24} className="text-orange-500 animate-spin" />
+          <span className="text-gray-400 text-sm font-medium">{t('loading')}</span>
         </div>
       </div>
     )
@@ -47,7 +47,7 @@ function AssetGrid({ selectedAsset, onSelectAsset, typeFilter = '', chatFilter =
   if (assets.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
-        <span className="text-white/20 text-sm">{t('noAssets')}</span>
+        <span className="text-gray-300 text-sm font-medium">{t('noAssets')}</span>
       </div>
     )
   }
@@ -70,7 +70,7 @@ function AssetGrid({ selectedAsset, onSelectAsset, typeFilter = '', chatFilter =
           <button
             onClick={() => setPage(page + 1)}
             disabled={loading}
-            className="btn-outline disabled:opacity-50 flex items-center gap-2"
+            className="btn-secondary-light disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? (
               <>

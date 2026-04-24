@@ -33,8 +33,8 @@ function AssetModal({ asset, onClose, onDelete }) {
   const renderPreview = () => {
     if (!url) {
       return (
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-12 flex items-center justify-center min-h-40">
-          <p className="text-white/20">No preview available</p>
+        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-12 flex items-center justify-center min-h-40">
+          <p className="text-gray-300 font-medium">No preview available</p>
         </div>
       )
     }
@@ -47,48 +47,47 @@ function AssetModal({ asset, onClose, onDelete }) {
         return <audio controls className="w-full" src={url} />
       default:
         return (
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-12 flex items-center justify-center min-h-40">
-            <p className="text-white/20 uppercase font-mono">{type}</p>
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-12 flex items-center justify-center min-h-40">
+            <p className="text-gray-300 uppercase font-mono font-bold">{type}</p>
           </div>
         )
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-      <div className="glass rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl shadow-black/50 animate-scaleIn">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-          <h2 className="text-lg font-semibold capitalize text-white">{type} Asset</h2>
-          <button onClick={onClose} className="p-2 hover:bg-white/[0.06] rounded-xl transition-colors">
-            <X size={18} className="text-white/40" />
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+      <div className="card-light max-w-2xl w-full overflow-hidden shadow-2xl animate-scaleIn">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-slate-900 capitalize">{type} Asset</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
+            <X size={18} className="text-gray-400" />
           </button>
         </div>
 
         <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
           <div className="flex justify-center">{renderPreview()}</div>
 
-          <div className="space-y-3 bg-white/[0.03] rounded-xl p-5 text-sm border border-white/[0.06]">
+          <div className="space-y-3 bg-gray-50 rounded-xl p-5 text-sm border border-gray-100">
             {asset.provider && (
               <div className="flex justify-between items-center">
-                <span className="text-white/30">{t('provider')}</span>
-                <span className="text-white font-medium">{asset.provider}</span>
+                <span className="text-gray-400 font-medium">{t('provider')}</span>
+                <span className="text-slate-900 font-semibold">{asset.provider}</span>
               </div>
             )}
             {asset.model_name && (
               <div className="flex justify-between items-center">
-                <span className="text-white/30">Model</span>
-                <span className="text-white font-medium">{asset.model_name}</span>
+                <span className="text-gray-400 font-medium">Model</span>
+                <span className="text-slate-900 font-semibold">{asset.model_name}</span>
               </div>
             )}
             <div className="flex justify-between items-center">
-              <span className="text-white/30">{t('date')}</span>
-              <span className="text-white">{formatTime(asset.created_at)}</span>
+              <span className="text-gray-400 font-medium">{t('date')}</span>
+              <span className="text-slate-900">{formatTime(asset.created_at)}</span>
             </div>
             {asset.chat_id && (
               <div className="flex justify-between items-center">
-                <span className="text-white/30">Chat ID</span>
-                <span className="text-white font-mono text-xs">{asset.chat_id}</span>
+                <span className="text-gray-400 font-medium">Chat ID</span>
+                <span className="text-slate-900 font-mono text-xs">{asset.chat_id}</span>
               </div>
             )}
           </div>
@@ -100,7 +99,7 @@ function AssetModal({ asset, onClose, onDelete }) {
                 download
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 btn-outline flex items-center justify-center gap-2"
+                className="flex-1 btn-secondary-light flex items-center justify-center gap-2"
               >
                 <Download size={16} />
                 Download
@@ -108,7 +107,7 @@ function AssetModal({ asset, onClose, onDelete }) {
             )}
             <button
               onClick={handleDelete}
-              className="flex-1 px-5 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-medium transition-colors flex items-center justify-center gap-2 border border-rose-500/20"
+              className="flex-1 px-5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold transition-colors flex items-center justify-center gap-2 border border-rose-100"
             >
               <Trash2 size={16} />
               Delete

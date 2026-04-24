@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import AssetGrid from '../components/assets/AssetGrid'
 import AssetModal from '../components/assets/AssetModal'
 import { useChatStore } from '../store/chatStore'
@@ -12,55 +12,53 @@ function AssetsPage() {
   const { chats } = useChatStore()
   const { t } = useUIStore()
 
-  const handleDeleteAsset = (assetId) => {
+  const handleDeleteAsset = () => {
     setSelectedAsset(null)
   }
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto animate-slideUp">
-      {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-violet-500/20 border border-cyan-500/20 flex items-center justify-center">
-          <Image className="text-cyan-400" size={24} />
+        <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center">
+          <Image className="text-sky-500" size={24} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('gallery')}</h1>
-          <p className="text-white/30 text-sm">Browse and manage generated assets</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('gallery')}</h1>
+          <p className="text-gray-400 text-sm">Browse and manage generated assets</p>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="glass p-4 flex items-center gap-3 flex-1">
-          <Filter size={16} className="text-white/20" />
+        <div className="card-light p-4 flex items-center gap-3 flex-1">
+          <Filter size={16} className="text-gray-300" />
           <div className="flex-1">
-            <label className="block text-xs text-white/30 mb-1.5 font-medium uppercase tracking-wider">Type</label>
+            <label className="block text-[10px] text-gray-400 mb-1 font-bold uppercase tracking-wider">Type</label>
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full bg-transparent text-white text-sm outline-none cursor-pointer"
+              className="w-full bg-transparent text-slate-700 text-sm outline-none cursor-pointer font-medium"
             >
-              <option value="" className="bg-slate-900">All Types</option>
-              <option value="image" className="bg-slate-900">Images</option>
-              <option value="video" className="bg-slate-900">Videos</option>
-              <option value="audio" className="bg-slate-900">Audio</option>
-              <option value="document" className="bg-slate-900">Documents</option>
+              <option value="">All Types</option>
+              <option value="image">Images</option>
+              <option value="video">Videos</option>
+              <option value="audio">Audio</option>
+              <option value="document">Documents</option>
             </select>
           </div>
         </div>
 
-        <div className="glass p-4 flex items-center gap-3 flex-1">
-          <Filter size={16} className="text-white/20" />
+        <div className="card-light p-4 flex items-center gap-3 flex-1">
+          <Filter size={16} className="text-gray-300" />
           <div className="flex-1">
-            <label className="block text-xs text-white/30 mb-1.5 font-medium uppercase tracking-wider">Chat</label>
+            <label className="block text-[10px] text-gray-400 mb-1 font-bold uppercase tracking-wider">Chat</label>
             <select
               value={chatFilter}
               onChange={(e) => setChatFilter(e.target.value)}
-              className="w-full bg-transparent text-white text-sm outline-none cursor-pointer"
+              className="w-full bg-transparent text-slate-700 text-sm outline-none cursor-pointer font-medium"
             >
-              <option value="" className="bg-slate-900">All Chats</option>
+              <option value="">All Chats</option>
               {chats.map((chat) => (
-                <option key={chat.id} value={chat.id} className="bg-slate-900">
+                <option key={chat.id} value={chat.id}>
                   {chat.title || `Chat #${chat.id}`}
                 </option>
               ))}

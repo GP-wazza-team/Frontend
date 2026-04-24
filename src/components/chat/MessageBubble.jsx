@@ -1,6 +1,6 @@
 import React from 'react'
 import { useUIStore } from '../../store/uiStore'
-import { Sparkles } from 'lucide-react'
+import { Zap } from 'lucide-react'
 
 function formatTime(ts) {
   if (!ts) return ''
@@ -58,22 +58,20 @@ function MessageBubble({ message }) {
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} animate-slideUp`}>
-      {/* Assistant avatar */}
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
-          <Sparkles size={14} className="text-white" />
+        <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-orange-500 flex items-center justify-center shadow-sm shadow-orange-500/20">
+          <Zap size={14} className="text-white" />
         </div>
       )}
 
-      <div className={`flex flex-col gap-1.5 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col gap-1 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
         <div
           className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed ${
             isUser
-              ? 'bg-gradient-to-br from-violet-600 to-indigo-600 text-white rounded-tr-sm shadow-lg shadow-violet-500/10'
-              : 'bg-white/[0.04] border border-white/[0.08] text-white/90 rounded-tl-sm'
+              ? 'bg-slate-900 text-white rounded-tr-sm'
+              : 'bg-gray-100 text-slate-800 rounded-tl-sm'
           }`}
         >
-          {/* Render content */}
           <div className="space-y-2.5">
             {parts.map((part, i) => {
               if (part.type === 'image') {
@@ -92,7 +90,7 @@ function MessageBubble({ message }) {
                       href={part.value}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-violet-400 underline text-xs hidden break-all"
+                      className="text-orange-600 underline text-xs hidden break-all font-medium"
                     >
                       {part.value}
                     </a>
@@ -112,7 +110,6 @@ function MessageBubble({ message }) {
             })}
           </div>
 
-          {/* Explicit media array */}
           {mediaItems.length > 0 && (
             <div className="mt-2.5 space-y-2.5">
               {mediaItems.map((item, idx) => (
@@ -132,12 +129,11 @@ function MessageBubble({ message }) {
           )}
         </div>
 
-        <span className="text-[11px] text-white/20 px-1">
+        <span className="text-[11px] text-gray-400 px-1 font-medium">
           {formatTime(message.created_at || message.timestamp)}
         </span>
       </div>
 
-      {/* Spacer for user side */}
       {isUser && <div className="flex-shrink-0 w-8" />}
     </div>
   )

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Globe, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { Globe, Eye, EyeOff, Zap } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
@@ -17,8 +17,8 @@ function RegisterPage() {
   const [error, setError] = useState('')
 
   const t = {
-    title:       isAr ? 'إنشاء حساب' : 'Create account',
-    subtitle:    isAr ? 'ابدأ مجاناً مع 20 رصيد' : 'Start free with 20 credits',
+    title:       isAr ? 'إنشاء حساب' : 'Create your account',
+    subtitle:    isAr ? 'ابدأ مجاناً مع 20 رصيد' : 'Start free with 20 credits — no card required',
     name:        isAr ? 'الاسم' : 'Full name',
     email:       isAr ? 'البريد الإلكتروني' : 'Email',
     password:    isAr ? 'كلمة المرور' : 'Password',
@@ -48,84 +48,78 @@ function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden" dir={isAr ? 'rtl' : 'ltr'}>
-      {/* Background orbs */}
-      <div className="gradient-orb w-[500px] h-[500px] bg-violet-600 -top-40 -right-40 animate-float" />
-      <div className="gradient-orb w-[400px] h-[400px] bg-cyan-600 -bottom-20 -left-20 animate-float" style={{ animationDelay: '3s' }} />
-
-      <div className="w-full max-w-md relative z-10 animate-scaleIn">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir={isAr ? 'rtl' : 'ltr'}>
+      <div className="w-full max-w-sm animate-scaleIn">
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
-            <Sparkles className="text-white" size={20} />
+          <div className="w-11 h-11 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/25">
+            <Zap className="text-white" size={22} />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            <span className="gradient-text">WAZZA</span>
-          </h1>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">WAZZA</h1>
         </div>
 
         {/* Card */}
-        <div className="glass p-8 shadow-2xl shadow-black/50">
-          <h2 className="text-xl font-semibold text-white mb-1">{t.title}</h2>
-          <p className="text-white/40 text-sm mb-6">{t.subtitle}</p>
+        <div className="card-light p-8">
+          <h2 className="text-lg font-bold text-slate-900 mb-1">{t.title}</h2>
+          <p className="text-gray-400 text-sm mb-6">{t.subtitle}</p>
 
           {error && (
-            <div className="mb-5 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm animate-fadeIn">
+            <div className="mb-5 px-4 py-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium animate-fadeIn">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-white/60 mb-2 font-medium">{t.name}</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t.name}</label>
               <input
                 type="text"
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full input-glass"
+                className="w-full input-light"
                 placeholder={isAr ? 'اسمك الكامل' : 'Your full name'}
               />
             </div>
 
             <div>
-              <label className="block text-sm text-white/60 mb-2 font-medium">{t.email}</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t.email}</label>
               <input
                 type="email"
                 required
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full input-glass"
+                className="w-full input-light"
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm text-white/60 mb-2 font-medium">{t.password}</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t.password}</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full input-glass ltr:pr-10 rtl:pl-10"
+                  className="w-full input-light ltr:pr-10 rtl:pl-10"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 ltr:right-3 rtl:left-3 flex items-center text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute inset-y-0 ltr:right-3 rtl:left-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              <p className="mt-1.5 text-xs text-white/25">{t.passwordHint}</p>
+              <p className="mt-1.5 text-xs text-gray-400">{t.passwordHint}</p>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-gradient py-3 rounded-xl font-medium mt-2"
+              className="w-full btn-primary-light py-3 rounded-xl mt-2"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -136,9 +130,9 @@ function RegisterPage() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-white/40">
+          <p className="mt-6 text-center text-sm text-gray-400">
             {t.hasAccount}{' '}
-            <Link to="/login" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
+            <Link to="/login" className="text-orange-600 hover:text-orange-700 font-semibold transition-colors">
               {t.login}
             </Link>
           </p>
@@ -147,7 +141,7 @@ function RegisterPage() {
         {/* Language toggle */}
         <button
           onClick={() => setLanguage(isAr ? 'en' : 'ar')}
-          className="mt-6 mx-auto flex items-center gap-2 text-xs text-white/30 hover:text-white/60 transition-colors"
+          className="mt-6 mx-auto flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors font-medium"
         >
           <Globe size={12} />
           {isAr ? 'English' : 'العربية'}

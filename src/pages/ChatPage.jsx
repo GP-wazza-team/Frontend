@@ -102,10 +102,9 @@ function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden relative">
+    <div className="flex h-screen overflow-hidden">
       <ChatSidebar />
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.05),_transparent_60%)] pointer-events-none" />
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
         <ChatMessages messages={messages} loading={loading} />
         <PromptInput onSubmit={handleSendPrompt} disabled={loading} />
       </div>

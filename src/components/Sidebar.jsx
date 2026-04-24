@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X, MessageSquare, BarChart3, Image, Settings, Globe, LogOut, Coins, Sparkles } from 'lucide-react'
+import { Menu, X, MessageSquare, BarChart3, Image, Settings, Globe, LogOut, Coins, Zap } from 'lucide-react'
 import { useUIStore } from '../store/uiStore'
 import { useAuthStore } from '../store/authStore'
 import { authService } from '../services/authService'
@@ -35,36 +35,29 @@ function Sidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-4 ltr:left-4 rtl:right-4 z-50 p-2.5 rounded-xl glass hover:bg-white/10 transition-all md:hidden"
+        className="fixed top-4 ltr:left-4 rtl:right-4 z-50 p-2.5 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all md:hidden"
       >
-        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+        {sidebarOpen ? <X size={20} className="text-slate-600" /> : <Menu size={20} className="text-slate-600" />}
       </button>
 
-      {/* Sidebar */}
       <div
-        className={`fixed md:relative h-screen w-64 flex flex-col transition-all duration-500 ease-out z-40
+        className={`fixed md:relative h-screen w-64 bg-white border-r border-gray-100 flex flex-col transition-all duration-300 z-40
           ${sidebarOpen ? 'ltr:left-0 rtl:right-0' : 'ltr:-left-64 rtl:-right-64 md:ltr:left-0 md:rtl:right-0'}
         `}
       >
-        {/* Glass background */}
-        <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-2xl border-r border-white/[0.06]" />
-
-        <div className="relative flex flex-col h-full p-5">
+        <div className="flex flex-col h-full p-5">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
-              <Sparkles className="text-white" size={18} />
+            <div className="w-9 h-9 rounded-lg bg-orange-500 flex items-center justify-center shadow-md shadow-orange-500/20">
+              <Zap className="text-white" size={18} />
             </div>
-            <h1 className="text-lg font-bold tracking-tight">
-              <span className="gradient-text">WAZZA</span>
-            </h1>
+            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">WAZZA</h1>
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 space-y-1.5">
+          <nav className="flex-1 space-y-1">
             {menuItems.map((item) => {
               const Icon = item.icon
               const active = isActive(item.path)
@@ -72,16 +65,16 @@ function Sidebar() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 group ${
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm ${
                     active
-                      ? 'bg-violet-500/15 text-violet-300 border border-violet-500/20'
-                      : 'text-white/50 hover:text-white hover:bg-white/[0.04] border border-transparent'
+                      ? 'bg-orange-50 text-orange-700'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-gray-50'
                   }`}
                 >
-                  <Icon size={18} className={`transition-colors ${active ? 'text-violet-400' : 'group-hover:text-violet-400'}`} />
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <Icon size={18} className={active ? 'text-orange-500' : ''} />
+                  <span>{item.label}</span>
                   {active && (
-                    <div className="ltr:ml-auto rtl:mr-auto w-1.5 h-1.5 rounded-full bg-violet-400 shadow-lg shadow-violet-500/50" />
+                    <div className="ltr:ml-auto rtl:mr-auto w-1.5 h-1.5 rounded-full bg-orange-500" />
                   )}
                 </Link>
               )
@@ -89,63 +82,55 @@ function Sidebar() {
           </nav>
 
           {/* Bottom section */}
-          <div className="space-y-3 pt-4 border-t border-white/[0.06]">
-            {/* User info */}
+          <div className="space-y-2 pt-4 border-t border-gray-100">
             {user && (
-              <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-lg shadow-violet-500/20">
+              <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
                   {initials}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-medium truncate">{user.name}</p>
-                  <p className="text-white/30 text-xs truncate">{user.email}</p>
+                  <p className="text-slate-900 text-sm font-semibold truncate">{user.name}</p>
+                  <p className="text-gray-400 text-xs truncate">{user.email}</p>
                 </div>
               </div>
             )}
 
-            {/* Tester badge */}
             {user?.role === 'tester' && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <span className="text-amber-400 text-xs font-medium">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-100">
+                <span className="text-amber-700 text-xs font-semibold">
                   {isAr ? 'حساب تجريبي' : 'Tester account'}
                 </span>
               </div>
             )}
 
-            {/* Credits */}
             {user?.role === 'user' && (
               <Link
                 to="/settings"
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-sm text-slate-600"
               >
-                <Coins size={14} className="text-violet-400" />
-                <span className="text-white/50">
-                  {isAr ? 'الرصيد' : 'Credits'}
-                </span>
+                <Coins size={14} className="text-orange-500" />
+                <span className="font-medium">{isAr ? 'الرصيد' : 'Credits'}</span>
               </Link>
             )}
 
-            {/* Language */}
             <button
               onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-colors text-sm text-white/50"
+              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors text-sm text-slate-500 font-medium"
             >
               <Globe size={16} />
               <span>{language === 'ar' ? 'English' : 'العربية'}</span>
             </button>
 
-            {/* API status */}
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm">
-              <span className={`w-2 h-2 rounded-full ${apiConnected ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50' : 'bg-rose-400 shadow-lg shadow-rose-500/50'}`} />
-              <span className={apiConnected ? 'text-emerald-400' : 'text-rose-400'}>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm">
+              <span className={`w-2 h-2 rounded-full ${apiConnected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              <span className={`font-medium ${apiConnected ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {apiConnected ? t('connected') : t('disconnected')}
               </span>
             </div>
 
-            {/* Logout */}
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-rose-500/10 hover:text-rose-400 transition-all text-sm text-white/40"
+              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all text-sm text-slate-400 font-medium"
             >
               <LogOut size={16} />
               <span>{isAr ? 'تسجيل الخروج' : 'Sign out'}</span>
@@ -154,10 +139,9 @@ function Sidebar() {
         </div>
       </div>
 
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

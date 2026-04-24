@@ -9,42 +9,42 @@ function CostChart({ data = [] }) {
   const { t } = useUIStore()
 
   return (
-    <div className="glass p-6 hover:bg-white/[0.06] transition-all duration-300">
+    <div className="card-light p-6 hover:shadow-md transition-all duration-300">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
-          <TrendingUp size={18} className="text-violet-400" />
+        <div className="p-2 rounded-xl bg-orange-50">
+          <TrendingUp size={18} className="text-orange-500" />
         </div>
-        <h3 className="text-lg font-semibold text-white">{t('costHistory')}</h3>
+        <h3 className="text-lg font-bold text-slate-900">{t('costHistory')}</h3>
       </div>
 
       {data.length === 0 ? (
-        <div className="h-64 flex items-center justify-center text-white/20 text-sm">
+        <div className="h-64 flex items-center justify-center text-gray-300 text-sm font-medium">
           {t('noRuns')}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-            <XAxis dataKey="date" stroke="rgba(255,255,255,0.15)" tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.3)' }} />
-            <YAxis stroke="rgba(255,255,255,0.15)" tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.3)' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="date" stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+            <YAxis stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
                 borderRadius: '12px',
                 fontSize: '12px',
-                backdropFilter: 'blur(10px)',
+                boxShadow: '0 4px 20px -4px rgba(0,0,0,0.08)',
               }}
-              labelStyle={{ color: 'rgba(255,255,255,0.5)' }}
+              labelStyle={{ color: '#64748b', fontWeight: 600 }}
             />
             <Line
               type="monotone"
               dataKey="total_cost_usd"
               name="Cost (USD)"
-              stroke="#8b5cf6"
+              stroke="#f97316"
               strokeWidth={2.5}
-              dot={{ fill: '#8b5cf6', r: 3, strokeWidth: 0 }}
-              activeDot={{ r: 5, fill: '#a78bfa', stroke: '#8b5cf6', strokeWidth: 2 }}
+              dot={{ fill: '#f97316', r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#fb923c', stroke: '#f97316', strokeWidth: 2 }}
             />
           </LineChart>
         </ResponsiveContainer>

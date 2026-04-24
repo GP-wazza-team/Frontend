@@ -44,8 +44,8 @@ function DashboardPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-white/30 text-sm">{t('loading')}</span>
+          <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-gray-400 text-sm font-medium">{t('loading')}</span>
         </div>
       </div>
     )
@@ -53,14 +53,13 @@ function DashboardPage() {
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto animate-slideUp">
-      {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 border border-violet-500/20 flex items-center justify-center">
-          <BarChart3 className="text-violet-400" size={24} />
+        <div className="w-12 h-12 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center">
+          <BarChart3 className="text-orange-500" size={24} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('dashboard')}</h1>
-          <p className="text-white/30 text-sm">Monitor your AI generation activity and costs</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('dashboard')}</h1>
+          <p className="text-gray-400 text-sm">Monitor your AI generation activity and costs</p>
         </div>
       </div>
 
