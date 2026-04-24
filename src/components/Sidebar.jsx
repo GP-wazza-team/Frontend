@@ -1,150 +1,282 @@
-import React from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X, MessageSquare, BarChart3, Image, Settings, Globe, LogOut, Coins, Zap } from 'lucide-react'
+import { Plus, MessageSquare, Trash2, Pencil, Check, X, BarChart3, Image, LogOut, Zap, Search } from 'lucide-react'
+import { chatService } from '../services/chatService'
+import { useChatStore } from '../store/chatStore'
 import { useUIStore } from '../store/uiStore'
 import { useAuthStore } from '../store/authStore'
-import { authService } from '../services/authService'
 
-function Sidebar() {
+function formatRelative(dateStr) {
+  if (!dateStr) return ''
+  try {
+    const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
+    if (diff < 60) return 'Just now'
+    if (diff < 3600) return `${Math.floor(diff / 60)}m`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h`
+    return `${Math.floor(diff / 86400)}d`
+  } catch {
+    return ''
+  }
+}
+
+function Sidebar({ onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { sidebarOpen, setSidebarOpen, language, setLanguage, apiConnected, t } = useUIStore()
-  const { user, refreshToken, logout } = useAuthStore()
-  const isAr = language === 'ar'
+  const { sidebarOpen, language } = useUIStore()
+  const { user } = useAuthStore()
+  const { chats, setChats, currentChatId, setCurrentChatId, setMessages, removeChat } = useChatStore()
+  const [loadingChats, setLoadingChats] = useState(true)
+  const [search, setSearch] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editingTitle, setEditingTitle] = useState('')
+  const editInputRef = useRef(null)
 
-  const menuItems = [
-    { path: '/', icon: MessageSquare, label: t('chat') },
-    { path: '/dashboard', icon: BarChart3, label: t('dashboard') },
-    { path: '/assets', icon: Image, label: t('assets') },
-    { path: '/settings', icon: Settings, label: t('settings') },
-  ]
+  useEffect(() => { loadChats() }, [])
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus()
+      editInputRef.current.select()
+    }
+  }, [editingId])
 
-  const isActive = (path) => location.pathname === path
-
-  const handleLogout = async () => {
+  const loadChats = async () => {
     try {
-      if (refreshToken) await authService.logout(refreshToken)
-    } catch (_) {}
-    logout()
-    navigate('/login')
+      setLoadingChats(true)
+      const data = await chatService.getChats()
+      setChats(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Failed to load chats:', error)
+    } finally {
+      setLoadingChats(false)
+    }
   }
 
+  const handleNewChat = async () => {
+    try {
+      const chat = await chatService.createChat()
+      useChatStore.setState((state) => ({
+        chats: [chat, ...state.chats],
+        currentChatId: chat.id,
+        messages: [],
+      }))
+      navigate('/')
+    } catch (error) {
+      console.error('Failed to create chat:', error)
+    }
+  }
+
+  const handleSelectChat = async (chatId) => {
+    if (chatId === currentChatId) return
+    try {
+      setCurrentChatId(chatId)
+      const data = await chatService.getMessages(chatId)
+      setMessages(Array.isArray(data) ? data : [])
+      navigate('/')
+    } catch (error) {
+      console.error('Failed to load messages:', error)
+    }
+  }
+
+  const handleDeleteChat = async (e, chatId) => {
+    e.stopPropagation()
+    if (!window.confirm('Delete this chat?')) return
+    try {
+      await chatService.deleteChat(chatId)
+      removeChat(chatId)
+    } catch (error) {
+      console.error('Failed to delete chat:', error)
+    }
+  }
+
+  const startEditing = (e, chat) => {
+    e.stopPropagation()
+    setEditingId(chat.id)
+    setEditingTitle(chat.title || `Chat #${chat.id}`)
+  }
+  const cancelEditing = (e) => {
+    e?.stopPropagation()
+    setEditingId(null)
+    setEditingTitle('')
+  }
+  const saveEditing = async (e) => {
+    e?.stopPropagation()
+    if (!editingTitle.trim()) return cancelEditing()
+    try {
+      const updated = await chatService.renameChat(editingId, editingTitle.trim())
+      useChatStore.setState((state) => ({
+        chats: state.chats.map((c) => (c.id === editingId ? { ...c, title: updated.title } : c)),
+      }))
+    } catch (error) {
+      console.error('Failed to rename chat:', error)
+    } finally {
+      setEditingId(null)
+      setEditingTitle('')
+    }
+  }
+
+  const filtered = chats.filter(
+    (c) => String(c.id).includes(search) || (c.title && c.title.toLowerCase().includes(search.toLowerCase()))
+  )
+
+  const isActive = (path) => location.pathname === path
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '?'
 
   return (
     <>
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="fixed top-4 ltr:left-4 rtl:right-4 z-50 p-2.5 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all md:hidden"
-      >
-        {sidebarOpen ? <X size={20} className="text-slate-600" /> : <Menu size={20} className="text-slate-600" />}
-      </button>
-
       <div
-        className={`fixed md:relative h-screen w-64 bg-white border-r border-gray-100 flex flex-col transition-all duration-300 z-40
-          ${sidebarOpen ? 'ltr:left-0 rtl:right-0' : 'ltr:-left-64 rtl:-right-64 md:ltr:left-0 md:rtl:right-0'}
-        `}
+        className={`fixed h-screen flex flex-col transition-all duration-300 z-50 ${
+          sidebarOpen ? 'w-[260px]' : 'w-0 overflow-hidden'
+        }`}
+        style={{ backgroundColor: 'var(--bg)', borderRight: '1px solid var(--border)' }}
       >
-        <div className="flex flex-col h-full p-5">
-          {/* Logo */}
-          <div className="flex items-center gap-3 mb-8 px-2">
-            <div className="w-9 h-9 rounded-lg bg-orange-500 flex items-center justify-center shadow-md shadow-orange-500/20">
-              <Zap className="text-white" size={18} />
+        {/* New Chat Button */}
+        <div className="p-3">
+          <button
+            onClick={handleNewChat}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = 'var(--border)' }}
+          >
+            <Plus size={15} />
+            New Chat
+          </button>
+        </div>
+
+        {/* Search */}
+        {chats.length > 3 && (
+          <div className="px-3 pb-2">
+            <div className="relative">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
+              <input
+                type="text"
+                placeholder="Search chats..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-md pl-7 pr-2.5 py-1.5 text-[12px] outline-none transition-all"
+                style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid transparent' }}
+                onFocus={(e) => e.currentTarget.style.borderColor = 'var(--border-hover)'}
+                onBlur={(e) => e.currentTarget.style.borderColor = 'transparent'}
+              />
             </div>
-            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight">WAZZA</h1>
+          </div>
+        )}
+
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-2 pb-2">
+          {loadingChats ? (
+            <div className="space-y-1 px-1">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-8 rounded-md animate-pulse" style={{ backgroundColor: 'var(--border)' }} />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-24 gap-1.5">
+              <MessageSquare size={16} style={{ color: 'var(--text-tertiary)' }} />
+              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{search ? 'No results' : 'No chats yet'}</p>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {filtered.map((chat) => (
+                <div
+                  key={chat.id}
+                  onClick={() => editingId !== chat.id && handleSelectChat(chat.id)}
+                  className="group relative px-2.5 py-2 rounded-md cursor-pointer transition-all duration-150"
+                  style={currentChatId === chat.id && location.pathname === '/' ? { backgroundColor: 'rgba(128,128,128,0.08)' } : {}}
+                  onMouseEnter={(e) => { if (!(currentChatId === chat.id && location.pathname === '/')) e.currentTarget.style.backgroundColor = 'rgba(128,128,128,0.04)' }}
+                  onMouseLeave={(e) => { if (!(currentChatId === chat.id && location.pathname === '/')) e.currentTarget.style.backgroundColor = 'transparent' }}
+                >
+                  {editingId === chat.id ? (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        ref={editInputRef}
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveEditing()
+                          if (e.key === 'Escape') cancelEditing()
+                        }}
+                        className="flex-1 rounded px-2 py-1 text-[12px] outline-none min-w-0"
+                        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--accent)', color: 'var(--text-primary)' }}
+                      />
+                      <button onClick={saveEditing} className="p-1 rounded hover:bg-emerald-500/10 text-emerald-400 flex-shrink-0">
+                        <Check size={11} />
+                      </button>
+                      <button onClick={cancelEditing} className="p-1 rounded hover:bg-rose-500/10 text-rose-400 flex-shrink-0">
+                        <X size={11} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 pr-14">
+                      <MessageSquare size={13} className="flex-shrink-0" style={{ color: currentChatId === chat.id && location.pathname === '/' ? 'var(--accent)' : 'var(--text-tertiary)' }} />
+                      <p className="text-[13px] truncate flex-1" style={{ color: 'var(--text-secondary)' }}>{chat.title || `Chat #${chat.id}`}</p>
+                    </div>
+                  )}
+
+                  {editingId !== chat.id && (
+                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={(e) => startEditing(e, chat)} className="p-1 rounded transition-all" style={{ color: 'var(--text-tertiary)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}>
+                        <Pencil size={10} />
+                      </button>
+                      <button onClick={(e) => handleDeleteChat(e, chat.id)} className="p-1 rounded hover:text-rose-400 transition-all" style={{ color: 'var(--text-tertiary)' }}>
+                        <Trash2 size={10} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom: Dashboard, Assets, User */}
+        <div className="p-2" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="flex gap-1 mb-1">
+            <Link
+              to="/dashboard"
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[12px] font-medium transition-all"
+              style={isActive('/dashboard') ? { backgroundColor: 'rgba(128,128,128,0.08)', color: 'var(--text-primary)' } : { color: 'var(--text-tertiary)' }}
+              onMouseEnter={(e) => { if (!isActive('/dashboard')) { e.currentTarget.style.backgroundColor = 'rgba(128,128,128,0.04)'; e.currentTarget.style.color = 'var(--text-secondary)' }}}
+              onMouseLeave={(e) => { if (!isActive('/dashboard')) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}}
+            >
+              <BarChart3 size={14} />
+              <span>Dashboard</span>
+            </Link>
+            <Link
+              to="/assets"
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[12px] font-medium transition-all"
+              style={isActive('/assets') ? { backgroundColor: 'rgba(128,128,128,0.08)', color: 'var(--text-primary)' } : { color: 'var(--text-tertiary)' }}
+              onMouseEnter={(e) => { if (!isActive('/assets')) { e.currentTarget.style.backgroundColor = 'rgba(128,128,128,0.04)'; e.currentTarget.style.color = 'var(--text-secondary)' }}}
+              onMouseLeave={(e) => { if (!isActive('/assets')) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}}
+            >
+              <Image size={14} />
+              <span>Assets</span>
+            </Link>
           </div>
 
-          {/* Nav */}
-          <nav className="flex-1 space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon
-              const active = isActive(item.path)
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 font-medium text-sm ${
-                    active
-                      ? 'bg-orange-50 text-orange-700'
-                      : 'text-slate-500 hover:text-slate-800 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon size={18} className={active ? 'text-orange-500' : ''} />
-                  <span>{item.label}</span>
-                  {active && (
-                    <div className="ltr:ml-auto rtl:mr-auto w-1.5 h-1.5 rounded-full bg-orange-500" />
-                  )}
-                </Link>
-              )
-            })}
-          </nav>
-
-          {/* Bottom section */}
-          <div className="space-y-2 pt-4 border-t border-gray-100">
-            {user && (
-              <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100">
-                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                  {initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-slate-900 text-sm font-semibold truncate">{user.name}</p>
-                  <p className="text-gray-400 text-xs truncate">{user.email}</p>
-                </div>
-              </div>
-            )}
-
-            {user?.role === 'tester' && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-100">
-                <span className="text-amber-700 text-xs font-semibold">
-                  {isAr ? 'حساب تجريبي' : 'Tester account'}
-                </span>
-              </div>
-            )}
-
-            {user?.role === 'user' && (
-              <Link
-                to="/settings"
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors text-sm text-slate-600"
-              >
-                <Coins size={14} className="text-orange-500" />
-                <span className="font-medium">{isAr ? 'الرصيد' : 'Credits'}</span>
-              </Link>
-            )}
-
-            <button
-              onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
-              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors text-sm text-slate-500 font-medium"
-            >
-              <Globe size={16} />
-              <span>{language === 'ar' ? 'English' : 'العربية'}</span>
-            </button>
-
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm">
-              <span className={`w-2 h-2 rounded-full ${apiConnected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              <span className={`font-medium ${apiConnected ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {apiConnected ? t('connected') : t('disconnected')}
-              </span>
+          {/* User + Sign out */}
+          <div className="flex items-center gap-2 px-2 py-2 rounded-md" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
+              {initials}
             </div>
-
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-medium truncate" style={{ color: 'var(--text-secondary)' }}>{user?.name}</p>
+            </div>
             <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-all text-sm text-slate-400 font-medium"
+              onClick={onLogout}
+              className="p-1.5 rounded-md hover:bg-rose-500/10 transition-colors"
+              title={language === 'ar' ? 'تسجيل الخروج' : 'Sign out'}
             >
-              <LogOut size={16} />
-              <span>{isAr ? 'تسجيل الخروج' : 'Sign out'}</span>
+              <LogOut size={13} className="text-rose-400" />
             </button>
           </div>
         </div>
       </div>
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {/* Spacer */}
+      <div className={`shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-[260px]' : 'w-0'}`} />
     </>
   )
 }

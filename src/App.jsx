@@ -11,22 +11,24 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 
 function App() {
-  const { language } = useUIStore()
+  const { language, darkMode } = useUIStore()
 
   React.useEffect(() => {
     const htmlElement = document.documentElement
     htmlElement.lang = language
     htmlElement.dir = language === 'ar' ? 'rtl' : 'ltr'
-  }, [language])
+    if (darkMode) {
+      htmlElement.classList.add('dark')
+    } else {
+      htmlElement.classList.remove('dark')
+    }
+  }, [language, darkMode])
 
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public auth routes — no sidebar */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-
-        {/* Protected routes — require login */}
         <Route
           element={
             <ProtectedRoute>
@@ -39,7 +41,6 @@ function App() {
           <Route path="/assets" element={<AssetsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
-
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

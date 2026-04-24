@@ -4,28 +4,32 @@ import { useAuthStore } from '../store/authStore'
 import { authService } from '../services/authService'
 
 function ProtectedRoute({ children }) {
-  const { accessToken, refreshToken, setAuth, logout, isAuthenticated } = useAuthStore()
+  const { accessToken, refreshToken, logout } = useAuthStore()
   const [checking, setChecking] = useState(!accessToken && !!refreshToken)
 
   useEffect(() => {
     if (!accessToken && refreshToken) {
-      authService
-        .refresh(refreshToken)
-        .then((data) => setAuth(data.user, data.access_token, data.refresh_token))
+      authService.refresh()
+        .then((data) => {
+          useAuthStore.setState({
+            accessToken: data.access_token,
+            user: data.user,
+          })
+        })
         .catch(() => logout())
         .finally(() => setChecking(false))
     }
-  }, [])
+  }, [accessToken, refreshToken, logout])
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg)' }}>
+        <div className="w-7 h-7 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
       </div>
     )
   }
 
-  if (!isAuthenticated()) {
+  if (!accessToken) {
     return <Navigate to="/login" replace />
   }
 

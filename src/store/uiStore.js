@@ -96,12 +96,12 @@ export const useUIStore = create(
   persist(
     (set, get) => ({
       language: 'ar',
-      theme: 'dark',
+      darkMode: true,
       sidebarOpen: true,
       apiConnected: false,
 
       setLanguage: (language) => set({ language }),
-      setTheme: (theme) => set({ theme }),
+      setDarkMode: (darkMode) => set({ darkMode }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setApiConnected: (connected) => set({ apiConnected: connected }),
 
@@ -112,7 +112,7 @@ export const useUIStore = create(
     }),
     {
       name: 'wazza-ui-store',
-      version: 1,
+      version: 2,
     }
   )
 )

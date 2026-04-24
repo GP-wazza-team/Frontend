@@ -14,13 +14,11 @@ function PromptInput({ onSubmit, disabled = false }) {
     const ta = textareaRef.current
     if (!ta) return
     ta.style.height = 'auto'
-    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px'
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'
   }, [prompt])
 
   useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-    }
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }
   }, [previewUrl])
 
   const handleFileChange = (e) => {
@@ -44,9 +42,7 @@ function PromptInput({ onSubmit, disabled = false }) {
       onSubmit(prompt.trim(), attachedFile)
       setPrompt('')
       removeAttachment()
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto'
-      }
+      if (textareaRef.current) textareaRef.current.style.height = 'auto'
     }
   }
 
@@ -58,50 +54,29 @@ function PromptInput({ onSubmit, disabled = false }) {
   }
 
   return (
-    <div className="border-t border-gray-100 bg-white px-4 py-4">
+    <div className="px-4 py-4" style={{ backgroundColor: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
       {previewUrl && (
-        <div className="max-w-4xl mx-auto mb-3">
+        <div className="max-w-3xl mx-auto mb-2.5">
           <div className="relative inline-block">
-            <img
-              src={previewUrl}
-              alt="Attachment"
-              className="h-20 w-auto rounded-xl border border-orange-200 object-cover shadow-sm"
-            />
-            <button
-              onClick={removeAttachment}
-              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-rose-500 flex items-center justify-center hover:bg-rose-600 transition-colors shadow-md"
-            >
-              <X size={12} className="text-white" />
+            <img src={previewUrl} alt="Attachment" className="h-16 w-auto rounded-lg object-cover" style={{ border: '1px solid var(--border)' }} />
+            <button onClick={removeAttachment} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center hover:bg-rose-600 transition-colors">
+              <X size={10} className="text-white" />
             </button>
           </div>
         </div>
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-4xl mx-auto flex items-end gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3
-          focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100 transition-all duration-200"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+      <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex items-end gap-2 rounded-xl px-3 py-2.5 transition-all duration-200" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={handleFileChange} />
 
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
-          title="Attach reference image"
-          className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200
-            ${attachedFile
-              ? 'bg-orange-100 text-orange-600'
-              : 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'
-            } disabled:opacity-40 disabled:cursor-not-allowed`}
+          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-40"
+          style={{ color: attachedFile ? 'var(--accent)' : 'var(--text-tertiary)' }}
         >
-          <ImagePlus size={18} />
+          <ImagePlus size={16} />
         </button>
 
         <textarea
@@ -112,26 +87,20 @@ function PromptInput({ onSubmit, disabled = false }) {
           placeholder={t('enterPrompt')}
           disabled={disabled}
           rows={1}
-          className="flex-1 bg-transparent text-slate-900 placeholder-gray-400 resize-none outline-none text-sm leading-6 disabled:opacity-50 max-h-[200px] overflow-y-auto scrollbar-hide"
-          style={{ height: 'auto' }}
+          className="flex-1 bg-transparent resize-none outline-none text-[14px] leading-5 disabled:opacity-50 max-h-[160px] overflow-y-auto scrollbar-hide py-1"
+          style={{ color: 'var(--text-primary)' }}
         />
 
         <button
           type="submit"
           disabled={disabled || (!prompt.trim() && !attachedFile)}
-          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200
-            bg-slate-900 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-900"
+          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30"
+          style={{ backgroundColor: 'var(--accent)' }}
         >
-          {disabled ? (
-            <Loader2 size={18} className="animate-spin text-white" />
-          ) : (
-            <Send size={18} className="text-white" />
-          )}
+          {disabled ? <Loader2 size={15} className="animate-spin text-white" /> : <Send size={15} className="text-white" />}
         </button>
       </form>
-      <p className="text-center text-gray-300 text-xs mt-2">
-        Enter to send · Shift+Enter for new line
-      </p>
+      <p className="text-center text-[11px] mt-1.5" style={{ color: 'var(--text-tertiary)' }}>Enter to send · Shift+Enter for new line</p>
     </div>
   )
 }

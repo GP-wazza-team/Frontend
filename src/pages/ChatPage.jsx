@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react'
-import ChatSidebar from '../components/chat/ChatSidebar'
 import ChatMessages from '../components/chat/ChatMessages'
 import PromptInput from '../components/chat/PromptInput'
 import { useChatStore } from '../store/chatStore'
@@ -102,9 +101,8 @@ function ChatPage() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <ChatSidebar />
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
+    <div className="flex h-[calc(100vh-48px)] overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
+      <div className="flex-1 flex flex-col min-w-0 max-w-3xl mx-auto w-full">
         <ChatMessages messages={messages} loading={loading} />
         <PromptInput onSubmit={handleSendPrompt} disabled={loading} />
       </div>

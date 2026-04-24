@@ -1,45 +1,29 @@
 import React from 'react'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-} from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useUIStore } from '../../store/uiStore'
-import { Layers } from 'lucide-react'
 
 function ProviderChart({ data = [] }) {
   const { t } = useUIStore()
 
   return (
-    <div className="card-light p-6 hover:shadow-md transition-all duration-300">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-xl bg-sky-50">
-          <Layers size={18} className="text-sky-500" />
-        </div>
-        <h3 className="text-lg font-bold text-slate-900">{t('providerUsage')}</h3>
+    <div className="surface p-5">
+      <div className="mb-4">
+        <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('providerUsage')}</h3>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Calls by provider</p>
       </div>
-
       {data.length === 0 ? (
-        <div className="h-64 flex items-center justify-center text-gray-300 text-sm font-medium">
-          {t('noRuns')}
-        </div>
+        <div className="h-56 flex items-center justify-center text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('noRuns')}</div>
       ) : (
-        <ResponsiveContainer width="100%" height={260}>
+        <ResponsiveContainer width="100%" height={240}>
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="provider" stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-            <YAxis stroke="#cbd5e1" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="provider" stroke="var(--border)" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
+            <YAxis stroke="var(--border)" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
             <Tooltip
-              contentStyle={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                fontSize: '12px',
-                boxShadow: '0 4px 20px -4px rgba(0,0,0,0.08)',
-              }}
-              labelStyle={{ color: '#64748b', fontWeight: 600 }}
+              contentStyle={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
+              labelStyle={{ color: 'var(--text-secondary)' }}
             />
-            <Legend wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }} />
-            <Bar dataKey="call_count" name="Calls" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="total_cost_usd" name="Cost (USD)" fill="#f97316" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="call_count" name="Calls" fill="var(--accent)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       )}

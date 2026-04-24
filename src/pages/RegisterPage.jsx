@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Globe, Eye, EyeOff, Zap } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, Zap } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
@@ -17,13 +17,13 @@ function RegisterPage() {
   const [error, setError] = useState('')
 
   const t = {
-    title:       isAr ? 'إنشاء حساب' : 'Create your account',
-    subtitle:    isAr ? 'ابدأ مجاناً مع 20 رصيد' : 'Start free with 20 credits — no card required',
-    name:        isAr ? 'الاسم' : 'Full name',
-    email:       isAr ? 'البريد الإلكتروني' : 'Email',
+    title:       isAr ? 'إنشاء حساب' : 'Create account',
+    subtitle:    isAr ? 'ابدأ مجاناً مع 20 رصيد' : 'Start generating with 20 free credits. No card required.',
+    name:        isAr ? 'الاسم الكامل' : 'Full name',
+    email:       isAr ? 'البريد الإلكتروني' : 'Email address',
     password:    isAr ? 'كلمة المرور' : 'Password',
-    passwordHint:isAr ? '8 أحرف على الأقل' : 'At least 8 characters',
-    submit:      isAr ? 'إنشاء الحساب' : 'Create account',
+    passwordHint:isAr ? '8 أحرف على الأقل' : 'Must be at least 8 characters',
+    submit:      isAr ? 'إنشاء الحساب' : 'Get started',
     hasAccount:  isAr ? 'لديك حساب بالفعل؟' : 'Already have an account?',
     login:       isAr ? 'تسجيل الدخول' : 'Sign in',
   }
@@ -48,104 +48,132 @@ function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="w-full max-w-sm animate-scaleIn">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="w-11 h-11 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/25">
-            <Zap className="text-white" size={22} />
+    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg)' }} dir={isAr ? 'rtl' : 'ltr'}>
+      {/* Left - Visual */}
+      <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden">
+        <div className="mesh-gradient absolute inset-0" />
+        <div className="relative z-10 flex flex-col justify-between p-12">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center border border-white/10">
+              <Zap size={18} className="text-white" />
+            </div>
+            <span className="font-bold text-lg text-white/90 tracking-tight">WAZZA</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">WAZZA</h1>
-        </div>
 
-        {/* Card */}
-        <div className="card-light p-8">
-          <h2 className="text-lg font-bold text-slate-900 mb-1">{t.title}</h2>
-          <p className="text-gray-400 text-sm mb-6">{t.subtitle}</p>
+          <div className="max-w-sm">
+            <h2 className="text-3xl font-semibold leading-snug mb-3 text-white/90">
+              {isAr ? 'ابدأ رحلتك مع الذكاء الاصطناعي' : 'Start your AI journey today'}
+            </h2>
+            <p className="text-white/40 text-base leading-relaxed">
+              {isAr ? 'انضم إلى آلاف المبدعين الذين يستخدمون Wazza' : 'Join thousands of creators already using Wazza to power their ideas.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4 text-sm text-white/30">
+            <span>WAZZA v1.0</span>
+            <span>·</span>
+            <button onClick={() => setLanguage(isAr ? 'en' : 'ar')} className="hover:text-white/60 transition-colors">
+              {isAr ? 'English' : 'العربية'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Right - Form */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm animate-slideUp">
+          <div className="flex lg:hidden items-center gap-3 mb-10">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent)' }}>
+              <Zap size={18} className="text-white" />
+            </div>
+            <span className="font-bold text-lg tracking-tight" style={{ color: 'var(--text-primary)' }}>WAZZA</span>
+          </div>
+
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>{t.title}</h1>
+            <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t.subtitle}</p>
+          </div>
 
           {error && (
-            <div className="mb-5 px-4 py-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-sm font-medium animate-fadeIn">
+            <div className="mb-5 px-4 py-3 rounded-lg text-sm animate-fadeIn" style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', color: '#fb7185' }}>
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t.name}</label>
+              <label className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t.name}</label>
               <input
                 type="text"
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full input-light"
-                placeholder={isAr ? 'اسمك الكامل' : 'Your full name'}
+                className="input-claude"
+                placeholder={isAr ? 'محمد أحمد' : 'John Doe'}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t.email}</label>
+              <label className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t.email}</label>
               <input
                 type="email"
                 required
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full input-light"
+                className="input-claude"
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">{t.password}</label>
+              <label className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t.password}</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full input-light ltr:pr-10 rtl:pl-10"
+                  className="input-claude ltr:pr-10 rtl:pl-10"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 ltr:right-3 rtl:left-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute inset-y-0 ltr:right-3 rtl:left-3 flex items-center transition-colors"
+                  style={{ color: 'var(--text-tertiary)' }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              <p className="mt-1.5 text-xs text-gray-400">{t.passwordHint}</p>
+              <p className="mt-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>{t.passwordHint}</p>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary-light py-3 rounded-xl mt-2"
+              className="w-full btn-primary py-3 rounded-lg flex items-center justify-center gap-2 text-[14px]"
             >
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
+                <span className="flex items-center gap-2">
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   {isAr ? 'جاري الإنشاء...' : 'Creating account...'}
                 </span>
-              ) : t.submit}
+              ) : (
+                <>
+                  {t.submit}
+                  <ArrowRight size={15} className={isAr ? 'rotate-180' : ''} />
+                </>
+              )}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-400">
+          <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
             {t.hasAccount}{' '}
-            <Link to="/login" className="text-orange-600 hover:text-orange-700 font-semibold transition-colors">
+            <Link to="/login" className="font-medium transition-opacity hover:opacity-80" style={{ color: 'var(--accent)' }}>
               {t.login}
             </Link>
           </p>
         </div>
-
-        {/* Language toggle */}
-        <button
-          onClick={() => setLanguage(isAr ? 'en' : 'ar')}
-          className="mt-6 mx-auto flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors font-medium"
-        >
-          <Globe size={12} />
-          {isAr ? 'English' : 'العربية'}
-        </button>
       </div>
     </div>
   )
