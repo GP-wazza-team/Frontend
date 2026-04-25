@@ -9,7 +9,7 @@ export const assetService = {
     if (filters.type) params.asset_type = filters.type
     if (filters.chat_id) params.chat_id = filters.chat_id
 
-    const response = await api.get('/assets', { params })
+    const response = await api.get('/assets/', { params })
     const data = response.data
     return {
       assets: data.items || [],

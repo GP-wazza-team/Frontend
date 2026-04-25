@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Plus, MessageSquare, Trash2, Pencil, Check, X, BarChart3, Image, LogOut, Zap, Search } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Plus, MessageSquare, Trash2, Pencil, Check, X, LogOut, Search, Settings, BarChart3, Image, User, Loader2 } from 'lucide-react'
 import { chatService } from '../services/chatService'
 import { useChatStore } from '../store/chatStore'
 import { useUIStore } from '../store/uiStore'
 import { useAuthStore } from '../store/authStore'
+import { useToastStore } from '../store/toastStore'
+import ConfirmDialog from './ConfirmDialog'
 
 function formatRelative(dateStr) {
   if (!dateStr) return ''
@@ -24,12 +26,18 @@ function Sidebar({ onLogout }) {
   const navigate = useNavigate()
   const { sidebarOpen, language } = useUIStore()
   const { user } = useAuthStore()
+  const { addToast } = useToastStore()
   const { chats, setChats, currentChatId, setCurrentChatId, setMessages, removeChat } = useChatStore()
   const [loadingChats, setLoadingChats] = useState(true)
+  const [creatingChat, setCreatingChat] = useState(false)
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editingTitle, setEditingTitle] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const editInputRef = useRef(null)
+  const menuRef = useRef(null)
+  const listRef = useRef(null)
 
   useEffect(() => { loadChats() }, [])
   useEffect(() => {
@@ -39,6 +47,25 @@ function Sidebar({ onLogout }) {
     }
   }, [editingId])
 
+  // Close menu on click outside
+  useEffect(() => {
+    function handleClick(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false)
+      }
+    }
+    if (menuOpen) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [menuOpen])
+
+  // Scroll active chat into view
+  useEffect(() => {
+    if (currentChatId && listRef.current) {
+      const activeEl = listRef.current.querySelector(`[data-chat-id="${currentChatId}"]`)
+      if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    }
+  }, [currentChatId])
+
   const loadChats = async () => {
     try {
       setLoadingChats(true)
@@ -46,12 +73,15 @@ function Sidebar({ onLogout }) {
       setChats(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to load chats:', error)
+      addToast('Failed to load chats', 'error')
     } finally {
       setLoadingChats(false)
     }
   }
 
   const handleNewChat = async () => {
+    if (creatingChat) return
+    setCreatingChat(true)
     try {
       const chat = await chatService.createChat()
       useChatStore.setState((state) => ({
@@ -62,6 +92,10 @@ function Sidebar({ onLogout }) {
       navigate('/')
     } catch (error) {
       console.error('Failed to create chat:', error)
+      const detail = error?.response?.data?.detail || error?.message || 'Unknown error'
+      addToast('Failed to create chat: ' + detail, 'error')
+    } finally {
+      setCreatingChat(false)
     }
   }
 
@@ -74,17 +108,20 @@ function Sidebar({ onLogout }) {
       navigate('/')
     } catch (error) {
       console.error('Failed to load messages:', error)
+      addToast('Failed to load messages', 'error')
     }
   }
 
-  const handleDeleteChat = async (e, chatId) => {
-    e.stopPropagation()
-    if (!window.confirm('Delete this chat?')) return
+  const handleDeleteChat = async (chatId) => {
     try {
       await chatService.deleteChat(chatId)
       removeChat(chatId)
+      addToast('Chat deleted', 'success')
     } catch (error) {
       console.error('Failed to delete chat:', error)
+      addToast('Failed to delete chat', 'error')
+    } finally {
+      setConfirmDelete(null)
     }
   }
 
@@ -108,6 +145,7 @@ function Sidebar({ onLogout }) {
       }))
     } catch (error) {
       console.error('Failed to rename chat:', error)
+      addToast('Failed to rename chat', 'error')
     } finally {
       setEditingId(null)
       setEditingTitle('')
@@ -118,13 +156,25 @@ function Sidebar({ onLogout }) {
     (c) => String(c.id).includes(search) || (c.title && c.title.toLowerCase().includes(search.toLowerCase()))
   )
 
-  const isActive = (path) => location.pathname === path
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
     : '?'
 
+  const isChatPage = location.pathname === '/'
+
   return (
     <>
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title="Delete Chat"
+        message="This chat and all its messages will be permanently removed. This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={() => handleDeleteChat(confirmDelete)}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
       <div
         className={`fixed h-screen flex flex-col transition-all duration-300 z-50 ${
           sidebarOpen ? 'w-[260px]' : 'w-0 overflow-hidden'
@@ -135,12 +185,13 @@ function Sidebar({ onLogout }) {
         <div className="p-3">
           <button
             onClick={handleNewChat}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all"
+            disabled={creatingChat}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-medium transition-all disabled:opacity-50"
             style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--border-hover)' }}
+            onMouseEnter={(e) => { if (!creatingChat) { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; e.currentTarget.style.borderColor = 'var(--border-hover)' }}}
             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = 'var(--border)' }}
           >
-            <Plus size={15} />
+            {creatingChat ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
             New Chat
           </button>
         </div>
@@ -165,7 +216,7 @@ function Sidebar({ onLogout }) {
         )}
 
         {/* Chat List */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide px-2 pb-2">
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-2 pb-2" ref={listRef}>
           {loadingChats ? (
             <div className="space-y-1 px-1">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -182,11 +233,12 @@ function Sidebar({ onLogout }) {
               {filtered.map((chat) => (
                 <div
                   key={chat.id}
+                  data-chat-id={chat.id}
                   onClick={() => editingId !== chat.id && handleSelectChat(chat.id)}
                   className="group relative px-2.5 py-2 rounded-md cursor-pointer transition-all duration-150"
-                  style={currentChatId === chat.id && location.pathname === '/' ? { backgroundColor: 'rgba(128,128,128,0.08)' } : {}}
-                  onMouseEnter={(e) => { if (!(currentChatId === chat.id && location.pathname === '/')) e.currentTarget.style.backgroundColor = 'rgba(128,128,128,0.04)' }}
-                  onMouseLeave={(e) => { if (!(currentChatId === chat.id && location.pathname === '/')) e.currentTarget.style.backgroundColor = 'transparent' }}
+                  style={currentChatId === chat.id && isChatPage ? { backgroundColor: 'rgba(128,128,128,0.08)' } : {}}
+                  onMouseEnter={(e) => { if (!(currentChatId === chat.id && isChatPage)) e.currentTarget.style.backgroundColor = 'rgba(128,128,128,0.04)' }}
+                  onMouseLeave={(e) => { if (!(currentChatId === chat.id && isChatPage)) e.currentTarget.style.backgroundColor = 'transparent' }}
                 >
                   {editingId === chat.id ? (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
@@ -210,7 +262,7 @@ function Sidebar({ onLogout }) {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 pr-14">
-                      <MessageSquare size={13} className="flex-shrink-0" style={{ color: currentChatId === chat.id && location.pathname === '/' ? 'var(--accent)' : 'var(--text-tertiary)' }} />
+                      <MessageSquare size={13} className="flex-shrink-0" style={{ color: currentChatId === chat.id && isChatPage ? 'var(--accent)' : 'var(--text-tertiary)' }} />
                       <p className="text-[13px] truncate flex-1" style={{ color: 'var(--text-secondary)' }}>{chat.title || `Chat #${chat.id}`}</p>
                     </div>
                   )}
@@ -220,7 +272,7 @@ function Sidebar({ onLogout }) {
                       <button onClick={(e) => startEditing(e, chat)} className="p-1 rounded transition-all" style={{ color: 'var(--text-tertiary)' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-secondary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}>
                         <Pencil size={10} />
                       </button>
-                      <button onClick={(e) => handleDeleteChat(e, chat.id)} className="p-1 rounded hover:text-rose-400 transition-all" style={{ color: 'var(--text-tertiary)' }}>
+                      <button onClick={(e) => { e.stopPropagation(); setConfirmDelete(chat.id) }} className="p-1 rounded hover:text-rose-400 transition-all" style={{ color: 'var(--text-tertiary)' }}>
                         <Trash2 size={10} />
                       </button>
                     </div>
@@ -231,47 +283,84 @@ function Sidebar({ onLogout }) {
           )}
         </div>
 
-        {/* Bottom: Dashboard, Assets, User */}
-        <div className="p-2" style={{ borderTop: '1px solid var(--border)' }}>
-          <div className="flex gap-1 mb-1">
-            <Link
-              to="/dashboard"
-              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[12px] font-medium transition-all"
-              style={isActive('/dashboard') ? { backgroundColor: 'rgba(128,128,128,0.08)', color: 'var(--text-primary)' } : { color: 'var(--text-tertiary)' }}
-              onMouseEnter={(e) => { if (!isActive('/dashboard')) { e.currentTarget.style.backgroundColor = 'rgba(128,128,128,0.04)'; e.currentTarget.style.color = 'var(--text-secondary)' }}}
-              onMouseLeave={(e) => { if (!isActive('/dashboard')) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}}
+        {/* Bottom: Profile button + popup menu */}
+        <div className="p-2 relative" style={{ borderTop: '1px solid var(--border)' }} ref={menuRef}>
+          {/* Popup Menu */}
+          {menuOpen && (
+            <div
+              className="absolute left-2 right-2 bottom-full mb-2 rounded-xl py-2 animate-fadeIn"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border)',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+              }}
             >
-              <BarChart3 size={14} />
-              <span>Dashboard</span>
-            </Link>
-            <Link
-              to="/assets"
-              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-md text-[12px] font-medium transition-all"
-              style={isActive('/assets') ? { backgroundColor: 'rgba(128,128,128,0.08)', color: 'var(--text-primary)' } : { color: 'var(--text-tertiary)' }}
-              onMouseEnter={(e) => { if (!isActive('/assets')) { e.currentTarget.style.backgroundColor = 'rgba(128,128,128,0.04)'; e.currentTarget.style.color = 'var(--text-secondary)' }}}
-              onMouseLeave={(e) => { if (!isActive('/assets')) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)' }}}
-            >
-              <Image size={14} />
-              <span>Assets</span>
-            </Link>
-          </div>
+              <div className="px-3 py-1.5 mb-1">
+                <p className="text-[11px] font-medium truncate" style={{ color: 'var(--text-tertiary)' }}>{user?.email}</p>
+              </div>
 
-          {/* User + Sign out */}
-          <div className="flex items-center gap-2 px-2 py-2 rounded-md" style={{ borderTop: '1px solid var(--border)' }}>
+              <div style={{ borderTop: '1px solid var(--border)' }} />
+
+              <button
+                onClick={() => { setMenuOpen(false); navigate('/dashboard') }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors text-left"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <BarChart3 size={14} />
+                Dashboard
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); navigate('/assets') }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors text-left"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Image size={14} />
+                Assets
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); navigate('/settings') }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors text-left"
+                style={{ color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <Settings size={14} />
+                Settings
+              </button>
+
+              <div style={{ borderTop: '1px solid var(--border)' }} className="my-1" />
+
+              <button
+                onClick={() => { setMenuOpen(false); onLogout() }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors text-left"
+                style={{ color: '#fb7185' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <LogOut size={14} />
+                {language === 'ar' ? 'تسجيل الخروج' : 'Sign out'}
+              </button>
+            </div>
+          )}
+
+          {/* Profile Trigger */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="w-full flex items-center gap-2 px-2 py-2 rounded-md transition-all text-left"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{ backgroundColor: 'var(--accent)' }}>
               {initials}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-medium truncate" style={{ color: 'var(--text-secondary)' }}>{user?.name}</p>
-            </div>
-            <button
-              onClick={onLogout}
-              className="p-1.5 rounded-md hover:bg-rose-500/10 transition-colors"
-              title={language === 'ar' ? 'تسجيل الخروج' : 'Sign out'}
-            >
-              <LogOut size={13} className="text-rose-400" />
-            </button>
-          </div>
+            <span className="text-[12px] font-medium truncate flex-1">{user?.name}</span>
+            <User size={13} style={{ color: 'var(--text-tertiary)' }} />
+          </button>
         </div>
       </div>
 

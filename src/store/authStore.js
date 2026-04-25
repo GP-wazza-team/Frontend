@@ -7,6 +7,7 @@ export const useAuthStore = create(
       user: null,
       accessToken: null,
       refreshToken: null,
+      hasHydrated: false,
 
       setAuth: (user, accessToken, refreshToken) =>
         set({ user, accessToken, refreshToken }),
@@ -19,11 +20,14 @@ export const useAuthStore = create(
     }),
     {
       name: 'wazza-auth',
-      // Only persist refreshToken and user — access token is memory-only
       partialize: (state) => ({
+        accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         user: state.user,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) state.hasHydrated = true
+      },
     }
   )
 )

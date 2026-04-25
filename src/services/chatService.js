@@ -3,7 +3,7 @@ import api from './api'
 export const chatService = {
   // Backend returns a flat list: [{id, title, created_at, ...}]
   getChats: async () => {
-    const response = await api.get('/chats')
+    const response = await api.get('/chats/')
     return response.data // plain array
   },
 
@@ -13,7 +13,7 @@ export const chatService = {
   },
 
   createChat: async () => {
-    const response = await api.post('/chats', {})
+    const response = await api.post('/chats/', {})
     return response.data // single ChatOut object
   },
 

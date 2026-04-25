@@ -1,7 +1,7 @@
 import React from 'react'
 import { useUIStore } from '../store/uiStore'
 import { useAuthStore } from '../store/authStore'
-import { Globe, Moon, Sun, LogOut, Zap, Server } from 'lucide-react'
+import { Globe, Moon, Sun, LogOut, Server } from 'lucide-react'
 
 function SettingsPage() {
   const { darkMode, setDarkMode, language, setLanguage, t, apiConnected } = useUIStore()
@@ -13,10 +13,10 @@ function SettingsPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto animate-slideUp">
+    <div className="p-8 animate-slideUp">
       <h1 className="text-2xl font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>{t('settings')}</h1>
 
-      <div className="space-y-4">
+      <div className="max-w-2xl space-y-4">
         {/* Appearance */}
         <div className="surface p-5">
           <div className="flex items-center gap-2 mb-4">
@@ -84,24 +84,6 @@ function SettingsPage() {
             <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {apiConnected ? t('apiConnected') : t('apiDisconnected')}
             </span>
-          </div>
-        </div>
-
-        {/* About */}
-        <div className="surface p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Zap size={16} style={{ color: 'var(--accent)' }} />
-            <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>About</h3>
-          </div>
-          <div className="space-y-1.5 text-sm">
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-tertiary)' }}>Version</span>
-              <span style={{ color: 'var(--text-secondary)' }}>1.0.0</span>
-            </div>
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-tertiary)' }}>{t('apiStatus')}</span>
-              <span style={{ color: 'var(--text-secondary)' }}>{apiConnected ? 'Online' : 'Offline'}</span>
-            </div>
           </div>
         </div>
 

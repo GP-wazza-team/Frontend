@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import ToastContainer from './ToastContainer'
 import { useUIStore } from '../store/uiStore'
 import { useAuthStore } from '../store/authStore'
 import { dashboardService } from '../services/dashboardService'
@@ -38,6 +39,7 @@ function Layout() {
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--bg)' }}>
       <Sidebar onLogout={handleLogout} />
+      <ToastContainer />
 
       <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarOpen ? 'ml-0' : ''}`}>
         {/* Top Header */}

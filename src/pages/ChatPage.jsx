@@ -16,6 +16,18 @@ function ChatPage() {
     }
   }, [])
 
+  // Load messages whenever currentChatId changes while on this page
+  useEffect(() => {
+    if (!currentChatId) return
+    chatService.getMessages(currentChatId)
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setMessages(data)
+        }
+      })
+      .catch(() => {})
+  }, [currentChatId, setMessages])
+
   const handleSendPrompt = async (prompt, attachmentFile = null) => {
     if (loading) return
 
