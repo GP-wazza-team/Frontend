@@ -42,7 +42,7 @@ function AssetsPage() {
     }
   }
 
-  const getAssetUrl = (asset) => asset.public_url || asset.storage_url || ''
+  const getAssetUrl = (asset) => asset.url || asset.public_url || asset.storage_url || ''
 
   const filteredAssets = filter === 'all'
     ? assets

@@ -22,7 +22,8 @@ function isVideoUrl(str) {
 
 function parseContent(content) {
   if (!content) return []
-  const urlRegex = /(https?:\/\/[^\s]+)/g
+  // Match both absolute http(s) URLs and relative /api/assets/... paths
+  const urlRegex = /(https?:\/\/[^\s]+|\/api\/assets\/[^\s]+)/g
   const parts = []
   let lastIndex = 0
   let match
