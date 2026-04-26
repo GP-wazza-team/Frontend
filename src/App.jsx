@@ -7,6 +7,7 @@ import ChatPage from './pages/ChatPage'
 import DashboardPage from './pages/DashboardPage'
 import AssetsPage from './pages/AssetsPage'
 import SettingsPage from './pages/SettingsPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 
@@ -38,6 +39,7 @@ function App() {
         >
           <Route path="/" element={<ChatPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/assets" element={<AssetsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

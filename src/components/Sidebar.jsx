@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, MessageSquare, Trash2, Pencil, Check, X, LogOut, Search, Settings, BarChart3, Image, User, Loader2 } from 'lucide-react'
+import { Plus, MessageSquare, Trash2, Pencil, Check, X, LogOut, Search, Settings, BarChart3, Image, User, Loader2, Shield } from 'lucide-react'
 import { chatService } from '../services/chatService'
 import { useChatStore } from '../store/chatStore'
 import { useUIStore } from '../store/uiStore'
@@ -311,6 +311,18 @@ function Sidebar({ onLogout }) {
                 <BarChart3 size={14} />
                 Dashboard
               </button>
+              {(user?.is_admin || user?.role === 'admin') && (
+                <button
+                  onClick={() => { setMenuOpen(false); navigate('/admin') }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors text-left"
+                  style={{ color: 'var(--text-secondary)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Shield size={14} />
+                  Admin
+                </button>
+              )}
               <button
                 onClick={() => { setMenuOpen(false); navigate('/assets') }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors text-left"
