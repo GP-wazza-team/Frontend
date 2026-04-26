@@ -18,4 +18,6 @@ export const useToastStore = create((set, get) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     }))
   },
+
+  clear: () => set({ toasts: [] }),
 }))

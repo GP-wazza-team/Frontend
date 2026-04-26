@@ -6,6 +6,7 @@ import { useChatStore } from '../store/chatStore'
 import { useUIStore } from '../store/uiStore'
 import { useAuthStore } from '../store/authStore'
 import { useToastStore } from '../store/toastStore'
+import { clearAllStores } from '../utils/clearStores'
 import ConfirmDialog from './ConfirmDialog'
 
 function formatRelative(dateStr) {
@@ -347,7 +348,7 @@ function Sidebar({ onLogout }) {
               <div style={{ borderTop: '1px solid var(--border)' }} className="my-1" />
 
               <button
-                onClick={() => { setMenuOpen(false); onLogout() }}
+                onClick={() => { setMenuOpen(false); clearAllStores(); onLogout() }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors text-left"
                 style={{ color: '#fb7185' }}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}

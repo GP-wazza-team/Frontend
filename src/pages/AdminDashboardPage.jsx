@@ -3,22 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { adminService } from '../services/adminService'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
+import { useToastStore } from '../store/toastStore'
 import AdminStatsCards from '../components/admin/AdminStatsCards'
 import ModelCostBreakdown from '../components/admin/ModelCostBreakdown'
 import DailyMetricsChart from '../components/admin/DailyMetricsChart'
 import AdminRunsTable from '../components/admin/AdminRunsTable'
 import RunDetailDrawer from '../components/admin/RunDetailDrawer'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { useToastStore } from '../store/toastStore'
-import { Shield, RefreshCw, Calendar } from 'lucide-react'
+import { Shield, RefreshCw } from 'lucide-react'
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const { t } = useUIStore()
   const { addToast } = useToastStore()
 
-  // Guard: redirect non-admins
   useEffect(() => {
     if (user && !user.is_admin && user?.role !== 'admin') {
       navigate('/dashboard')
@@ -29,40 +27,27 @@ export default function AdminDashboardPage() {
   const [modelCosts, setModelCosts] = useState([])
   const [dailyMetrics, setDailyMetrics] = useState([])
   const [runs, setRuns] = useState([])
-  const [runsTotal, setRunsTotal] = useState(0)
-  const [runsPage, setRunsPage] = useState(1)
-  const [runsFilters, setRunsFilters] = useState({})
   const [selectedRun, setSelectedRun] = useState(null)
   const [runDetail, setRunDetail] = useState(null)
   const [runToDelete, setRunToDelete] = useState(null)
   const [days, setDays] = useState(30)
-  const [loading, setLoading] = useState({
-    stats: true,
-    modelCosts: true,
-    dailyMetrics: true,
-    runs: true,
-  })
+  const [loading, setLoading] = useState(true)
 
   const loadAll = useCallback(async () => {
-    setLoading({ stats: true, modelCosts: true, dailyMetrics: true, runs: true })
+    setLoading(true)
     try {
-      const [statsData, modelData, dailyData, runsData] = await Promise.all([
-        adminService.getStats(days),
-        adminService.getModelCostBreakdown(days),
-        adminService.getDailyMetrics(days),
-        adminService.getRuns(runsPage, 25, runsFilters),
-      ])
-      setStats(statsData || {})
-      setModelCosts(Array.isArray(modelData) ? modelData : [])
-      setDailyMetrics(Array.isArray(dailyData) ? dailyData : [])
-      setRuns(Array.isArray(runsData?.items) ? runsData.items : runsData?.runs || [])
-      setRunsTotal(runsData?.total || 0)
+      const data = await adminService.getOverview(days)
+      setStats(data.stats || {})
+      setModelCosts(Array.isArray(data.model_costs) ? data.model_costs : [])
+      setDailyMetrics(Array.isArray(data.daily_metrics) ? data.daily_metrics : [])
+      setRuns(Array.isArray(data.runs) ? data.runs : [])
     } catch (err) {
       console.error('Failed to load admin dashboard:', err)
+      addToast('Failed to load admin data', 'error')
     } finally {
-      setLoading({ stats: false, modelCosts: false, dailyMetrics: false, runs: false })
+      setLoading(false)
     }
-  }, [days, runsPage, runsFilters])
+  }, [days, addToast])
 
   useEffect(() => {
     if (user?.is_admin || user?.role === 'admin') {
@@ -86,7 +71,6 @@ export default function AdminDashboardPage() {
     try {
       await adminService.deleteRun(runToDelete.id)
       setRuns((prev) => prev.filter((r) => r.id !== runToDelete.id))
-      setRunsTotal((prev) => Math.max(0, prev - 1))
       addToast('Run deleted successfully', 'success')
     } catch (err) {
       console.error('Delete failed:', err)
@@ -98,7 +82,7 @@ export default function AdminDashboardPage() {
 
   const handleExport = async () => {
     try {
-      const blob = await adminService.exportRuns(runsFilters)
+      const blob = await adminService.exportRuns()
       const url = window.URL.createObjectURL(new Blob([blob]))
       const link = document.createElement('a')
       link.href = url
@@ -110,12 +94,6 @@ export default function AdminDashboardPage() {
       console.error('Export failed:', err)
     }
   }
-
-  const dayOptions = [
-    { label: '7 Days', value: 7 },
-    { label: '30 Days', value: 30 },
-    { label: '90 Days', value: 90 },
-  ]
 
   if (!user?.is_admin && user?.role !== 'admin') {
     return (
@@ -137,22 +115,21 @@ export default function AdminDashboardPage() {
             <Shield size={18} style={{ color: 'var(--accent)' }} />
             <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Admin Dashboard</h1>
           </div>
-          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Full system analytics and run inspection.</p>
+          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Full platform analytics.</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Day Range Selector */}
           <div className="flex items-center gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-            {dayOptions.map((opt) => (
+            {[7, 30, 90].map((d) => (
               <button
-                key={opt.value}
-                onClick={() => setDays(opt.value)}
+                key={d}
+                onClick={() => setDays(d)}
                 className="px-3 py-1 rounded-md text-[12px] font-medium transition-all"
                 style={{
-                  backgroundColor: days === opt.value ? 'var(--accent)' : 'transparent',
-                  color: days === opt.value ? 'white' : 'var(--text-secondary)',
+                  backgroundColor: days === d ? 'var(--accent)' : 'transparent',
+                  color: days === d ? 'white' : 'var(--text-secondary)',
                 }}
               >
-                {opt.label}
+                {d}d
               </button>
             ))}
           </div>
@@ -182,23 +159,23 @@ export default function AdminDashboardPage() {
       {/* Runs Table */}
       <AdminRunsTable
         runs={runs}
-        total={runsTotal}
-        page={runsPage}
+        total={runs.length}
+        page={1}
         limit={25}
-        loading={loading.runs}
-        onPageChange={(p) => setRunsPage(p)}
+        loading={loading}
+        onPageChange={() => {}}
         onRunClick={handleRunClick}
         onDelete={(run) => setRunToDelete(run)}
         onExport={handleExport}
-        filters={runsFilters}
-        onFilterChange={(f) => { setRunsFilters(f); setRunsPage(1) }}
+        filters={{}}
+        onFilterChange={() => {}}
       />
 
       {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={!!runToDelete}
         title="Delete Run"
-        message={`Are you sure you want to delete Run #${runToDelete?.id}? This will remove the run record and associated analytics. Generated assets will NOT be deleted.`}
+        message={`Delete Run #${runToDelete?.id}? This removes the run record and associated analytics. Generated assets will NOT be deleted.`}
         confirmLabel="Delete"
         cancelLabel="Cancel"
         danger

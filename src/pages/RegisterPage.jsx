@@ -4,6 +4,7 @@ import { Eye, EyeOff, ArrowRight, Zap } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
+import { clearAllStores } from '../utils/clearStores'
 
 function RegisterPage() {
   const navigate = useNavigate()
@@ -38,6 +39,7 @@ function RegisterPage() {
     setLoading(true)
     try {
       const data = await authService.register(form.name, form.email, form.password)
+      clearAllStores()
       setAuth(data.user, data.access_token, data.refresh_token)
       navigate('/')
     } catch (err) {

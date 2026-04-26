@@ -4,6 +4,7 @@ import { Eye, EyeOff, ArrowRight, Zap } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
+import { clearAllStores } from '../utils/clearStores'
 
 function LoginPage() {
   const navigate = useNavigate()
@@ -33,6 +34,7 @@ function LoginPage() {
     setLoading(true)
     try {
       const data = await authService.login(form.email, form.password)
+      clearAllStores()
       setAuth(data.user, data.access_token, data.refresh_token)
       navigate('/')
     } catch (err) {
