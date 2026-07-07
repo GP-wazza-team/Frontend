@@ -7,7 +7,7 @@ import { chatService } from '../services/chatService'
 import { assetService } from '../services/assetService'
 
 function ChatPage() {
-  const { currentChatId, messages, setMessages, addMessage, loading, setLoading } = useChatStore()
+  const { currentChatId, messages, setMessages, addMessage, updateMessage, loading, setLoading } = useChatStore()
   const wsRef = useRef(null)
 
   useEffect(() => {
@@ -27,6 +27,22 @@ function ChatPage() {
       })
       .catch(() => {})
   }, [currentChatId, setMessages])
+
+  const waitForSocketOpen = (socket) => new Promise((resolve) => {
+    if (socket.readyState === WebSocket.OPEN) {
+      resolve()
+      return
+    }
+    const timeout = window.setTimeout(resolve, 1500)
+    socket.addEventListener('open', () => {
+      window.clearTimeout(timeout)
+      resolve()
+    }, { once: true })
+    socket.addEventListener('error', () => {
+      window.clearTimeout(timeout)
+      resolve()
+    }, { once: true })
+  })
 
   const handleSendPrompt = async (prompt, attachmentFile = null) => {
     if (loading) return
@@ -70,7 +86,37 @@ function ChatPage() {
         created_at: new Date().toISOString(),
       })
 
-      const result = await generateService.generate(chatId, prompt, imageAttachmentUrl)
+      const progressIndex = useChatStore.getState().messages.length
+      addMessage({
+        role: 'assistant',
+        content: 'Starting generation...',
+        created_at: new Date().toISOString(),
+      })
+
+      const startedRun = await generateService.start(chatId, prompt, imageAttachmentUrl)
+      const socket = generateService.connectWebSocket(startedRun.run_id)
+      wsRef.current = socket
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.type === 'progress') {
+            const prefix = data.progress ? `${data.progress}%` : 'Working'
+            updateMessage(progressIndex, {
+              role: 'assistant',
+              content: `${prefix} - ${data.message}`,
+              created_at: new Date().toISOString(),
+            })
+          }
+        } catch {
+          // Ignore malformed WebSocket messages and keep the current progress text.
+        }
+      }
+
+      await waitForSocketOpen(socket)
+      const result = await generateService.execute(startedRun.run_id, imageAttachmentUrl)
+      socket.close()
+      wsRef.current = null
 
       const media = []
       if (result.image_urls?.length > 0) {
@@ -102,6 +148,10 @@ function ChatPage() {
       }
     } catch (error) {
       console.error('Failed to generate:', error)
+      if (wsRef.current) {
+        wsRef.current.close()
+        wsRef.current = null
+      }
       addMessage({
         role: 'assistant',
         content: `Error: ${error?.response?.data?.detail || error.message || 'Generation failed'}`,

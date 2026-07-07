@@ -19,6 +19,22 @@ function getWsUrl() {
 }
 
 export const generateService = {
+  start: async (chatId, prompt, imageAttachmentUrl = null) => {
+    const response = await api.post('/generate/start', {
+      chat_id: chatId,
+      prompt,
+      image_attachment_path: imageAttachmentUrl || undefined,
+    })
+    return response.data
+  },
+
+  execute: async (runId, imageAttachmentUrl = null) => {
+    const response = await api.post(`/generate/runs/${runId}/execute`, {
+      image_attachment_path: imageAttachmentUrl || undefined,
+    })
+    return response.data
+  },
+
   generate: async (chatId, prompt, imageAttachmentUrl = null) => {
     const response = await api.post('/generate/', {
       chat_id: chatId,

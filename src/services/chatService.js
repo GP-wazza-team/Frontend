@@ -33,7 +33,7 @@ export const chatService = {
   },
 
   getWorldState: async (chatId) => {
-    const response = await api.get(`/world-state/chats/${chatId}`)
+    const response = await api.get(`/chats/${chatId}/world-state`)
     return response.data
   },
 }
