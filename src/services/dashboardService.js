@@ -25,6 +25,13 @@ export const dashboardService = {
     return response.data
   },
 
+  // Full beginning-to-end story of one run: plan, script, every model call with
+  // its own and cumulative cost, and the assets produced.
+  getRunTimeline: async (runId) => {
+    const response = await api.get(`/dashboard/runs/${runId}`)
+    return response.data
+  },
+
   checkHealth: async () => {
     const response = await api.get('/health')
     return response.data

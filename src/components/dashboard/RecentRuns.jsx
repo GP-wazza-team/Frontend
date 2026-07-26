@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useUIStore } from '../../store/uiStore'
+import RunTimeline from './RunTimeline'
 
 function formatTime(ts) {
   if (!ts) return '—'
@@ -17,12 +18,15 @@ function formatCost(val) {
 
 function RecentRuns({ runs = [] }) {
   const { t } = useUIStore()
+  const [openRunId, setOpenRunId] = useState(null)
 
   return (
     <div className="surface p-5">
       <div className="mb-4">
         <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('recentRuns')}</h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Latest generation runs</p>
+        <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+          Latest generation runs — select one to see every step and what it cost
+        </p>
       </div>
       {runs.length === 0 ? (
         <div className="py-6 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('noRuns')}</div>
@@ -40,7 +44,14 @@ function RecentRuns({ runs = [] }) {
             </thead>
             <tbody>
               {runs.map((run, index) => (
-                <tr key={run.id ?? index} className="transition-colors hover:bg-[var(--bg-hover)]" style={{ borderBottom: '1px solid var(--border)' }}>
+                <tr
+                  key={run.id ?? index}
+                  className="transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                  onClick={() => run.id && setOpenRunId(run.id)}
+                  tabIndex={run.id ? 0 : -1}
+                  onKeyDown={(e) => { if (run.id && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpenRunId(run.id) } }}
+                >
                   <td className="py-2.5 px-3 whitespace-nowrap text-xs" style={{ color: 'var(--text-tertiary)' }}>{formatTime(run.started_at)}</td>
                   <td className="py-2.5 px-3 max-w-xs">
                     <span className="line-clamp-1 text-[13px]" style={{ color: 'var(--text-secondary)' }}>{run.user_prompt || '—'}</span>
@@ -61,6 +72,8 @@ function RecentRuns({ runs = [] }) {
           </table>
         </div>
       )}
+
+      {openRunId && <RunTimeline runId={openRunId} onClose={() => setOpenRunId(null)} />}
     </div>
   )
 }
