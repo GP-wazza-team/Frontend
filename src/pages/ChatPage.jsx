@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import ChatMessages from '../components/chat/ChatMessages'
 import PromptInput from '../components/chat/PromptInput'
 import { useChatStore } from '../store/chatStore'
@@ -9,6 +9,12 @@ import { assetService } from '../services/assetService'
 function ChatPage() {
   const { currentChatId, messages, setMessages, addMessage, updateMessage, loading, setLoading } = useChatStore()
   const wsRef = useRef(null)
+  // Index of the card message (plan or clarification) currently awaiting the user.
+  const cardIndexRef = useRef(null)
+  // Index of the message that live WebSocket progress should be written into.
+  // Null while a card is on screen — there is nothing running to report then.
+  const progressTargetRef = useRef(null)
+  const [activeRunId, setActiveRunId] = useState(null)
 
   useEffect(() => {
     return () => {
@@ -44,8 +50,80 @@ function ChatPage() {
     }, { once: true })
   })
 
+  // Merge a patch into an existing message without clobbering its other fields.
+  const patchMessage = (index, patch) => {
+    if (index === null || index === undefined) return
+    const current = useChatStore.getState().messages[index]
+    if (!current) return
+    updateMessage(index, { ...current, ...patch })
+  }
+
+  const closeSocket = () => {
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
+  }
+
+  const endRun = () => {
+    closeSocket()
+    cardIndexRef.current = null
+    progressTargetRef.current = null
+    setActiveRunId(null)
+    setLoading(false)
+  }
+
+  const pushError = (error, fallback = 'Generation failed') => {
+    addMessage({
+      role: 'assistant',
+      content: `Error: ${error?.response?.data?.detail || error?.message || fallback}`,
+      created_at: new Date().toISOString(),
+    })
+  }
+
+  /**
+   * The backend returns either a plan (status 'awaiting_confirmation') or a set
+   * of clarification questions (status 'awaiting_clarification') from /plan,
+   * /revise and /clarify alike — so every caller routes through here.
+   */
+  const renderPlanResponse = (result, runId, { replaceIndex = null } = {}) => {
+    const isClarification = result.status === 'awaiting_clarification'
+    const card = isClarification
+      ? {
+          role: 'assistant',
+          kind: 'clarification',
+          runId,
+          questions: result.questions || [],
+          resolved: false,
+          busy: false,
+          created_at: new Date().toISOString(),
+        }
+      : {
+          role: 'assistant',
+          kind: 'plan',
+          runId,
+          plan: result,
+          previews: [],
+          resolved: false,
+          busy: false,
+          created_at: new Date().toISOString(),
+        }
+
+    if (replaceIndex !== null) {
+      updateMessage(replaceIndex, card)
+      cardIndexRef.current = replaceIndex
+    } else {
+      cardIndexRef.current = useChatStore.getState().messages.length
+      addMessage(card)
+    }
+    // A card is now on screen and nothing is running, so stop routing progress
+    // into the message the card just took over.
+    progressTargetRef.current = null
+    setLoading(false)
+  }
+
   const handleSendPrompt = async (prompt, attachmentFile = null) => {
-    if (loading) return
+    if (loading || activeRunId) return
 
     try {
       setLoading(true)
@@ -78,7 +156,7 @@ function ChatPage() {
           console.error('Failed to upload attachment:', err)
         }
       }
-
+  
       addMessage({
         role: 'user',
         content: prompt,
@@ -94,29 +172,130 @@ function ChatPage() {
       })
 
       const startedRun = await generateService.start(chatId, prompt, imageAttachmentUrl)
+      setActiveRunId(startedRun.run_id)
+      progressTargetRef.current = progressIndex
+
       const socket = generateService.connectWebSocket(startedRun.run_id)
       wsRef.current = socket
-
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          if (data.type === 'progress') {
-            const prefix = data.progress ? `${data.progress}%` : 'Working'
-            updateMessage(progressIndex, {
-              role: 'assistant',
-              content: `${prefix} - ${data.message}`,
-              created_at: new Date().toISOString(),
-            })
-          }
+          if (data.type !== 'progress') return
+          // Multi-scene runs report which scene they're on; a single global
+          // percentage would otherwise appear to restart on every scene with no
+          // explanation.
+          const scene = data.scene_number ? `Scene ${data.scene_number} · ` : ''
+          const prefix = data.progress ? `${scene}${data.progress}%` : `${scene}Working`
+          // Follows the run across both phases: the pre-plan line first, then
+          // the post-confirm line. Null while a card awaits the user.
+          patchMessage(progressTargetRef.current, { content: `${prefix} - ${data.message}` })
         } catch {
           // Ignore malformed WebSocket messages and keep the current progress text.
         }
       }
 
       await waitForSocketOpen(socket)
-      const result = await generateService.execute(startedRun.run_id, imageAttachmentUrl)
-      socket.close()
-      wsRef.current = null
+
+      // Plan only — nothing is generated until the user confirms.
+      const result = await generateService.plan(startedRun.run_id, imageAttachmentUrl)
+      renderPlanResponse(result, startedRun.run_id, { replaceIndex: progressIndex })
+    } catch (error) {
+      console.error('Failed to plan generation:', error)
+      pushError(error, 'Could not plan the generation')
+      endRun()
+    }
+  }
+
+  // ── Card actions ──────────────────────────────────────────────────────────
+
+  const withCardBusy = async (fn) => {
+    const index = cardIndexRef.current
+    patchMessage(index, { busy: true })
+    try {
+      await fn(index)
+    } finally {
+      // The card may have been replaced or resolved by fn; only clear busy if
+      // it's still the same pending card.
+      const current = useChatStore.getState().messages[index]
+      if (current && current.busy) patchMessage(index, { busy: false })
+    }
+  }
+
+  const handleEdit = (runId, field, text) => withCardBusy(async (index) => {
+    try {
+      const updated = await generateService.edit(runId, field, text)
+      patchMessage(index, { plan: updated, busy: false })
+    } catch (error) {
+      pushError(error, 'Could not save the edit')
+    }
+  })
+
+  const handleEditScript = (runId, scenes) => withCardBusy(async (index) => {
+    try {
+      const updated = await generateService.editScript(runId, scenes)
+      patchMessage(index, { plan: updated, busy: false })
+    } catch (error) {
+      pushError(error, 'Could not save the script')
+    }
+  })
+
+  const handlePreview = (runId, previewType) => withCardBusy(async (index) => {
+    try {
+      const preview = await generateService.preview(runId, previewType)
+      const current = useChatStore.getState().messages[index]
+      const others = (current?.previews || []).filter((p) => p.preview_type !== previewType)
+      patchMessage(index, { previews: [...others, preview], busy: false })
+    } catch (error) {
+      pushError(error, 'Could not generate the preview')
+    }
+  })
+
+  const handleRevise = (runId, feedback) => withCardBusy(async (index) => {
+    addMessage({ role: 'user', content: feedback, created_at: new Date().toISOString() })
+    try {
+      const result = await generateService.revise(runId, feedback)
+      // Revise returns a fresh plan (or new questions) — swap the card in place.
+      renderPlanResponse(result, runId, { replaceIndex: index })
+    } catch (error) {
+      pushError(error, 'Could not revise the plan')
+      patchMessage(index, { busy: false })
+    }
+  })
+
+  const handleClarify = (runId, answers) => withCardBusy(async (index) => {
+    try {
+      const result = await generateService.clarify(runId, answers)
+      renderPlanResponse(result, runId, { replaceIndex: index })
+    } catch (error) {
+      pushError(error, 'Could not submit your answers')
+      patchMessage(index, { busy: false })
+    }
+  })
+
+  const handleCancel = (runId) => withCardBusy(async (index) => {
+    try {
+      await generateService.cancel(runId)
+      patchMessage(index, { resolved: true, resolution: 'cancelled', busy: false })
+      addMessage({ role: 'assistant', content: 'Generation cancelled.', created_at: new Date().toISOString() })
+    } catch (error) {
+      pushError(error, 'Could not cancel the run')
+    } finally {
+      endRun()
+    }
+  })
+
+  const handleConfirm = (runId) => withCardBusy(async (index) => {
+    patchMessage(index, { resolved: true, resolution: 'confirmed' })
+    setLoading(true)
+
+    const progressIndex = useChatStore.getState().messages.length
+    addMessage({ role: 'assistant', content: 'Generating...', created_at: new Date().toISOString() })
+    // Live progress resumes here for the expensive half of the run.
+    cardIndexRef.current = null
+    progressTargetRef.current = progressIndex
+
+    try {
+      const result = await generateService.confirm(runId)
 
       const media = []
       if (result.image_urls?.length > 0) {
@@ -126,47 +305,43 @@ function ChatPage() {
         media.push({ type: 'video', url: result.video_url })
       }
 
-      try {
-        const freshMessages = await chatService.getMessages(chatId)
-        if (Array.isArray(freshMessages) && freshMessages.length > 0) {
-          setMessages(freshMessages)
-        } else {
-          addMessage({
-            role: 'assistant',
-            content: (result.status === 'completed' || result.status === 'succeeded') ? 'Generation complete.' : `Status: ${result.status}`,
-            media,
-            created_at: new Date().toISOString(),
-          })
-        }
-      } catch {
-        addMessage({
-          role: 'assistant',
-          content: result.status === 'completed' ? 'Generation complete.' : `Status: ${result.status}`,
-          media,
-          created_at: new Date().toISOString(),
-        })
-      }
+      const scenes = result.scenes || []
+      const multiScene = scenes.length > 1
+
+      patchMessage(progressIndex, {
+        content: multiScene
+          ? `${scenes.length} scenes generated.`
+          : (result.status === 'succeeded' ? 'Generation complete.' : `Status: ${result.status}`),
+        // Multi-scene results render per scene; the flat media list would
+        // otherwise only show the final scene.
+        media: multiScene ? [] : media,
+        scenes: multiScene ? scenes : [],
+      })
     } catch (error) {
       console.error('Failed to generate:', error)
-      if (wsRef.current) {
-        wsRef.current.close()
-        wsRef.current = null
-      }
-      addMessage({
-        role: 'assistant',
-        content: `Error: ${error?.response?.data?.detail || error.message || 'Generation failed'}`,
-        created_at: new Date().toISOString(),
+      patchMessage(progressIndex, {
+        content: `Error: ${error?.response?.data?.detail || error?.message || 'Generation failed'}`,
       })
     } finally {
-      setLoading(false)
+      endRun()
     }
+  })
+
+  const handlers = {
+    onEdit: handleEdit,
+    onEditScript: handleEditScript,
+    onPreview: handlePreview,
+    onRevise: handleRevise,
+    onConfirm: handleConfirm,
+    onCancel: handleCancel,
+    onClarify: handleClarify,
   }
 
   return (
     <div className="flex h-[calc(100vh-48px)] overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
       <div className="flex-1 flex flex-col min-w-0 max-w-3xl mx-auto w-full">
-        <ChatMessages messages={messages} loading={loading} />
-        <PromptInput onSubmit={handleSendPrompt} disabled={loading} />
+        <ChatMessages messages={messages} loading={loading} handlers={handlers} />
+        <PromptInput onSubmit={handleSendPrompt} disabled={loading || !!activeRunId} />
       </div>
     </div>
   )

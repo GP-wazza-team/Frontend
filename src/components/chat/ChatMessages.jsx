@@ -53,7 +53,7 @@ function EmptyState({ t }) {
   )
 }
 
-function ChatMessages({ messages, loading }) {
+function ChatMessages({ messages, loading, handlers }) {
   const messagesEndRef = useRef(null)
   const { t } = useUIStore()
 
@@ -68,7 +68,7 @@ function ChatMessages({ messages, loading }) {
       ) : (
         <div className="max-w-3xl mx-auto space-y-5">
           {messages.map((message, index) => (
-            <MessageBubble key={index} message={message} />
+            <MessageBubble key={index} message={message} handlers={handlers} />
           ))}
           {loading && <TypingIndicator />}
           <div ref={messagesEndRef} />
