@@ -1,5 +1,7 @@
 import React, { useState } from 'react'
 import { Zap } from 'lucide-react'
+import PlanReviewCard from './PlanReviewCard'
+import ClarificationCard from './ClarificationCard'
 
 function formatTime(ts) {
   if (!ts) return ''
@@ -47,11 +49,72 @@ function parseContent(content) {
   return parts
 }
 
-function MessageBubble({ message }) {
+/**
+ * Multi-scene results arrive as a flat scenes[] on the run result. Rendering
+ * them grouped keeps a 4-scene story readable instead of collapsing into an
+ * undifferentiated pile of media.
+ */
+function SceneResults({ scenes }) {
+  if (!scenes || scenes.length === 0) return null
+  return (
+    <div className="mt-2.5 flex flex-col gap-3">
+      {scenes.map((scene) => (
+        <div key={scene.scene_number} className="flex flex-col gap-1">
+          <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
+            Scene {scene.scene_number}
+          </span>
+          {scene.video_url ? (
+            <video controls className="w-full max-h-80 rounded-lg" src={scene.video_url} />
+          ) : (
+            (scene.image_urls || []).map((url, i) => (
+              <img key={i} src={url} alt={`Scene ${scene.scene_number}`} className="w-full max-h-80 object-cover rounded-lg" />
+            ))
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function MessageBubble({ message, handlers }) {
   const isUser = message.role === 'user'
   const parts = parseContent(message.content)
   const mediaItems = message.media || []
   const [showTime, setShowTime] = useState(false)
+
+  // Interactive cards replace the bubble entirely — they own their own chrome.
+  if (message.kind === 'plan' && message.plan) {
+    return (
+      <div className="max-w-3xl mx-auto animate-slideUp">
+        <PlanReviewCard
+          plan={message.plan}
+          resolved={message.resolved}
+          resolution={message.resolution}
+          busy={message.busy}
+          previews={message.previews}
+          onEdit={(field, text) => handlers?.onEdit?.(message.runId, field, text)}
+          onEditScript={(scenes) => handlers?.onEditScript?.(message.runId, scenes)}
+          onPreview={(type) => handlers?.onPreview?.(message.runId, type)}
+          onRevise={(feedback) => handlers?.onRevise?.(message.runId, feedback)}
+          onConfirm={() => handlers?.onConfirm?.(message.runId)}
+          onCancel={() => handlers?.onCancel?.(message.runId)}
+        />
+      </div>
+    )
+  }
+
+  if (message.kind === 'clarification' && message.questions) {
+    return (
+      <div className="max-w-3xl mx-auto animate-slideUp">
+        <ClarificationCard
+          questions={message.questions}
+          resolved={message.resolved}
+          busy={message.busy}
+          onSubmit={(answers) => handlers?.onClarify?.(message.runId, answers)}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
@@ -117,6 +180,7 @@ function MessageBubble({ message }) {
               ))}
             </div>
           )}
+          <SceneResults scenes={message.scenes} />
         </div>
         <span
           className="text-[10px] px-0.5 transition-opacity duration-200"

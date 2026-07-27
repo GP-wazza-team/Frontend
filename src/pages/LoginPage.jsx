@@ -38,7 +38,11 @@ function LoginPage() {
       setAuth(data.user, data.access_token, data.refresh_token)
       navigate('/')
     } catch (err) {
-      setError(err.response?.data?.detail || (isAr ? 'بيانات غير صحيحة' : 'Invalid email or password'))
+      if (!err.response) {
+        setError(isAr ? 'تعذر الاتصال بالخادم. حاول لاحقاً.' : 'Cannot reach the server. Please try again later.')
+      } else {
+        setError(err.response?.data?.detail || (isAr ? 'بيانات غير صحيحة' : 'Invalid email or password'))
+      }
     } finally {
       setLoading(false)
     }
