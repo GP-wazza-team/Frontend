@@ -68,7 +68,7 @@ function ChatMessages({ messages, loading, handlers }) {
       ) : (
         <div className="max-w-3xl mx-auto space-y-5">
           {messages.map((message, index) => (
-            <MessageBubble key={index} message={message} handlers={handlers} />
+            <MessageBubble key={index} index={index} message={message} handlers={handlers} />
           ))}
           {loading && <TypingIndicator />}
           <div ref={messagesEndRef} />

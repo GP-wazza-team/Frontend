@@ -89,6 +89,13 @@ export const generateService = {
     return response.data
   },
 
+  // Resume a failed run from its approved plan. Nothing is re-planned and
+  // scenes that already finished are not regenerated.
+  retry: async (runId) => {
+    const response = await api.post(`/generate/runs/${runId}/retry`)
+    return response.data
+  },
+
   cancel: async (runId) => {
     const response = await api.post(`/generate/runs/${runId}/cancel`)
     return response.data

@@ -133,12 +133,16 @@ function ChatPage() {
    * as soon as the work is queued, so this — not the HTTP response — is where
    * generated media actually arrives.
    */
-  const renderCompletion = (data) => {
+  const renderCompletion = (data, runId) => {
     const target = progressTargetRef.current
 
     if (data.status !== 'completed' || !data.result) {
+      // Keep the run id on the message: the plan and any scenes it already
+      // finished are still on the server, so this is resumable rather than
+      // something the user has to describe from scratch.
       patchMessage(target, {
         content: `Error: ${data.error || 'Generation failed'}`,
+        failedRunId: runId,
       })
       endRun()
       return
@@ -166,6 +170,69 @@ function ChatPage() {
       scenes: multiScene ? scenes : [],
     })
     endRun()
+  }
+
+  /**
+   * Open the run's progress socket and route its events. Shared by the initial
+   * prompt and by retry, so a resumed run reports progress the same way.
+   */
+  const openRunSocket = async (runId) => {
+    const socket = generateService.connectWebSocket(runId)
+    wsRef.current = socket
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        // /plan, /clarify and /revise also emit a completion event, but with
+        // an awaiting_* status — those are already answered by their own HTTP
+        // response and must not be mistaken for the end of the run.
+        if (data.type === 'completion') {
+          if (data.status === 'completed' || data.status === 'failed') {
+            renderCompletion(data, runId)
+          }
+          return
+        }
+        if (data.type !== 'progress') return
+        // Multi-scene runs report which scene they're on; a single global
+        // percentage would otherwise appear to restart on every scene with no
+        // explanation.
+        const scene = data.scene_number ? `Scene ${data.scene_number} · ` : ''
+        const prefix = data.progress ? `${scene}${data.progress}%` : `${scene}Working`
+        // Follows the run across both phases: the pre-plan line first, then
+        // the post-confirm line. Null while a card awaits the user.
+        patchMessage(progressTargetRef.current, { content: `${prefix} - ${data.message}` })
+      } catch {
+        // Ignore malformed WebSocket messages and keep the current progress text.
+      }
+    }
+    await waitForSocketOpen(socket)
+    return socket
+  }
+
+  /**
+   * Resume a failed run rather than starting a new one. The server still holds
+   * the approved plan and every scene it already finished, so this picks up
+   * where the failure happened instead of re-planning from the prompt.
+   */
+  const handleRetry = async (runId, messageIndex) => {
+    if (loading || activeRunId) return
+
+    setLoading(true)
+    setAwaitingUser(false)
+    patchMessage(messageIndex, { content: 'Retrying...', failedRunId: null })
+    setActiveRunId(runId)
+    progressTargetRef.current = messageIndex
+
+    try {
+      await openRunSocket(runId)
+      await generateService.retry(runId)
+    } catch (error) {
+      console.error('Failed to retry:', error)
+      patchMessage(messageIndex, {
+        content: `Error: ${error?.response?.data?.detail || error?.message || 'Retry failed'}`,
+        failedRunId: runId,
+      })
+      endRun()
+    }
   }
 
   const handleSendPrompt = async (prompt, attachmentFile = null) => {
@@ -239,35 +306,7 @@ function ChatPage() {
       setActiveRunId(startedRun.run_id)
       progressTargetRef.current = progressIndex
 
-      const socket = generateService.connectWebSocket(startedRun.run_id)
-      wsRef.current = socket
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          // /plan, /clarify and /revise also emit a completion event, but with
-          // an awaiting_* status — those are already answered by their own HTTP
-          // response and must not be mistaken for the end of the run.
-          if (data.type === 'completion') {
-            if (data.status === 'completed' || data.status === 'failed') {
-              renderCompletion(data)
-            }
-            return
-          }
-          if (data.type !== 'progress') return
-          // Multi-scene runs report which scene they're on; a single global
-          // percentage would otherwise appear to restart on every scene with no
-          // explanation.
-          const scene = data.scene_number ? `Scene ${data.scene_number} · ` : ''
-          const prefix = data.progress ? `${scene}${data.progress}%` : `${scene}Working`
-          // Follows the run across both phases: the pre-plan line first, then
-          // the post-confirm line. Null while a card awaits the user.
-          patchMessage(progressTargetRef.current, { content: `${prefix} - ${data.message}` })
-        } catch {
-          // Ignore malformed WebSocket messages and keep the current progress text.
-        }
-      }
-
-      await waitForSocketOpen(socket)
+      const socket = await openRunSocket(startedRun.run_id)
 
       // Plan only — nothing is generated until the user confirms.
       const result = await generateService.plan(startedRun.run_id, imageAttachmentUrl)
@@ -398,6 +437,7 @@ function ChatPage() {
     onConfirm: handleConfirm,
     onCancel: handleCancel,
     onClarify: handleClarify,
+    onRetry: handleRetry,
   }
 
   return (

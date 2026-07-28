@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Zap } from 'lucide-react'
+import { Zap, RotateCw } from 'lucide-react'
 import PlanReviewCard from './PlanReviewCard'
 import ClarificationCard from './ClarificationCard'
 
@@ -76,7 +76,7 @@ function SceneResults({ scenes }) {
   )
 }
 
-function MessageBubble({ message, handlers }) {
+function MessageBubble({ message, handlers, index }) {
   const isUser = message.role === 'user'
   const parts = parseContent(message.content)
   const mediaItems = message.media || []
@@ -183,6 +183,22 @@ function MessageBubble({ message, handlers }) {
             </div>
           )}
           <SceneResults scenes={message.scenes} />
+          {message.failedRunId && (
+            <div className="mt-2.5 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handlers?.onRetry?.(message.failedRunId, index)}
+                className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-lg"
+                style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+              >
+                <RotateCw size={12} />
+                Retry
+              </button>
+              <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
+                Picks up where it stopped — finished scenes aren't charged again.
+              </span>
+            </div>
+          )}
         </div>
         <span
           className="text-[10px] px-0.5 transition-opacity duration-200"
