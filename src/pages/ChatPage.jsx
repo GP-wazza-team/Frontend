@@ -15,6 +15,10 @@ function ChatPage() {
   // Null while a card is on screen — there is nothing running to report then.
   const progressTargetRef = useRef(null)
   const [activeRunId, setActiveRunId] = useState(null)
+  // True while a card is on screen waiting for the user. The run is still open,
+  // but nothing is executing — so the prompt box stays usable and the user can
+  // walk away from the run by simply typing something else.
+  const [awaitingUser, setAwaitingUser] = useState(false)
 
   useEffect(() => {
     return () => {
@@ -70,6 +74,7 @@ function ChatPage() {
     cardIndexRef.current = null
     progressTargetRef.current = null
     setActiveRunId(null)
+    setAwaitingUser(false)
     setLoading(false)
   }
 
@@ -119,11 +124,70 @@ function ChatPage() {
     // A card is now on screen and nothing is running, so stop routing progress
     // into the message the card just took over.
     progressTargetRef.current = null
+    setAwaitingUser(true)
     setLoading(false)
   }
 
+  /**
+   * Terminal WebSocket event for the expensive half of a run. /confirm returns
+   * as soon as the work is queued, so this — not the HTTP response — is where
+   * generated media actually arrives.
+   */
+  const renderCompletion = (data) => {
+    const target = progressTargetRef.current
+
+    if (data.status !== 'completed' || !data.result) {
+      patchMessage(target, {
+        content: `Error: ${data.error || 'Generation failed'}`,
+      })
+      endRun()
+      return
+    }
+
+    const result = data.result
+    const media = []
+    if (result.image_urls?.length > 0) {
+      result.image_urls.forEach((url) => media.push({ type: 'image', url }))
+    }
+    if (result.video_url) {
+      media.push({ type: 'video', url: result.video_url })
+    }
+
+    const scenes = result.scenes || []
+    const multiScene = scenes.length > 1
+
+    patchMessage(target, {
+      content: multiScene
+        ? `${scenes.length} scenes generated.`
+        : (result.status === 'succeeded' ? 'Generation complete.' : `Status: ${result.status}`),
+      // Multi-scene results render per scene; the flat media list would
+      // otherwise only show the final scene.
+      media: multiScene ? [] : media,
+      scenes: multiScene ? scenes : [],
+    })
+    endRun()
+  }
+
   const handleSendPrompt = async (prompt, attachmentFile = null) => {
-    if (loading || activeRunId) return
+    if (loading) return
+    // A run that is mid-generation still owns the chat; one that is only
+    // waiting on a card does not.
+    if (activeRunId && !awaitingUser) return
+
+    // Typing instead of answering the card abandons that run — otherwise the
+    // only way out of a card is to answer it, which strands the chat when the
+    // user has changed their mind.
+    if (activeRunId && awaitingUser) {
+      const abandonedIndex = cardIndexRef.current
+      try {
+        await generateService.cancel(activeRunId)
+      } catch (error) {
+        // Already cancelled, finished, or gone — either way the user is moving on.
+        console.error('Could not cancel the abandoned run:', error)
+      }
+      patchMessage(abandonedIndex, { resolved: true, resolution: 'cancelled', busy: false })
+      endRun()
+    }
 
     try {
       setLoading(true)
@@ -180,6 +244,15 @@ function ChatPage() {
       socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
+          // /plan, /clarify and /revise also emit a completion event, but with
+          // an awaiting_* status — those are already answered by their own HTTP
+          // response and must not be mistaken for the end of the run.
+          if (data.type === 'completion') {
+            if (data.status === 'completed' || data.status === 'failed') {
+              renderCompletion(data)
+            }
+            return
+          }
           if (data.type !== 'progress') return
           // Multi-scene runs report which scene they're on; a single global
           // percentage would otherwise appear to restart on every scene with no
@@ -211,6 +284,9 @@ function ChatPage() {
   const withCardBusy = async (fn) => {
     const index = cardIndexRef.current
     patchMessage(index, { busy: true })
+    // The card is mid-request; re-lock the prompt box so a new prompt can't
+    // cancel the very run this call is trying to advance.
+    setAwaitingUser(false)
     try {
       await fn(index)
     } finally {
@@ -218,6 +294,12 @@ function ChatPage() {
       // it's still the same pending card.
       const current = useChatStore.getState().messages[index]
       if (current && current.busy) patchMessage(index, { busy: false })
+
+      // Whatever fn did, if an unresolved card is still on screen then nothing
+      // is running and the user is back in control of the prompt box.
+      const cardIndex = cardIndexRef.current
+      const card = cardIndex === null ? null : useChatStore.getState().messages[cardIndex]
+      if (card && !card.resolved) setAwaitingUser(true)
     }
   }
 
@@ -287,6 +369,7 @@ function ChatPage() {
   const handleConfirm = (runId) => withCardBusy(async (index) => {
     patchMessage(index, { resolved: true, resolution: 'confirmed' })
     setLoading(true)
+    setAwaitingUser(false)
 
     const progressIndex = useChatStore.getState().messages.length
     addMessage({ role: 'assistant', content: 'Generating...', created_at: new Date().toISOString() })
@@ -295,34 +378,14 @@ function ChatPage() {
     progressTargetRef.current = progressIndex
 
     try {
-      const result = await generateService.confirm(runId)
-
-      const media = []
-      if (result.image_urls?.length > 0) {
-        result.image_urls.forEach((url) => media.push({ type: 'image', url }))
-      }
-      if (result.video_url) {
-        media.push({ type: 'video', url: result.video_url })
-      }
-
-      const scenes = result.scenes || []
-      const multiScene = scenes.length > 1
-
-      patchMessage(progressIndex, {
-        content: multiScene
-          ? `${scenes.length} scenes generated.`
-          : (result.status === 'succeeded' ? 'Generation complete.' : `Status: ${result.status}`),
-        // Multi-scene results render per scene; the flat media list would
-        // otherwise only show the final scene.
-        media: multiScene ? [] : media,
-        scenes: multiScene ? scenes : [],
-      })
+      // Returns as soon as the work is queued. The generated media arrives
+      // later on the WebSocket — see renderCompletion.
+      await generateService.confirm(runId)
     } catch (error) {
-      console.error('Failed to generate:', error)
+      console.error('Failed to start generation:', error)
       patchMessage(progressIndex, {
         content: `Error: ${error?.response?.data?.detail || error?.message || 'Generation failed'}`,
       })
-    } finally {
       endRun()
     }
   })
@@ -341,7 +404,7 @@ function ChatPage() {
     <div className="flex h-[calc(100vh-48px)] overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
       <div className="flex-1 flex flex-col min-w-0 max-w-3xl mx-auto w-full">
         <ChatMessages messages={messages} loading={loading} handlers={handlers} />
-        <PromptInput onSubmit={handleSendPrompt} disabled={loading || !!activeRunId} />
+        <PromptInput onSubmit={handleSendPrompt} disabled={loading || (!!activeRunId && !awaitingUser)} />
       </div>
     </div>
   )

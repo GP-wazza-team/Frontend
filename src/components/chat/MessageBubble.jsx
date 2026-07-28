@@ -109,8 +109,10 @@ function MessageBubble({ message, handlers }) {
         <ClarificationCard
           questions={message.questions}
           resolved={message.resolved}
+          resolution={message.resolution}
           busy={message.busy}
           onSubmit={(answers) => handlers?.onClarify?.(message.runId, answers)}
+          onCancel={() => handlers?.onCancel?.(message.runId)}
         />
       </div>
     )
