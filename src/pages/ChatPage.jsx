@@ -256,8 +256,20 @@ function ChatPage() {
     // "retry" typed after a failure means the button, not a new prompt. Only a
     // bare retry word counts: "retry but at night" is a different request and
     // has to go through planning as usual.
+    const isRetryPhrase = !attachmentFile && RETRY_PHRASE.test(prompt.trim())
+
+    // "retry" while the plan card is still on screen means "try that again",
+    // not "throw it away". The run never left AWAITING_CONFIRMATION — a
+    // declined card or an empty balance is rejected before any work starts —
+    // so confirming again is the whole fix once the user has topped up.
+    if (isRetryPhrase && activeRunId && awaitingUser && cardIndexRef.current !== null) {
+      addMessage({ role: 'user', content: prompt, created_at: new Date().toISOString() })
+      await handleConfirm(activeRunId)
+      return
+    }
+
     const resumeId = resumableRun()
-    if (resumeId && !attachmentFile && RETRY_PHRASE.test(prompt.trim())) {
+    if (resumeId && isRetryPhrase) {
       // Echo it like any other message and resume underneath, so the retry
       // reads as part of the conversation rather than the word vanishing.
       patchMessage(useChatStore.getState().messages.length - 1, { failedRunId: null })
@@ -452,10 +464,20 @@ function ChatPage() {
       await generateService.confirm(runId)
     } catch (error) {
       console.error('Failed to start generation:', error)
+      // Rejected before any work began — out of credits, card declined, plan
+      // gone stale. The run is untouched and still awaiting confirmation, so
+      // put the card back rather than stranding it: once the user tops up,
+      // Confirm works again and nothing has to be described a second time.
+      patchMessage(index, { resolved: false, resolution: null, busy: false })
+      cardIndexRef.current = index
       patchMessage(progressIndex, {
-        content: `Error: ${error?.response?.data?.detail || error?.message || 'Generation failed'}`,
+        content: `Error: ${error?.response?.data?.detail || error?.message || 'Generation failed'}`
+          + ' — your plan is still here, press Confirm again once it is sorted.',
       })
-      endRun()
+      closeSocket()
+      progressTargetRef.current = null
+      setAwaitingUser(true)
+      setLoading(false)
     }
   })
 
