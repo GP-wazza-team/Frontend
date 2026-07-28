@@ -6,6 +6,11 @@ import { generateService } from '../services/generateService'
 import { chatService } from '../services/chatService'
 import { assetService } from '../services/assetService'
 
+// A message that is nothing but "retry" (or the Arabic equivalent) after a
+// failed run is the Retry button said out loud. Anything with more to it —
+// "retry but make it night" — is a real new request and must not be swallowed.
+const RETRY_PHRASE = /^(retry|resume|try again|again|continue|go on|أعد|أعد المحاولة|إعادة|اعد|كمل|أكمل|اكمل|حاول مرة أخرى|جرب مرة أخرى)[\s!.،؟?]*$/i
+
 function ChatPage() {
   const { currentChatId, messages, setMessages, addMessage, updateMessage, loading, setLoading } = useChatStore()
   const wsRef = useRef(null)
@@ -235,8 +240,33 @@ function ChatPage() {
     }
   }
 
+  /**
+   * The most recent message, if it is a failure the user could still resume.
+   * Only the last one counts — resuming a failure from further back would jump
+   * over whatever the user did since.
+   */
+  const resumableRun = () => {
+    const all = useChatStore.getState().messages
+    return all.length ? (all[all.length - 1].failedRunId || null) : null
+  }
+
   const handleSendPrompt = async (prompt, attachmentFile = null) => {
     if (loading) return
+
+    // "retry" typed after a failure means the button, not a new prompt. Only a
+    // bare retry word counts: "retry but at night" is a different request and
+    // has to go through planning as usual.
+    const resumeId = resumableRun()
+    if (resumeId && !attachmentFile && RETRY_PHRASE.test(prompt.trim())) {
+      // Echo it like any other message and resume underneath, so the retry
+      // reads as part of the conversation rather than the word vanishing.
+      patchMessage(useChatStore.getState().messages.length - 1, { failedRunId: null })
+      addMessage({ role: 'user', content: prompt, created_at: new Date().toISOString() })
+      const progressIndex = useChatStore.getState().messages.length
+      addMessage({ role: 'assistant', content: 'Retrying...', created_at: new Date().toISOString() })
+      await handleRetry(resumeId, progressIndex)
+      return
+    }
     // A run that is mid-generation still owns the chat; one that is only
     // waiting on a card does not.
     if (activeRunId && !awaitingUser) return
