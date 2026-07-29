@@ -1,5 +1,6 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { LightboxProvider } from './components/MediaLightbox'
 import { useUIStore } from './store/uiStore'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -26,7 +27,8 @@ function App() {
   }, [language, darkMode])
 
   return (
-    <BrowserRouter>
+    <LightboxProvider>
+      <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -45,7 +47,8 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </LightboxProvider>
   )
 }
 

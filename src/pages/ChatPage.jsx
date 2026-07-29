@@ -24,11 +24,25 @@ function ChatPage() {
   // but nothing is executing — so the prompt box stays usable and the user can
   // walk away from the run by simply typing something else.
   const [awaitingUser, setAwaitingUser] = useState(false)
+  // Which models this deployment can actually run, for the plan card's picker.
+  // Fetched once; the card falls back to showing the run's current model until
+  // it arrives, so a slow or failed fetch never blocks reviewing a plan.
+  const [modelCatalog, setModelCatalog] = useState(null)
 
   useEffect(() => {
     return () => {
       if (wsRef.current) wsRef.current.close()
     }
+  }, [])
+
+  useEffect(() => {
+    generateService.getModels()
+      .then(setModelCatalog)
+      .catch((error) => {
+        // Not fatal: without the catalog the card still shows quality and
+        // aspect ratio, just no model list to switch between.
+        console.error('Could not load the model list:', error)
+      })
   }, [])
 
   // Load messages whenever currentChatId changes while on this page
@@ -402,6 +416,24 @@ function ChatPage() {
     }
   })
 
+  /**
+   * Quality / aspect ratio / model change from the plan card.
+   *
+   * Free and instant server-side, so the card is updated in place rather than
+   * being replaced — the user keeps their previews and stays exactly where they
+   * were. The response carries any new warning about the combination (say,
+   * 1080p on a model that only reaches 720p), which is why the whole plan is
+   * swapped in rather than just the field that changed.
+   */
+  const handleSettings = (runId, settings) => withCardBusy(async (index) => {
+    try {
+      const updated = await generateService.updateSettings(runId, settings)
+      patchMessage(index, { plan: updated, busy: false })
+    } catch (error) {
+      pushError(error, 'Could not change the output settings')
+    }
+  })
+
   const handlePreview = (runId, previewType) => withCardBusy(async (index) => {
     try {
       const preview = await generateService.preview(runId, previewType)
@@ -490,6 +522,8 @@ function ChatPage() {
     onCancel: handleCancel,
     onClarify: handleClarify,
     onRetry: handleRetry,
+    onSettings: handleSettings,
+    modelCatalog,
   }
 
   return (

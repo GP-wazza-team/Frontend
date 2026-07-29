@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Zap, RotateCw } from 'lucide-react'
 import PlanReviewCard from './PlanReviewCard'
 import ClarificationCard from './ClarificationCard'
+import { useLightbox } from '../MediaLightbox'
 
 function formatTime(ts) {
   if (!ts) return ''
@@ -55,6 +56,7 @@ function parseContent(content) {
  * undifferentiated pile of media.
  */
 function SceneResults({ scenes }) {
+  const openMedia = useLightbox()
   if (!scenes || scenes.length === 0) return null
   return (
     <div className="mt-2.5 flex flex-col gap-3">
@@ -64,10 +66,21 @@ function SceneResults({ scenes }) {
             Scene {scene.scene_number}
           </span>
           {scene.video_url ? (
-            <video controls className="w-full max-h-80 rounded-lg" src={scene.video_url} />
+            <video
+              controls
+              className="w-full max-h-80 rounded-lg cursor-zoom-in"
+              src={scene.video_url}
+              onDoubleClick={() => openMedia(scene.video_url, 'video')}
+            />
           ) : (
             (scene.image_urls || []).map((url, i) => (
-              <img key={i} src={url} alt={`Scene ${scene.scene_number}`} className="w-full max-h-80 object-cover rounded-lg" />
+              <img
+                key={i}
+                src={url}
+                alt={`Scene ${scene.scene_number}`}
+                className="w-full max-h-80 object-cover rounded-lg cursor-zoom-in"
+                onClick={() => openMedia(url, 'image')}
+              />
             ))
           )}
         </div>
@@ -77,6 +90,7 @@ function SceneResults({ scenes }) {
 }
 
 function MessageBubble({ message, handlers, index }) {
+  const openMedia = useLightbox()
   const isUser = message.role === 'user'
   const parts = parseContent(message.content)
   const mediaItems = message.media || []
@@ -89,15 +103,17 @@ function MessageBubble({ message, handlers, index }) {
         <PlanReviewCard
           plan={message.plan}
           resolved={message.resolved}
-          resolution={message.resolution}
+          outcome={message.resolution}
           busy={message.busy}
           previews={message.previews}
+          catalog={handlers?.modelCatalog}
           onEdit={(field, text) => handlers?.onEdit?.(message.runId, field, text)}
           onEditScript={(scenes) => handlers?.onEditScript?.(message.runId, scenes)}
           onPreview={(type) => handlers?.onPreview?.(message.runId, type)}
           onRevise={(feedback) => handlers?.onRevise?.(message.runId, feedback)}
           onConfirm={() => handlers?.onConfirm?.(message.runId)}
           onCancel={() => handlers?.onCancel?.(message.runId)}
+          onSettings={(settings) => handlers?.onSettings?.(message.runId, settings)}
         />
       </div>
     )
@@ -140,7 +156,8 @@ function MessageBubble({ message, handlers, index }) {
                     <img
                       src={part.value}
                       alt="Generated"
-                      className="w-full max-h-80 object-cover rounded-lg"
+                      className="w-full max-h-80 object-cover rounded-lg cursor-zoom-in"
+                      onClick={() => openMedia(part.value, 'image')}
                       onError={(e) => {
                         e.target.style.display = 'none'
                         e.target.nextSibling.style.display = 'block'
@@ -155,7 +172,12 @@ function MessageBubble({ message, handlers, index }) {
               if (part.type === 'video') {
                 return (
                   <div key={i} className="overflow-hidden rounded-lg mt-1">
-                    <video controls className="w-full max-h-80 rounded-lg" src={part.value} />
+                    <video
+                      controls
+                      className="w-full max-h-80 rounded-lg cursor-zoom-in"
+                      src={part.value}
+                      onDoubleClick={() => openMedia(part.value, 'video')}
+                    />
                   </div>
                 )
               }
@@ -175,8 +197,22 @@ function MessageBubble({ message, handlers, index }) {
             <div className="mt-2.5 space-y-2.5">
               {mediaItems.map((item, idx) => (
                 <div key={idx} className="overflow-hidden rounded-lg">
-                  {item.type === 'image' && <img src={item.url} alt="Generated" className="w-full max-h-80 object-cover" />}
-                  {item.type === 'video' && <video controls className="w-full max-h-80" src={item.url} />}
+                  {item.type === 'image' && (
+                    <img
+                      src={item.url}
+                      alt="Generated"
+                      className="w-full max-h-80 object-cover cursor-zoom-in"
+                      onClick={() => openMedia(item.url, 'image')}
+                    />
+                  )}
+                  {item.type === 'video' && (
+                    <video
+                      controls
+                      className="w-full max-h-80 cursor-zoom-in"
+                      src={item.url}
+                      onDoubleClick={() => openMedia(item.url, 'video')}
+                    />
+                  )}
                   {item.type === 'audio' && <audio controls className="w-full" src={item.url} />}
                 </div>
               ))}

@@ -28,6 +28,23 @@ export const generateService = {
     return response.data
   },
 
+  // The models this deployment can actually run — a model whose provider has no
+  // API key configured is deliberately absent, so render whatever comes back
+  // rather than hard-coding the options.
+  getModels: async () => {
+    const response = await api.get('/generate/models')
+    return response.data
+  },
+
+  // Change quality / aspect ratio / model on a run that is awaiting
+  // confirmation. Free and instant: no LLM call, and the reviewed brief,
+  // script and previews are left untouched. Returns the refreshed plan,
+  // including any new warning about the combination chosen.
+  updateSettings: async (runId, settings) => {
+    const response = await api.post(`/generate/runs/${runId}/settings`, settings)
+    return response.data
+  },
+
   // Legacy one-shot path: plans and generates in a single blocking call.
   // Kept for callers that don't want the confirmation gate.
   execute: async (runId, imageAttachmentUrl = null) => {
