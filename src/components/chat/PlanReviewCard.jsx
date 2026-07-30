@@ -497,10 +497,7 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                       : 'Generates a real image — this costs credits'
                   }
                 >
-                  <User size={11} />
-                  {characterNames.length <= 1
-                    ? `Preview character${characterNames[0] ? ` (${characterNames[0]})` : ''}`
-                    : 'Preview'}
+                  <User size={11} /> Preview character
                 </button>
                 <button
                   type="button"
