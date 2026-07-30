@@ -99,15 +99,6 @@ function OutputSettings({ plan, catalog, disabled, onChange }) {
         <span className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
           Output
         </span>
-        {plan.reference_role === 'character' && (
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded"
-            style={{ backgroundColor: 'rgba(128,128,128,0.12)', color: 'var(--text-secondary)' }}
-            title="Your photo is being used as the character's likeness, not as the shot itself"
-          >
-            character from your photo
-          </span>
-        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
