@@ -7,12 +7,18 @@ import { HelpCircle, Loader2 } from 'lucide-react'
  * suggested answers, but free text always wins — the backend merges whatever
  * string it receives straight into the spec.
  */
-function ClarificationCard({ questions, resolved, busy, onSubmit }) {
+function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, onCancel }) {
   const [answers, setAnswers] = useState({})
   const disabled = resolved || busy
 
   const setAnswer = (key, answer) => {
     setAnswers((prev) => ({ ...prev, [key]: answer }))
+  }
+
+  // Clicking the selected suggestion again clears it, so a mis-click isn't
+  // permanent — there is otherwise no way back to "no answer" for a question.
+  const toggleAnswer = (key, option) => {
+    setAnswers((prev) => ({ ...prev, [key]: prev[key] === option ? '' : option }))
   }
 
   const answered = questions.filter((q) => (answers[q.key] || '').trim())
@@ -43,7 +49,7 @@ function ClarificationCard({ questions, resolved, busy, onSubmit }) {
                   <button
                     key={option}
                     type="button"
-                    onClick={() => setAnswer(q.key, option)}
+                    onClick={() => toggleAnswer(q.key, option)}
                     disabled={disabled}
                     className="text-[11px] px-2 py-1 rounded-md transition-colors disabled:opacity-50"
                     style={{
@@ -72,7 +78,9 @@ function ClarificationCard({ questions, resolved, busy, onSubmit }) {
 
       <div className="px-3.5 py-2.5" style={{ borderTop: '1px solid var(--border)' }}>
         {resolved ? (
-          <span className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>Answered.</span>
+          <span className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
+            {resolution === 'cancelled' ? 'Cancelled.' : 'Answered.'}
+          </span>
         ) : (
           <div className="flex items-center gap-2">
             <button
@@ -84,6 +92,15 @@ function ClarificationCard({ questions, resolved, busy, onSubmit }) {
             >
               {busy && <Loader2 size={12} className="animate-spin" />}
               Continue
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="text-[12px] px-3 py-1.5 rounded-lg disabled:opacity-50"
+              style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+            >
+              Cancel
             </button>
             <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
               Anything you skip is filled in with a sensible default.

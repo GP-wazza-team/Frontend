@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { assetService } from '../services/assetService'
 import { useUIStore } from '../store/uiStore'
 import { Image, Video, Music, Trash2, Loader2, Download } from 'lucide-react'
+import { useLightbox } from '../components/MediaLightbox'
 
 function AssetsPage() {
   const [assets, setAssets] = useState([])
@@ -104,9 +105,9 @@ function AssetsPage() {
               <div key={asset.id} className="group surface overflow-hidden transition-all duration-200 hover:border-[var(--border-hover)]" style={{ border: '1px solid var(--border)' }}>
                 <div className="aspect-square overflow-hidden relative">
                   {type === 'image' ? (
-                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <img src={url} alt="" className="w-full h-full object-cover" onClick={() => openMedia(url, 'image')} />
                   ) : type === 'video' ? (
-                    <video src={url} className="w-full h-full object-cover" />
+                    <video src={url} className="w-full h-full object-cover" onClick={() => openMedia(url, 'video')} />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-hover)' }}>
                       <Music size={32} style={{ color: 'var(--text-tertiary)' }} />
