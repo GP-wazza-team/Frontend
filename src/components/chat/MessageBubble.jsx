@@ -91,6 +91,11 @@ function SceneResults({ scenes }) {
 
 function MessageBubble({ message, handlers, index }) {
   const openMedia = useLightbox()
+  // Defensive: a store bug or a stale index write can otherwise land an
+  // undefined slot in the messages array. Without this, that one bad message
+  // takes down the entire app — no error boundary exists anywhere in the
+  // tree, so an uncaught render error here unmounts the whole page blank.
+  if (!message) return null
   const isUser = message.role === 'user'
   const parts = parseContent(message.content)
   const mediaItems = message.media || []

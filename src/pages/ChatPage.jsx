@@ -19,6 +19,10 @@ function ChatPage() {
   // Index of the message that live WebSocket progress should be written into.
   // Null while a card is on screen — there is nothing running to report then.
   const progressTargetRef = useRef(null)
+  // Chat id whose next history-load effect should be skipped — see that
+  // effect below for why. Holds the id, not a bool, so a rapid second
+  // chat-create can't accidentally suppress the wrong chat's load.
+  const skipNextHistoryLoad = useRef(null)
   const [activeRunId, setActiveRunId] = useState(null)
   // True while a card is on screen waiting for the user. The run is still open,
   // but nothing is executing — so the prompt box stays usable and the user can
@@ -45,9 +49,22 @@ function ChatPage() {
       })
   }, [])
 
-  // Load messages whenever currentChatId changes while on this page
+  // Load messages whenever currentChatId changes while on this page.
+  //
+  // Skipped for a chat this same tab just created (see handleSendPrompt):
+  // its local `messages` is already correct and running ahead of the server
+  // — the optimistic "Starting generation..." placeholder and the plan/
+  // clarification card only ever exist client-side, never persisted as chat
+  // messages. Without this guard, this fetch can resolve mid-flow and
+  // silently replace that array with the server's shorter one while
+  // cardIndexRef still points into the old, longer array — the next
+  // message-array write then lands past the end and corrupts the list.
   useEffect(() => {
     if (!currentChatId) return
+    if (skipNextHistoryLoad.current === currentChatId) {
+      skipNextHistoryLoad.current = null
+      return
+    }
     chatService.getMessages(currentChatId)
       .then((data) => {
         if (Array.isArray(data)) {
@@ -319,6 +336,7 @@ function ChatPage() {
       if (!chatId) {
         const chat = await chatService.createChat()
         chatId = chat.id
+        skipNextHistoryLoad.current = chat.id
         useChatStore.setState((state) => ({
           chats: [chat, ...state.chats],
           currentChatId: chat.id,
