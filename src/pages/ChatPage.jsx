@@ -530,11 +530,16 @@ function ChatPage() {
     }
   })
 
-  const handlePreview = (runId, previewType) => withCardBusy(async (index) => {
+  const handlePreview = (runId, previewType, characterName = null) => withCardBusy(async (index) => {
     try {
-      const preview = await generateService.preview(runId, previewType)
+      const preview = await generateService.preview(runId, previewType, characterName)
       const current = useChatStore.getState().messages[index]
-      const others = (current?.previews || []).filter((p) => p.preview_type !== previewType)
+      // Keyed by preview_type + character_name so re-previewing one character
+      // (e.g. regenerating "Rogue") replaces only that character's card
+      // instead of wiping out every other character's preview.
+      const others = (current?.previews || []).filter(
+        (p) => !(p.preview_type === preview.preview_type && p.character_name === preview.character_name)
+      )
       patchMessage(index, { previews: [...others, preview], busy: false })
     } catch (error) {
       pushError(error, 'Could not generate the preview')

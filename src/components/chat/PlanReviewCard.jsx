@@ -353,7 +353,17 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
   const openMedia = useLightbox()
   const [feedback, setFeedback] = useState('')
   const [showRevise, setShowRevise] = useState(false)
+  const characterNames = plan.character_names || []
+  const [selectedCharacter, setSelectedCharacter] = useState(characterNames[0] || '')
   const disabled = resolved || busy
+
+  // The plan can be replaced entirely (revise, clarify, edit) — keep the
+  // selection valid, and pick a default the first time names show up.
+  React.useEffect(() => {
+    if (characterNames.length === 0) return
+    if (!characterNames.includes(selectedCharacter)) setSelectedCharacter(characterNames[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.character_names])
 
   const submitRevise = async () => {
     const trimmed = feedback.trim()
@@ -405,13 +415,13 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
         {previews && previews.length > 0 && (
           <div className="grid grid-cols-2 gap-2 pt-1">
             {previews.map((p) => (
-              <div key={p.preview_type} className="flex flex-col gap-1">
+              <div key={`${p.preview_type}:${p.character_name || ''}`} className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-                  {p.preview_type}
+                  {p.character_name || p.preview_type}
                 </span>
                 <img
                   src={p.image_url}
-                  alt={`${p.preview_type} preview`}
+                  alt={`${p.character_name || p.preview_type} preview`}
                   className="w-full rounded-lg object-cover max-h-40 cursor-zoom-in"
                   onClick={() => openMedia(p.image_url, 'image')}
                 />
@@ -460,16 +470,37 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {characterNames.length > 1 && (
+                  <select
+                    value={selectedCharacter}
+                    disabled={disabled}
+                    onChange={(e) => setSelectedCharacter(e.target.value)}
+                    className="text-[11px] rounded-md px-1.5 py-1 outline-none disabled:opacity-50 max-w-[9rem] truncate"
+                    style={{ backgroundColor: 'var(--bg)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                    title="Which character to generate a reference sheet for"
+                  >
+                    {characterNames.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                )}
                 <button
                   type="button"
-                  onClick={() => onPreview('character')}
-                  disabled={disabled}
+                  onClick={() => onPreview('character', selectedCharacter)}
+                  disabled={disabled || characterNames.length === 0}
                   className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
                   style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                  title="Generates a real image — this costs credits"
+                  title={
+                    characterNames.length === 0
+                      ? 'No named characters detected in this plan'
+                      : 'Generates a real image — this costs credits'
+                  }
                 >
-                  <User size={11} /> Preview character
+                  <User size={11} />
+                  {characterNames.length <= 1
+                    ? `Preview character${characterNames[0] ? ` (${characterNames[0]})` : ''}`
+                    : 'Preview'}
                 </button>
                 <button
                   type="button"

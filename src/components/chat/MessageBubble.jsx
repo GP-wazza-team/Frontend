@@ -128,7 +128,7 @@ function MessageBubble({ message, handlers, index }) {
           catalog={handlers?.modelCatalog}
           onEdit={(field, text) => handlers?.onEdit?.(message.runId, field, text)}
           onEditScript={(scenes) => handlers?.onEditScript?.(message.runId, scenes)}
-          onPreview={(type) => handlers?.onPreview?.(message.runId, type)}
+          onPreview={(type, characterName) => handlers?.onPreview?.(message.runId, type, characterName)}
           onRevise={(feedback) => handlers?.onRevise?.(message.runId, feedback)}
           onConfirm={() => handlers?.onConfirm?.(message.runId)}
           onCancel={() => handlers?.onCancel?.(message.runId)}

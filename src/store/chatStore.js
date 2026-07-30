@@ -34,6 +34,15 @@ export const useChatStore = create((set, get) => ({
 
   updateMessage: (index, message) => {
     set((state) => {
+      // Guard against sparse-array holes: if index is somehow ahead of the
+      // current array (e.g. a stale index captured before a concurrent
+      // messages refetch shortened the list), `arr[index] = x` on a
+      // too-short array leaves `undefined` gaps that crash rendering.
+      // Appending instead keeps the message visible without corrupting the
+      // array.
+      if (index < 0 || index > state.messages.length) {
+        return { messages: [...state.messages, message] }
+      }
       const newMessages = [...state.messages]
       newMessages[index] = message
       return { messages: newMessages }

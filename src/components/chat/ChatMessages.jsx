@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
 import MessageBubble from './MessageBubble'
+import ErrorBoundary from '../ErrorBoundary'
 import { useUIStore } from '../../store/uiStore'
 import { Zap, Wand2, Image, Film, PenTool } from 'lucide-react'
 
@@ -68,7 +69,11 @@ function ChatMessages({ messages, loading, handlers }) {
       ) : (
         <div className="max-w-3xl mx-auto space-y-5">
           {messages.map((message, index) => (
-            <MessageBubble key={index} index={index} message={message} handlers={handlers} />
+            message && (
+              <ErrorBoundary key={index}>
+                <MessageBubble index={index} message={message} handlers={handlers} />
+              </ErrorBoundary>
+            )
           ))}
           {loading && <TypingIndicator />}
           <div ref={messagesEndRef} />
