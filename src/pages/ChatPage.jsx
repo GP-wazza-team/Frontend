@@ -256,7 +256,7 @@ function ChatPage() {
    * /active-run call.
    */
   const restoreRun = (active) => {
-    const { run_id: runId, status, plan, questions, previews, assets, stale } = active
+    const { run_id: runId, status, plan, questions, previews, assets, stale, retryable } = active
 
     // Media the run already produced. Shown first, because it happened first —
     // and because a run that is still going, or that died partway, has no
@@ -287,19 +287,23 @@ function ChatPage() {
       return
     }
 
+    // A run that failed, or one stuck long enough to be dead, is offered for
+    // resume — the server still holds its approved plan and the scenes it
+    // already paid for, so this picks up rather than starting over.
+    if (status === 'failed' || ((status === 'running' || status === 'pending') && stale)) {
+      addMessage({
+        role: 'assistant',
+        content: retryable
+          ? 'This run stopped before it finished.'
+          : 'This run stopped before it finished, and is too early to resume — send the prompt again.',
+        failedRunId: retryable ? runId : null,
+        created_at: new Date().toISOString(),
+      })
+      return
+    }
+
     if (status === 'running' || status === 'pending') {
       const index = useChatStore.getState().messages.length
-      if (stale) {
-        // Silent long enough to be dead. Offer Retry instead of a spinner that
-        // would never resolve — the server accepts a resume for exactly this case.
-        addMessage({
-          role: 'assistant',
-          content: 'This run stopped before it finished.',
-          failedRunId: runId,
-          created_at: new Date().toISOString(),
-        })
-        return
-      }
       // Still alive: reattach so live progress resumes.
       addMessage({
         role: 'assistant',
