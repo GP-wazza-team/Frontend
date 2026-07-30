@@ -45,16 +45,35 @@ function ChatPage() {
       })
   }, [])
 
-  // Load messages whenever currentChatId changes while on this page
+  // Load messages whenever currentChatId changes while on this page, then pick
+  // up any run that chat left unfinished.
   useEffect(() => {
     if (!currentChatId) return
+    let cancelled = false
+
+    // Switching chats must not leave the previous chat's socket open, or its
+    // progress would be written into this chat's messages.
+    endRun()
+
     chatService.getMessages(currentChatId)
       .then((data) => {
-        if (Array.isArray(data)) {
-          setMessages(data)
-        }
+        if (cancelled) return null
+        if (Array.isArray(data)) setMessages(data)
+        return generateService.getActiveRun(currentChatId)
       })
-      .catch(() => {})
+      .then((active) => {
+        if (cancelled || !active) return
+        restoreRun(active)
+      })
+      .catch((error) => {
+        // A chat that can't report its active run is still readable, so this
+        // never blocks loading the conversation.
+        console.error('Could not restore the active run:', error)
+      })
+
+    return () => { cancelled = true }
+    // restoreRun/endRun are stable for the life of the component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChatId, setMessages])
 
   const waitForSocketOpen = (socket) => new Promise((resolve) => {
@@ -225,6 +244,79 @@ function ChatPage() {
     }
     await waitForSocketOpen(socket)
     return socket
+  }
+
+  /**
+   * Put a chat back where its unfinished run left it.
+   *
+   * None of the confirmation-gate UI was ever persisted — the plan card, the
+   * pending questions and the live progress line all lived in this component's
+   * state, so a refresh used to leave the conversation looking finished while
+   * the run carried on server-side. Everything here is rebuilt from one
+   * /active-run call.
+   */
+  const restoreRun = (active) => {
+    const { run_id: runId, status, plan, questions, previews, assets, stale } = active
+
+    // Media the run already produced. Shown first, because it happened first —
+    // and because a run that is still going, or that died partway, has no
+    // message carrying it (that is only written once the whole run succeeds).
+    if (assets?.length > 0) {
+      addMessage({
+        role: 'assistant',
+        content: assets.length === 1 ? 'Generated so far:' : `Generated so far (${assets.length}):`,
+        attachments: assets,
+        created_at: new Date().toISOString(),
+      })
+    }
+
+    if (status === 'awaiting_confirmation' && plan) {
+      renderPlanResponse(plan, runId)
+      // Previews were paid for; restore them onto the card rather than making
+      // the user regenerate them.
+      if (previews?.length > 0) {
+        patchMessage(cardIndexRef.current, { previews })
+      }
+      setActiveRunId(runId)
+      return
+    }
+
+    if (status === 'awaiting_clarification' && questions?.length > 0) {
+      renderPlanResponse({ status: 'awaiting_clarification', questions }, runId)
+      setActiveRunId(runId)
+      return
+    }
+
+    if (status === 'running' || status === 'pending') {
+      const index = useChatStore.getState().messages.length
+      if (stale) {
+        // Silent long enough to be dead. Offer Retry instead of a spinner that
+        // would never resolve — the server accepts a resume for exactly this case.
+        addMessage({
+          role: 'assistant',
+          content: 'This run stopped before it finished.',
+          failedRunId: runId,
+          created_at: new Date().toISOString(),
+        })
+        return
+      }
+      // Still alive: reattach so live progress resumes.
+      addMessage({
+        role: 'assistant',
+        content: 'Still generating…',
+        created_at: new Date().toISOString(),
+      })
+      setActiveRunId(runId)
+      progressTargetRef.current = index
+      setLoading(true)
+      openRunSocket(runId).catch((error) => {
+        console.error('Could not reattach to the run:', error)
+        patchMessage(index, {
+          content: 'This run is still generating, but live progress could not be reattached. Reopen the chat to check on it.',
+        })
+        setLoading(false)
+      })
+    }
   }
 
   /**

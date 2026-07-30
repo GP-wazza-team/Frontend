@@ -15,6 +15,7 @@ const EDITABLE_FIELDS = [
 // deployment has keys for.
 const FALLBACK_RESOLUTIONS = ['480p', '720p', '1080p']
 const FALLBACK_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '21:9']
+const FALLBACK_DURATIONS = [5, 10, 15, 20]
 
 /**
  * One labelled dropdown in the output-settings row.
@@ -60,26 +61,36 @@ function SettingSelect({ label, value, options, disabled, onChange, title }) {
 function OutputSettings({ plan, catalog, disabled, onChange }) {
   const resolutions = catalog?.resolutions?.length ? catalog.resolutions : FALLBACK_RESOLUTIONS
   const aspectRatios = catalog?.aspect_ratios?.length ? catalog.aspect_ratios : FALLBACK_ASPECT_RATIOS
+  const durations = catalog?.durations?.length ? catalog.durations : FALLBACK_DURATIONS
 
-  // Video runs pick a video model; image-only runs pick an image model. Showing
-  // both would offer a choice that does not apply to what is being made.
   const isVideo = plan.needs_video
-  const models = (isVideo ? catalog?.video : catalog?.image) || []
-  const currentModel = isVideo ? plan.video_model : plan.image_model
   const notes = plan.render_notes || []
 
-  const modelOptions = models.map((m) => ({
-    value: m.id,
-    label: m.max_resolution && m.max_resolution !== '1080p'
-      ? `${m.display_name} (max ${m.max_resolution})`
-      : m.display_name,
-  }))
-  // Keep the current model visible even if the catalog hasn't loaded yet or the
-  // run is pinned to something no longer offered — otherwise the dropdown would
-  // silently appear to show a different model than the one that will run.
-  if (currentModel && !modelOptions.some((o) => o.value === currentModel)) {
-    modelOptions.unshift({ value: currentModel, label: currentModel })
+  /**
+   * Options for one model dropdown.
+   *
+   * The current model is always included even when the catalog hasn't loaded or
+   * the run is pinned to something no longer offered — otherwise the dropdown
+   * would show a different model than the one that will actually run.
+   */
+  const modelOptions = (models, current) => {
+    const options = (models || []).map((m) => {
+      const limits = []
+      if (m.max_resolution && m.max_resolution !== '1080p') limits.push(`max ${m.max_resolution}`)
+      if (m.max_duration_seconds) limits.push(`max ${m.max_duration_seconds}s`)
+      return {
+        value: m.id,
+        label: limits.length ? `${m.display_name} (${limits.join(', ')})` : m.display_name,
+      }
+    })
+    if (current && !options.some((o) => o.value === current)) {
+      options.unshift({ value: current, label: current })
+    }
+    return options
   }
+
+  const videoOptions = modelOptions(catalog?.video, plan.video_model)
+  const imageOptions = modelOptions(catalog?.image, plan.image_model)
 
   return (
     <div className="flex flex-col gap-2 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
@@ -114,14 +125,37 @@ function OutputSettings({ plan, catalog, disabled, onChange }) {
           disabled={disabled}
           onChange={(value) => onChange({ aspect_ratio: value })}
         />
-        {modelOptions.length > 0 && (
+        {isVideo && (
           <SettingSelect
-            label={isVideo ? 'Video model' : 'Image model'}
-            value={currentModel}
-            options={modelOptions}
+            label="Seconds"
+            value={plan.duration_seconds}
+            options={durations.map((d) => ({ value: d, label: `${d}s` }))}
             disabled={disabled}
-            onChange={(value) => onChange(isVideo ? { video_model: value } : { image_model: value })}
+            onChange={(value) => onChange({ duration_seconds: Number(value) })}
+            title="Length of each scene. Longer than a model supports is capped — the warning below says by how much."
+          />
+        )}
+        {/* Both pickers are shown on a video run: the reference image and the
+            video are produced by different models, and the image model is what
+            decides whether an uploaded photo's likeness can be kept. */}
+        {isVideo && videoOptions.length > 0 && (
+          <SettingSelect
+            label="Video model"
+            value={plan.video_model}
+            options={videoOptions}
+            disabled={disabled}
+            onChange={(value) => onChange({ video_model: value })}
             title="Runs on this model. If its account is out of credit, another provider takes over automatically."
+          />
+        )}
+        {plan.needs_images && imageOptions.length > 0 && (
+          <SettingSelect
+            label="Image model"
+            value={plan.image_model}
+            options={imageOptions}
+            disabled={disabled}
+            onChange={(value) => onChange({ image_model: value })}
+            title="Draws the reference image. Only GPT Image 2 can read an uploaded photo and keep the person's likeness."
           />
         )}
       </div>
@@ -349,6 +383,7 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
         </span>
         <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
           {plan.needs_video ? `${plan.duration_seconds}s video` : 'image'}
+          {plan.scenes?.length > 1 && ` × ${plan.scenes.length} scenes`}
           {plan.resolution && ` · ${plan.resolution} ${plan.aspect_ratio}`}
           {plan.total_cost_usd > 0 && ` · $${plan.total_cost_usd.toFixed(3)} so far`}
         </span>

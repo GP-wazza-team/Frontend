@@ -89,11 +89,30 @@ function SceneResults({ scenes }) {
   )
 }
 
+/**
+ * Media carried by a message loaded from history.
+ *
+ * The server stores every URL a run produced on the assistant message, but the
+ * message TEXT only ever contains the final scene's link. Without reading
+ * `attachments`, reopening a four-scene chat showed one video and dropped the
+ * rest. URLs already present in the text are skipped so they don't render twice.
+ */
+function attachmentMedia(message) {
+  const attachments = message.attachments || []
+  if (attachments.length === 0) return []
+  const inText = message.content || ''
+  return attachments
+    .filter((url) => typeof url === 'string' && url && !inText.includes(url))
+    .map((url) => ({ type: isVideoUrl(url) ? 'video' : 'image', url }))
+}
+
 function MessageBubble({ message, handlers, index }) {
   const openMedia = useLightbox()
   const isUser = message.role === 'user'
   const parts = parseContent(message.content)
-  const mediaItems = message.media || []
+  // `media` is set by the live flow; `attachments` comes back from history. A
+  // reloaded chat has only the latter, so both have to render.
+  const mediaItems = [...(message.media || []), ...attachmentMedia(message)]
   const [showTime, setShowTime] = useState(false)
 
   // Interactive cards replace the bubble entirely — they own their own chrome.
