@@ -480,8 +480,8 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                     style={{ backgroundColor: 'var(--bg)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
                     title="Which character to generate a reference sheet for"
                   >
-                    {characterNames.map((name) => (
-                      <option key={name} value={name}>{name}</option>
+                    {characterNames.map((name, i) => (
+                      <option key={`${name}-${i}`} value={name}>{name}</option>
                     ))}
                   </select>
                 )}
