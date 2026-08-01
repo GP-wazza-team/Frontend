@@ -36,6 +36,15 @@ export const generateService = {
     return response.data
   },
 
+  // The unfinished run this chat should return to, or null. Called when a chat
+  // is opened: the plan card, its previews, any pending questions and any media
+  // already produced live only in this response, because the cards themselves
+  // were never persisted anywhere.
+  getActiveRun: async (chatId) => {
+    const response = await api.get(`/generate/chats/${chatId}/active-run`)
+    return response.data
+  },
+
   // Change quality / aspect ratio / model on a run that is awaiting
   // confirmation. Free and instant: no LLM call, and the reviewed brief,
   // script and previews are left untouched. Returns the refreshed plan,
@@ -67,10 +76,13 @@ export const generateService = {
     return response.data
   },
 
-  // previewType: 'environment' | 'character'. Charged like any image generation.
-  preview: async (runId, previewType) => {
+  // previewType: 'environment' | 'character'. characterName is required when
+  // previewType is 'character' — pick one from the plan's character_names.
+  // Charged like any image generation.
+  preview: async (runId, previewType, characterName = null) => {
     const response = await api.post(`/generate/runs/${runId}/preview`, {
       preview_type: previewType,
+      character_name: characterName || undefined,
     })
     return response.data
   },

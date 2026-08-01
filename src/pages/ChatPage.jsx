@@ -49,29 +49,53 @@ function ChatPage() {
       })
   }, [])
 
-  // Load messages whenever currentChatId changes while on this page.
+  // Load messages whenever currentChatId changes while on this page, then pick
+  // up any run that chat left unfinished.
   //
-  // Skipped for a chat this same tab just created (see handleSendPrompt):
-  // its local `messages` is already correct and running ahead of the server
-  // — the optimistic "Starting generation..." placeholder and the plan/
-  // clarification card only ever exist client-side, never persisted as chat
-  // messages. Without this guard, this fetch can resolve mid-flow and
-  // silently replace that array with the server's shorter one while
-  // cardIndexRef still points into the old, longer array — the next
+  // Skipped entirely for a chat this same tab just created (see
+  // handleSendPrompt): its local `messages` is already correct and running
+  // ahead of the server — the optimistic "Starting generation..." placeholder
+  // and the plan/clarification card only ever exist client-side, never
+  // persisted as chat messages. Without this guard, this fetch can resolve
+  // mid-flow and silently replace that array with the server's shorter one
+  // while cardIndexRef still points into the old, longer array — the next
   // message-array write then lands past the end and corrupts the list.
+  //
+  // The guard has to come before endRun(): the run this tab just started is
+  // the one we would be tearing down, and there is no unfinished run to
+  // restore for a chat created moments ago.
   useEffect(() => {
     if (!currentChatId) return
     if (skipNextHistoryLoad.current === currentChatId) {
       skipNextHistoryLoad.current = null
       return
     }
+    let cancelled = false
+
+    // Switching chats must not leave the previous chat's socket open, or its
+    // progress would be written into this chat's messages.
+    endRun()
+
+
     chatService.getMessages(currentChatId)
       .then((data) => {
-        if (Array.isArray(data)) {
-          setMessages(data)
-        }
+        if (cancelled) return null
+        if (Array.isArray(data)) setMessages(data)
+        return generateService.getActiveRun(currentChatId)
       })
-      .catch(() => {})
+      .then((active) => {
+        if (cancelled || !active) return
+        restoreRun(active)
+      })
+      .catch((error) => {
+        // A chat that can't report its active run is still readable, so this
+        // never blocks loading the conversation.
+        console.error('Could not restore the active run:', error)
+      })
+
+    return () => { cancelled = true }
+    // restoreRun/endRun are stable for the life of the component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChatId, setMessages])
 
   const waitForSocketOpen = (socket) => new Promise((resolve) => {
@@ -242,6 +266,83 @@ function ChatPage() {
     }
     await waitForSocketOpen(socket)
     return socket
+  }
+
+  /**
+   * Put a chat back where its unfinished run left it.
+   *
+   * None of the confirmation-gate UI was ever persisted — the plan card, the
+   * pending questions and the live progress line all lived in this component's
+   * state, so a refresh used to leave the conversation looking finished while
+   * the run carried on server-side. Everything here is rebuilt from one
+   * /active-run call.
+   */
+  const restoreRun = (active) => {
+    const { run_id: runId, status, plan, questions, previews, assets, stale, retryable } = active
+
+    // Media the run already produced. Shown first, because it happened first —
+    // and because a run that is still going, or that died partway, has no
+    // message carrying it (that is only written once the whole run succeeds).
+    if (assets?.length > 0) {
+      addMessage({
+        role: 'assistant',
+        content: assets.length === 1 ? 'Generated so far:' : `Generated so far (${assets.length}):`,
+        attachments: assets,
+        created_at: new Date().toISOString(),
+      })
+    }
+
+    if (status === 'awaiting_confirmation' && plan) {
+      renderPlanResponse(plan, runId)
+      // Previews were paid for; restore them onto the card rather than making
+      // the user regenerate them.
+      if (previews?.length > 0) {
+        patchMessage(cardIndexRef.current, { previews })
+      }
+      setActiveRunId(runId)
+      return
+    }
+
+    if (status === 'awaiting_clarification' && questions?.length > 0) {
+      renderPlanResponse({ status: 'awaiting_clarification', questions }, runId)
+      setActiveRunId(runId)
+      return
+    }
+
+    // A run that failed, or one stuck long enough to be dead, is offered for
+    // resume — the server still holds its approved plan and the scenes it
+    // already paid for, so this picks up rather than starting over.
+    if (status === 'failed' || ((status === 'running' || status === 'pending') && stale)) {
+      addMessage({
+        role: 'assistant',
+        content: retryable
+          ? 'This run stopped before it finished.'
+          : 'This run stopped before it finished, and is too early to resume — send the prompt again.',
+        failedRunId: retryable ? runId : null,
+        created_at: new Date().toISOString(),
+      })
+      return
+    }
+
+    if (status === 'running' || status === 'pending') {
+      const index = useChatStore.getState().messages.length
+      // Still alive: reattach so live progress resumes.
+      addMessage({
+        role: 'assistant',
+        content: 'Still generating…',
+        created_at: new Date().toISOString(),
+      })
+      setActiveRunId(runId)
+      progressTargetRef.current = index
+      setLoading(true)
+      openRunSocket(runId).catch((error) => {
+        console.error('Could not reattach to the run:', error)
+        patchMessage(index, {
+          content: 'This run is still generating, but live progress could not be reattached. Reopen the chat to check on it.',
+        })
+        setLoading(false)
+      })
+    }
   }
 
   /**
@@ -452,11 +553,16 @@ function ChatPage() {
     }
   })
 
-  const handlePreview = (runId, previewType) => withCardBusy(async (index) => {
+  const handlePreview = (runId, previewType, characterName = null) => withCardBusy(async (index) => {
     try {
-      const preview = await generateService.preview(runId, previewType)
+      const preview = await generateService.preview(runId, previewType, characterName)
       const current = useChatStore.getState().messages[index]
-      const others = (current?.previews || []).filter((p) => p.preview_type !== previewType)
+      // Keyed by preview_type + character_name so re-previewing one character
+      // (e.g. regenerating "Rogue") replaces only that character's card
+      // instead of wiping out every other character's preview.
+      const others = (current?.previews || []).filter(
+        (p) => !(p.preview_type === preview.preview_type && p.character_name === preview.character_name)
+      )
       patchMessage(index, { previews: [...others, preview], busy: false })
     } catch (error) {
       pushError(error, 'Could not generate the preview')

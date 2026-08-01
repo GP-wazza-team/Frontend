@@ -15,6 +15,7 @@ const EDITABLE_FIELDS = [
 // deployment has keys for.
 const FALLBACK_RESOLUTIONS = ['480p', '720p', '1080p']
 const FALLBACK_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '21:9']
+const FALLBACK_DURATIONS = [5, 10, 15, 20]
 
 /**
  * One labelled dropdown in the output-settings row.
@@ -60,26 +61,36 @@ function SettingSelect({ label, value, options, disabled, onChange, title }) {
 function OutputSettings({ plan, catalog, disabled, onChange }) {
   const resolutions = catalog?.resolutions?.length ? catalog.resolutions : FALLBACK_RESOLUTIONS
   const aspectRatios = catalog?.aspect_ratios?.length ? catalog.aspect_ratios : FALLBACK_ASPECT_RATIOS
+  const durations = catalog?.durations?.length ? catalog.durations : FALLBACK_DURATIONS
 
-  // Video runs pick a video model; image-only runs pick an image model. Showing
-  // both would offer a choice that does not apply to what is being made.
   const isVideo = plan.needs_video
-  const models = (isVideo ? catalog?.video : catalog?.image) || []
-  const currentModel = isVideo ? plan.video_model : plan.image_model
   const notes = plan.render_notes || []
 
-  const modelOptions = models.map((m) => ({
-    value: m.id,
-    label: m.max_resolution && m.max_resolution !== '1080p'
-      ? `${m.display_name} (max ${m.max_resolution})`
-      : m.display_name,
-  }))
-  // Keep the current model visible even if the catalog hasn't loaded yet or the
-  // run is pinned to something no longer offered — otherwise the dropdown would
-  // silently appear to show a different model than the one that will run.
-  if (currentModel && !modelOptions.some((o) => o.value === currentModel)) {
-    modelOptions.unshift({ value: currentModel, label: currentModel })
+  /**
+   * Options for one model dropdown.
+   *
+   * The current model is always included even when the catalog hasn't loaded or
+   * the run is pinned to something no longer offered — otherwise the dropdown
+   * would show a different model than the one that will actually run.
+   */
+  const modelOptions = (models, current) => {
+    const options = (models || []).map((m) => {
+      const limits = []
+      if (m.max_resolution && m.max_resolution !== '1080p') limits.push(`max ${m.max_resolution}`)
+      if (m.max_duration_seconds) limits.push(`max ${m.max_duration_seconds}s`)
+      return {
+        value: m.id,
+        label: limits.length ? `${m.display_name} (${limits.join(', ')})` : m.display_name,
+      }
+    })
+    if (current && !options.some((o) => o.value === current)) {
+      options.unshift({ value: current, label: current })
+    }
+    return options
   }
+
+  const videoOptions = modelOptions(catalog?.video, plan.video_model)
+  const imageOptions = modelOptions(catalog?.image, plan.image_model)
 
   return (
     <div className="flex flex-col gap-2 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
@@ -88,15 +99,6 @@ function OutputSettings({ plan, catalog, disabled, onChange }) {
         <span className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
           Output
         </span>
-        {plan.reference_role === 'character' && (
-          <span
-            className="text-[10px] px-1.5 py-0.5 rounded"
-            style={{ backgroundColor: 'rgba(128,128,128,0.12)', color: 'var(--text-secondary)' }}
-            title="Your photo is being used as the character's likeness, not as the shot itself"
-          >
-            character from your photo
-          </span>
-        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -114,14 +116,37 @@ function OutputSettings({ plan, catalog, disabled, onChange }) {
           disabled={disabled}
           onChange={(value) => onChange({ aspect_ratio: value })}
         />
-        {modelOptions.length > 0 && (
+        {isVideo && (
           <SettingSelect
-            label={isVideo ? 'Video model' : 'Image model'}
-            value={currentModel}
-            options={modelOptions}
+            label="Seconds"
+            value={plan.duration_seconds}
+            options={durations.map((d) => ({ value: d, label: `${d}s` }))}
             disabled={disabled}
-            onChange={(value) => onChange(isVideo ? { video_model: value } : { image_model: value })}
+            onChange={(value) => onChange({ duration_seconds: Number(value) })}
+            title="Length of each scene. Longer than a model supports is capped — the warning below says by how much."
+          />
+        )}
+        {/* Both pickers are shown on a video run: the reference image and the
+            video are produced by different models, and the image model is what
+            decides whether an uploaded photo's likeness can be kept. */}
+        {isVideo && videoOptions.length > 0 && (
+          <SettingSelect
+            label="Video model"
+            value={plan.video_model}
+            options={videoOptions}
+            disabled={disabled}
+            onChange={(value) => onChange({ video_model: value })}
             title="Runs on this model. If its account is out of credit, another provider takes over automatically."
+          />
+        )}
+        {plan.needs_images && imageOptions.length > 0 && (
+          <SettingSelect
+            label="Image model"
+            value={plan.image_model}
+            options={imageOptions}
+            disabled={disabled}
+            onChange={(value) => onChange({ image_model: value })}
+            title="Draws the reference image. Only GPT Image 2 can read an uploaded photo and keep the person's likeness."
           />
         )}
       </div>
@@ -328,7 +353,17 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
   const openMedia = useLightbox()
   const [feedback, setFeedback] = useState('')
   const [showRevise, setShowRevise] = useState(false)
+  const characterNames = plan.character_names || []
+  const [selectedCharacter, setSelectedCharacter] = useState(characterNames[0] || '')
   const disabled = resolved || busy
+
+  // The plan can be replaced entirely (revise, clarify, edit) — keep the
+  // selection valid, and pick a default the first time names show up.
+  React.useEffect(() => {
+    if (characterNames.length === 0) return
+    if (!characterNames.includes(selectedCharacter)) setSelectedCharacter(characterNames[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.character_names])
 
   const submitRevise = async () => {
     const trimmed = feedback.trim()
@@ -349,6 +384,7 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
         </span>
         <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
           {plan.needs_video ? `${plan.duration_seconds}s video` : 'image'}
+          {plan.scenes?.length > 1 && ` × ${plan.scenes.length} scenes`}
           {plan.resolution && ` · ${plan.resolution} ${plan.aspect_ratio}`}
           {plan.total_cost_usd > 0 && ` · $${plan.total_cost_usd.toFixed(3)} so far`}
         </span>
@@ -379,13 +415,13 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
         {previews && previews.length > 0 && (
           <div className="grid grid-cols-2 gap-2 pt-1">
             {previews.map((p) => (
-              <div key={p.preview_type} className="flex flex-col gap-1">
+              <div key={`${p.preview_type}:${p.character_name || ''}`} className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-                  {p.preview_type}
+                  {p.character_name || p.preview_type}
                 </span>
                 <img
                   src={p.image_url}
-                  alt={`${p.preview_type} preview`}
+                  alt={`${p.character_name || p.preview_type} preview`}
                   className="w-full rounded-lg object-cover max-h-40 cursor-zoom-in"
                   onClick={() => openMedia(p.image_url, 'image')}
                 />
@@ -434,14 +470,32 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {characterNames.length > 1 && (
+                  <select
+                    value={selectedCharacter}
+                    disabled={disabled}
+                    onChange={(e) => setSelectedCharacter(e.target.value)}
+                    className="text-[11px] rounded-md px-1.5 py-1 outline-none disabled:opacity-50 max-w-[9rem] truncate"
+                    style={{ backgroundColor: 'var(--bg)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                    title="Which character to generate a reference sheet for"
+                  >
+                    {characterNames.map((name, i) => (
+                      <option key={`${name}-${i}`} value={name}>{name}</option>
+                    ))}
+                  </select>
+                )}
                 <button
                   type="button"
-                  onClick={() => onPreview('character')}
-                  disabled={disabled}
+                  onClick={() => onPreview('character', selectedCharacter)}
+                  disabled={disabled || characterNames.length === 0}
                   className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
                   style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                  title="Generates a real image — this costs credits"
+                  title={
+                    characterNames.length === 0
+                      ? 'No named characters detected in this plan'
+                      : 'Generates a real image — this costs credits'
+                  }
                 >
                   <User size={11} /> Preview character
                 </button>
