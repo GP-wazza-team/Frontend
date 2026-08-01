@@ -6,6 +6,7 @@ import { useUIStore } from '../store/uiStore'
 import { useToastStore } from '../store/toastStore'
 import AdminStatsCards from '../components/admin/AdminStatsCards'
 import ModelCostBreakdown from '../components/admin/ModelCostBreakdown'
+import ProviderBalances from '../components/admin/ProviderBalances'
 import DailyMetricsChart from '../components/admin/DailyMetricsChart'
 import AdminRunsTable from '../components/admin/AdminRunsTable'
 import RunDetailDrawer from '../components/admin/RunDetailDrawer'
@@ -32,6 +33,8 @@ export default function AdminDashboardPage() {
   const [runToDelete, setRunToDelete] = useState(null)
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(true)
+  const [providerBalances, setProviderBalances] = useState([])
+  const [balancesLoading, setBalancesLoading] = useState(false)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
@@ -54,6 +57,27 @@ export default function AdminDashboardPage() {
       loadAll()
     }
   }, [loadAll, user])
+
+  const loadBalances = useCallback(async (refresh = false) => {
+    setBalancesLoading(true)
+    try {
+      const data = await adminService.getProviderBalances(days, refresh)
+      setProviderBalances(Array.isArray(data) ? data : [])
+    } catch (err) {
+      // A vendor being unreachable is not a reason to blank the whole
+      // dashboard, so this failure is reported and otherwise swallowed.
+      console.error('Failed to load provider balances:', err)
+      addToast('Could not read provider balances', 'error')
+    } finally {
+      setBalancesLoading(false)
+    }
+  }, [days, addToast])
+
+  useEffect(() => {
+    if (user?.is_admin || user?.role === 'admin') {
+      loadBalances()
+    }
+  }, [loadBalances, user])
 
   const handleRunClick = async (run) => {
     setSelectedRun(run)
@@ -152,6 +176,14 @@ export default function AdminDashboardPage() {
         <DailyMetricsChart data={dailyMetrics} metric="cost" />
         <DailyMetricsChart data={dailyMetrics} metric="runs" />
       </div>
+
+      {/* Provider Balances */}
+      <ProviderBalances
+        data={providerBalances}
+        days={days}
+        loading={balancesLoading}
+        onRefresh={() => loadBalances(true)}
+      />
 
       {/* Model Cost Breakdown */}
       <ModelCostBreakdown data={modelCosts} totalCost={stats.total_cost_usd || 0} />
