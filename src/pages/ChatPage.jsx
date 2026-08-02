@@ -415,9 +415,33 @@ function ChatPage() {
     // `runFinishedRef` separates this from the ordinary close that follows a
     // completion event, and it is set before endRun() because endRun() closes
     // the socket, which re-enters onclose.
-    const reportLostContact = (detail, short) => {
+    const reportLostContact = async (detail, short) => {
       if (runFinishedRef.current) return
       runFinishedRef.current = true
+
+      // A dropped socket is NOT the same as a failed run, and most of the time
+      // it isn't even a problem — the run keeps going server-side and writes
+      // its result into the chat when it finishes. So ask the server what
+      // actually happened before telling the user anything went wrong.
+      //
+      // This is the difference between "your video is ready" and a spinner
+      // that never stops: the completion event is broadcast once, to whoever
+      // is connected at that instant, and is not replayed.
+      try {
+        const active = await generateService.getActiveRun(currentChatId)
+        const stillRunning = active && (active.status === 'running' || active.status === 'pending')
+        if (!stillRunning) {
+          // The run is over. Chat history is authoritative and already holds
+          // the result message the success path wrote, with its attachments.
+          const data = await chatService.getMessages(currentChatId)
+          if (Array.isArray(data)) setMessages(data)
+          endRun()
+          return
+        }
+      } catch {
+        // Fall through to the error row — if we cannot reach the server to ask,
+        // reporting the lost connection is the honest outcome.
+      }
 
       const patch = {
         kind: 'error',
