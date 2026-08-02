@@ -107,7 +107,9 @@
                 .select               .field + room for the caret mark
                 .rocker / .rocker__cell / [data-on="true"]
                                       the segmented control. Active cell is
-                                      RAISED + ink, never an accent fill.
+                                      RAISED + signal text + a signal base
+                                      rule. Accent as text and edge only —
+                                      never an accent FILL, which means money.
 
      TYPE       .legend    group legend (11px, uppercase+tracked in LTR only)
                 .mono      Commit Mono, tabular, LTR-isolated
@@ -603,11 +605,23 @@
    status bar, a plate), and a --panel active cell against a --panel ground has
    zero contrast — which inverts the reading: the inactive cell shows the
    darker housing and looks selected instead. --panel-hover is brighter than
-   every surface in both themes, so the raised cell reads anywhere. */
+   every surface in both themes, so the raised cell reads anywhere.
+
+   RAISED WAS NOT ENOUGH. On the clarification card — five rockers stacked, the
+   densest use in the product — the step from --sunk to --panel-hover plus a
+   weight change was too quiet to find at a glance, and "which answer did I
+   pick" is the entire question that card asks. The active cell now also takes
+   the SIGNAL colour and a 2px signal rule along its base.
+
+   This is not the accent FILL the system reserves for money: the cell keeps its
+   neutral raised ground, and the accent appears only as text and as an edge. A
+   filled orange cell would read as a spend affordance, which selecting "Night"
+   is not. Selection now survives being read without colour too — raised,
+   bolder, AND underscored. */
 .rocker__cell[data-on="true"] {
   background-color: var(--panel-hover);
-  box-shadow: inset 0 0 0 1px var(--etch);
-  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--etch), inset 0 -2px 0 0 var(--signal);
+  color: var(--signal);
   font-weight: 600;
 }
 .rocker__cell:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
