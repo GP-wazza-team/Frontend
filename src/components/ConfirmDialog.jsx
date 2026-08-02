@@ -1,66 +1,113 @@
-import React, { useEffect, useRef } from 'react'
-import { AlertTriangle, X } from 'lucide-react'
+/* Centred dialog. 420px, chamfered, on --panel, over a plain scrim with NO
+   blur. It settles in on a transform; opacity is 1 from the first frame (L5).
 
-function ConfirmDialog({ isOpen, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, danger = false }) {
+   The destructive confirm is a TEXT ACTION in --state-fail, not a fill:
+   deleting a chat does not cost money, and in this system only spending is
+   filled (L1). Pass `costs` when the confirmed action really does spend
+   credits — that is the only case that earns a slab.
+
+   The isOpen / title / message / confirmLabel / cancelLabel / onConfirm /
+   onCancel / danger API is unchanged. */
+
+import React, { useEffect, useRef } from 'react'
+
+function ConfirmDialog({
+  isOpen, title, message, confirmLabel, cancelLabel,
+  onConfirm, onCancel, danger = false, costs = false,
+}) {
   const confirmRef = useRef(null)
+  const dialogRef = useRef(null)
+  const restoreRef = useRef(null)
+
+  /* Every caller passes an inline arrow for onCancel, so its identity changes
+     on every parent render. With onCancel in the dep list, any re-render while
+     the dialog is open tore the trap down and rebuilt it: the cleanup handed
+     focus back to the trigger and the re-run then captured the dialog's own
+     confirm button as the thing to restore to — so closing returned focus to
+     an unmounting node, i.e. to <body>. The callback lives in a ref, the
+     effect depends on `isOpen` alone, and the capture is guarded so it happens
+     once per open. */
+  const cancelRef = useRef(onCancel)
+  cancelRef.current = onCancel
 
   useEffect(() => {
-    if (isOpen) {
-      confirmRef.current?.focus()
-      const handleKey = (e) => {
-        if (e.key === 'Escape') onCancel()
-      }
-      document.addEventListener('keydown', handleKey)
-      return () => document.removeEventListener('keydown', handleKey)
+    if (!isOpen) return undefined
+
+    if (!restoreRef.current) restoreRef.current = document.activeElement
+    confirmRef.current?.focus()
+
+    const handleKey = (e) => {
+      if (e.key === 'Escape') { cancelRef.current(); return }
+      if (e.key !== 'Tab' || !dialogRef.current) return
+      // Keep focus inside the dialog while it is open.
+      const focusables = dialogRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
     }
-  }, [isOpen, onCancel])
+
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('keydown', handleKey)
+      // Return focus to whatever opened the dialog.
+      if (restoreRef.current && typeof restoreRef.current.focus === 'function') {
+        restoreRef.current.focus()
+      }
+      restoreRef.current = null
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
-      <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={onCancel} />
-      <div
-        className="relative w-full max-w-sm rounded-xl p-6 animate-scaleIn"
-        style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}
-      >
-        <div className="flex items-start gap-4">
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: danger ? 'rgba(244,63,94,0.1)' : 'rgba(217,119,87,0.1)' }}
-          >
-            <AlertTriangle size={18} style={{ color: danger ? '#fb7185' : 'var(--accent)' }} />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-[15px] font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-              {title || 'Are you sure?'}
-            </h3>
-            <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              {message}
-            </p>
-          </div>
-        </div>
+    <div className="fixed inset-0 z-overlay flex items-center justify-center" style={{ padding: 16 }}>
+      <div className="absolute inset-0" style={{ backgroundColor: 'var(--scrim)' }} onClick={onCancel} />
 
-        <div className="flex items-center justify-end gap-2 mt-6">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-lg text-[13px] font-medium transition-all"
-            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
-          >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="wz-confirm-title"
+        className="relative settle cut cut-lg overlay-cast"
+        style={{
+          inlineSize: '100%',
+          maxInlineSize: 420,
+          backgroundColor: 'var(--panel)',
+          boxShadow: 'inset 0 0 0 1px var(--etch-strong)',
+          paddingBlock: 24,
+          paddingInlineStart: 24,
+          paddingInlineEnd: 24,
+        }}
+      >
+        <h2 id="wz-confirm-title" className="page-title" style={{ marginBlockEnd: 8 }}>
+          {title || 'Are you sure?'}
+        </h2>
+        <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{message}</p>
+
+        <div className="flex items-center justify-end gap-6" style={{ marginBlockStart: 24 }}>
+          <button type="button" onClick={onCancel} className="text-action">
             {cancelLabel || 'Cancel'}
           </button>
-          <button
-            ref={confirmRef}
-            onClick={onConfirm}
-            className="px-4 py-2 rounded-lg text-[13px] font-medium text-white transition-all"
-            style={{ backgroundColor: danger ? '#e11d48' : 'var(--accent)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9' }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
-          >
-            {confirmLabel || 'Confirm'}
-          </button>
+
+          {costs ? (
+            <button ref={confirmRef} type="button" onClick={onConfirm} className="slab slab--sm">
+              {confirmLabel || 'Confirm'}
+            </button>
+          ) : (
+            <button
+              ref={confirmRef}
+              type="button"
+              onClick={onConfirm}
+              className={`text-action${danger ? ' text-action--danger' : ''}`}
+              style={danger ? undefined : { color: 'var(--ink)' }}
+            >
+              {confirmLabel || 'Confirm'}
+            </button>
+          )}
         </div>
       </div>
     </div>

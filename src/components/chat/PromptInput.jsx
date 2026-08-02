@@ -1,12 +1,28 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE COMPOSER
+
+   A sunken well on the gutter grid, not a floating pill. The attach mark is
+   bare and inline-start; the send control is a 32x32 chamfered square carrying
+   the FILLED arrow, because pressing it starts a run and a run costs money
+   (L1). The hint line sits in the leading gutter at 10px rather than centred
+   under the box, where it used to fight the spine.
+
+   Behaviour is untouched: the same submit guard, the same Enter / Shift+Enter
+   handling, the same object-URL lifecycle, the same file accept list.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Loader2, ImagePlus, X } from 'lucide-react'
+import { Send, Attach, Close } from '../Icon'
+import Meter from '../ui/Meter'
 import { useUIStore } from '../../store/uiStore'
+import { useChatText, TURN_GRID } from './chatKit'
 
 function PromptInput({ onSubmit, disabled = false }) {
   const [prompt, setPrompt] = useState('')
   const [attachedFile, setAttachedFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const { t } = useUIStore()
+  const { tx } = useChatText()
   const textareaRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -53,54 +69,146 @@ function PromptInput({ onSubmit, disabled = false }) {
     }
   }
 
+  const canSend = !disabled && (prompt.trim() || attachedFile)
+
   return (
-    <div className="px-4 py-4" style={{ backgroundColor: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
+    <div
+      className="shrink-0"
+      style={{
+        backgroundColor: 'var(--paper)',
+        borderBlockStart: '1px solid var(--etch)',
+        paddingBlock: 12,
+        paddingInline: 24,
+      }}
+    >
+      {/* The attachment sits in the gutter column's row above the well, so it
+          reads as belonging to the message being composed rather than floating
+          over it. The remove control is a bare mark in --state-fail — there is
+          no coloured disc anywhere in this application. */}
       {previewUrl && (
-        <div className="max-w-3xl mx-auto mb-2.5">
-          <div className="relative inline-block">
-            <img src={previewUrl} alt="Attachment" className="h-16 w-auto rounded-lg object-cover" style={{ border: '1px solid var(--border)' }} />
-            <button onClick={removeAttachment} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center hover:bg-rose-600 transition-colors">
-              <X size={10} className="text-white" />
-            </button>
+        <div className={`${TURN_GRID} mb-3`}>
+          <span className="wz-gutter" style={{ fontSize: 10 }}>{tx('attach')}</span>
+          <div className="min-w-0">
+            <div
+              className="cut cut-md relative inline-block"
+              style={{ backgroundColor: 'var(--recess)', boxShadow: 'inset 0 0 0 1px var(--etch-strong)', padding: 6 }}
+            >
+              <img src={previewUrl} alt={tx('attach')} style={{ display: 'block', blockSize: 56, inlineSize: 'auto' }} />
+              <button
+                type="button"
+                onClick={removeAttachment}
+                title={tx('removeAttachment')}
+                aria-label={tx('removeAttachment')}
+                className="absolute flex items-center justify-center"
+                style={{
+                  insetBlockStart: 0,
+                  insetInlineEnd: 0,
+                  inlineSize: 20,
+                  blockSize: 20,
+                  color: 'var(--state-fail)',
+                  backgroundColor: 'var(--recess)',
+                }}
+              >
+                <Close size={12} />
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex items-end gap-2 rounded-xl px-3 py-2.5 transition-all duration-200" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={handleFileChange} />
+      <form onSubmit={handleSubmit} className={TURN_GRID}>
+        <span className="wz-gutter" style={{ paddingBlockStart: 12 }} aria-hidden="true" />
 
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled}
-          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-40"
-          style={{ color: attachedFile ? 'var(--accent)' : 'var(--text-tertiary)' }}
-        >
-          <ImagePlus size={16} />
-        </button>
+        <div className="min-w-0">
+          <div
+            className="cut cut-md flex items-end gap-2"
+            style={{
+              backgroundColor: 'var(--sunk)',
+              boxShadow: 'inset 0 0 0 1px var(--edge)',
+              paddingBlock: 6,
+              paddingInlineStart: 8,
+              paddingInlineEnd: 8,
+            }}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={handleFileChange}
+            />
 
-        <textarea
-          ref={textareaRef}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={t('enterPrompt')}
-          disabled={disabled}
-          rows={1}
-          className="flex-1 bg-transparent resize-none outline-none text-[14px] leading-5 disabled:opacity-50 max-h-[160px] overflow-y-auto scrollbar-hide py-1"
-          style={{ color: 'var(--text-primary)' }}
-        />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled}
+              title={tx('attach')}
+              aria-label={tx('attach')}
+              className="shrink-0 flex items-center justify-center disabled:opacity-40"
+              style={{
+                inlineSize: 32,
+                blockSize: 32,
+                color: attachedFile ? 'var(--ink)' : 'var(--ink-3)',
+                transition: 'color 120ms var(--ease)',
+              }}
+            >
+              <Attach size={16} />
+            </button>
 
-        <button
-          type="submit"
-          disabled={disabled || (!prompt.trim() && !attachedFile)}
-          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all disabled:opacity-30"
-          style={{ backgroundColor: 'var(--accent)' }}
-        >
-          {disabled ? <Loader2 size={15} className="animate-spin text-white" /> : <Send size={15} className="text-white" />}
-        </button>
+            <textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t('enterPrompt')}
+              disabled={disabled}
+              rows={1}
+              className="flex-1 bg-transparent resize-none outline-none disabled:opacity-50 max-h-[160px] overflow-y-auto scrollbar-hide"
+              style={{
+                color: 'var(--ink)',
+                fontSize: 15,
+                lineHeight: 'var(--lh-body)',
+                paddingBlock: 7,
+                textAlign: 'start',
+              }}
+            />
+
+            {/* FILL IS MONEY. The mark is drawn filled and inked in --signal
+                because sending a prompt opens a paid run; the square itself is
+                not a slab, so the commit gate stays the only filled surface on
+                the screen. */}
+            <button
+              type="submit"
+              disabled={!canSend}
+              title={tx('costsCredits')}
+              aria-label={t('send')}
+              className="cut cut-md shrink-0 flex items-center justify-center disabled:opacity-30"
+              style={{
+                inlineSize: 32,
+                blockSize: 32,
+                color: canSend ? 'var(--signal)' : 'var(--ink-3)',
+                backgroundColor: canSend ? 'var(--panel)' : 'transparent',
+                boxShadow: canSend ? 'inset 0 0 0 1px var(--signal-edge)' : 'inset 0 0 0 1px var(--etch)',
+                transition: 'color 120ms var(--ease), background-color 120ms var(--ease)',
+              }}
+            >
+              {disabled
+                ? <Meter cells={3} mode="indeterminate" tone="signal" label={t('generating')} />
+                : <Send size={16} />}
+            </button>
+          </div>
+        </div>
       </form>
-      <p className="text-center text-[11px] mt-1.5" style={{ color: 'var(--text-tertiary)' }}>Enter to send · Shift+Enter for new line</p>
+
+      <p
+        className={`${TURN_GRID} mt-2`}
+        style={{ fontSize: 10, color: 'var(--ink-3)', textAlign: 'start' }}
+      >
+        {/* The hint annotates the composer, so it belongs in the composer's
+            column. Spanning the grid started it 56px ahead of the thing it
+            describes and broke the spine. */}
+        <span className="wz-col">{tx('sendHint')}</span>
+      </p>
     </div>
   )
 }

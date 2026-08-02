@@ -1,6 +1,22 @@
+/* RECENT RUNS — a real table, not a card with a table inside it.
+
+   The plate is gone. A run list does not need a container: 36px rows, zebra
+   by a 1px rule rather than an alternating fill, a sticky header on --panel,
+   and a 56px leading column that lands on the page's gutter axis so each
+   row's status shape sits on the same line as every other index in the
+   application.
+
+   State is a SHAPE in that leading column (L4 — readable without colour) and
+   the word repeats at the trailing edge in the same tone. Every number goes
+   through the ledger line. The tinted uppercase pill chip is gone with the
+   rest of that vocabulary. */
+
 import React, { useState } from 'react'
 import { useUIStore } from '../../store/uiStore'
 import RunTimeline from './RunTimeline'
+import { Money, RunId } from '../ui/Money'
+import { RunMarker } from './Instruments'
+import EmptyState from '../ui/EmptyState'
 
 function formatTime(ts) {
   if (!ts) return '—'
@@ -11,70 +27,80 @@ function formatTime(ts) {
   }
 }
 
-function formatCost(val) {
-  const n = parseFloat(val) || 0
-  return `$${n.toFixed(4)}`
-}
-
 function RecentRuns({ runs = [] }) {
-  const { t } = useUIStore()
+  const { t, language } = useUIStore()
+  const ar = language === 'ar'
   const [openRunId, setOpenRunId] = useState(null)
 
+  if (runs.length === 0) {
+    return (
+      <EmptyState
+        legend={t('noRuns')}
+        line={ar
+          ? 'لم يُنفَّذ أي تشغيل بعد. ابدأ مهمة من الدردشة وستظهر هنا مع تكلفتها.'
+          : 'Nothing has run yet. Start a job from chat and it appears here with what it cost.'}
+      />
+    )
+  }
+
   return (
-    <div className="surface p-5">
-      <div className="mb-4">
-        <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('recentRuns')}</h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-          Latest generation runs — select one to see every step and what it cost
-        </p>
-      </div>
-      {runs.length === 0 ? (
-        <div className="py-6 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('noRuns')}</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                <th className="text-left py-2.5 px-3 font-medium text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>{t('date')}</th>
-                <th className="text-left py-2.5 px-3 font-medium text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>{t('prompt')}</th>
-                <th className="text-left py-2.5 px-3 font-medium text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Path</th>
-                <th className="text-left py-2.5 px-3 font-medium text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>{t('cost')}</th>
-                <th className="text-left py-2.5 px-3 font-medium text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>{t('status')}</th>
+    <>
+      {/* The sticky thead needs a real scrollport. `overflow-x: auto` alone
+          computes overflow-y to auto too, which makes THIS div the nearest
+          scroll container — but it has auto height and never scrolls, so the
+          header scrolled away with the rows. A bounded block size gives the
+          header something to stick to and keeps horizontal scroll intact. */}
+      <div style={{ overflow: 'auto', maxBlockSize: 'calc(100vh - 260px)' }}>
+        <table className="dtable">
+          <thead>
+            <tr>
+              <th style={{ inlineSize: 'var(--rail-spine)', paddingInlineStart: 0 }} aria-label={t('status')} />
+              <th>{ar ? 'التشغيل' : 'Run'}</th>
+              <th>{t('date')}</th>
+              <th style={{ inlineSize: '38%' }}>{t('prompt')}</th>
+              <th>{ar ? 'المسار' : 'Path'}</th>
+              <th className="num">{t('cost')}</th>
+              <th>{t('status')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {runs.map((run, index) => (
+              <tr
+                key={run.id ?? index}
+                onClick={() => run.id && setOpenRunId(run.id)}
+                tabIndex={run.id ? 0 : -1}
+                onKeyDown={(e) => { if (run.id && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpenRunId(run.id) } }}
+                style={{ cursor: run.id ? 'pointer' : 'default' }}
+              >
+                <td style={{ paddingInlineStart: 0 }}>
+                  <RunMarker status={run.status} word={false} />
+                </td>
+                <td><RunId id={run.id} style={{ color: 'var(--ink-3)' }} /></td>
+                <td className="mono" style={{ whiteSpace: 'nowrap', fontSize: 11, color: 'var(--ink-3)', textAlign: 'start' }}>
+                  {formatTime(run.started_at)}
+                </td>
+                <td>
+                  <span className="truncate" style={{ display: 'block', color: 'var(--ink)' }}>
+                    {run.user_prompt || '—'}
+                  </span>
+                </td>
+                <td className="mono" style={{ whiteSpace: 'nowrap', fontSize: 11, textAlign: 'start' }}>
+                  {run.selected_path || '—'}
+                </td>
+                <td className="num" style={{ whiteSpace: 'nowrap' }}>
+                  <Money usd={run.total_cost_usd} />
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <RunMarker status={run.status} shape={false} />
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {runs.map((run, index) => (
-                <tr
-                  key={run.id ?? index}
-                  className="transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
-                  style={{ borderBottom: '1px solid var(--border)' }}
-                  onClick={() => run.id && setOpenRunId(run.id)}
-                  tabIndex={run.id ? 0 : -1}
-                  onKeyDown={(e) => { if (run.id && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpenRunId(run.id) } }}
-                >
-                  <td className="py-2.5 px-3 whitespace-nowrap text-xs" style={{ color: 'var(--text-tertiary)' }}>{formatTime(run.started_at)}</td>
-                  <td className="py-2.5 px-3 max-w-xs">
-                    <span className="line-clamp-1 text-[13px]" style={{ color: 'var(--text-secondary)' }}>{run.user_prompt || '—'}</span>
-                  </td>
-                  <td className="py-2.5 px-3 text-[11px] font-mono" style={{ color: 'var(--text-tertiary)' }}>{run.selected_path || '—'}</td>
-                  <td className="py-2.5 px-3 whitespace-nowrap text-xs font-semibold" style={{ color: 'var(--badge-green-text)' }}>{formatCost(run.total_cost_usd)}</td>
-                  <td className="py-2.5 px-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase" style={{
-                      backgroundColor: (run.status === 'completed' || run.status === 'succeeded') ? 'var(--badge-green-bg)' : run.status === 'failed' ? 'var(--badge-red-bg)' : 'var(--badge-amber-bg)',
-                      color: (run.status === 'completed' || run.status === 'succeeded') ? 'var(--badge-green-text)' : run.status === 'failed' ? 'var(--badge-red-text)' : 'var(--badge-amber-text)'
-                    }}>
-                      {run.status || '—'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {openRunId && <RunTimeline runId={openRunId} onClose={() => setOpenRunId(null)} />}
-    </div>
+    </>
   )
 }
 

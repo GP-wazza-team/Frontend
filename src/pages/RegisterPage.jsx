@@ -1,6 +1,32 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTH — /register.
+
+   Same housing as /login (§11.6), one deliberate difference: the plate's gauge
+   reads low — a console that has not been asked to do anything yet — and it
+   carries a second engraved instrument, the credit strip, showing the 20 free
+   credits the subtitle already promises. Two plates, one machine.
+
+   The form is the same gutter grid: index in the gutter, label and underlined
+   field in the content column, the live meter in the gutter while the request
+   is in flight. The password rule is no longer a grey sentence under the box —
+   it is an 8-cell Meter that fills as you type and turns --state-done when the
+   requirement the submit handler actually enforces is met. Same rule, same
+   handler, now visible before you press.
+
+   BEHAVIOUR IS FROZEN: form state, the 8-character guard, the submit handler,
+   the password toggle, the language switcher, every string and the link back
+   to /login are unchanged.
+
+   The shared chrome is imported from LoginPage.jsx — the rebuild scope for
+   this work is exactly these two files, so the common parts live in the first
+   of them rather than being duplicated here.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, ArrowRight, Zap } from 'lucide-react'
+import { Reveal, RevealOff, Caret } from '../components/Icon'
+import Meter from '../components/ui/Meter'
+import { AuthPlate, AuthRocker, AuthNotice, AuthLockup, AuthBlock, FieldRow, SubmitRow } from './LoginPage'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
@@ -29,6 +55,16 @@ function RegisterPage() {
     login:       isAr ? 'تسجيل الدخول' : 'Sign in',
   }
 
+  const ui = {
+    plateHead:   isAr ? 'ابدأ رحلتك مع الذكاء الاصطناعي' : 'Start your AI journey today',
+    plateBlurb:  isAr ? 'انضم إلى آلاف المبدعين الذين يستخدمون Wazza' : 'Join thousands of creators already using Wazza to power their ideas.',
+    credits:     isAr ? 'رصيد مجاني' : 'Free credits',
+    failed:      isAr ? 'تعذر إنشاء الحساب' : 'Could not create account',
+    reveal:      isAr ? 'إظهار كلمة المرور' : 'Show password',
+    conceal:     isAr ? 'إخفاء كلمة المرور' : 'Hide password',
+    working:     isAr ? 'جاري الإنشاء...' : 'Creating account...',
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -49,132 +85,131 @@ function RegisterPage() {
     }
   }
 
+  const pwLen = form.password.length
+  const pwMet = pwLen >= 8
+
+  /* The plate's second instrument: the offer, read as a meter. */
+  const creditStrip = (
+    <div style={{ maxInlineSize: 360 }}>
+      <span className="legend" style={{ margin: 0 }}>{ui.credits}</span>
+      <div className="flex items-center gap-3" style={{ marginBlockStart: 8 }}>
+        <Meter cells={20} value={1} tone="signal" label={ui.credits} />
+        <span className="mono" style={{ fontSize: 12, color: 'var(--ink)' }}>20</span>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--bg)' }} dir={isAr ? 'rtl' : 'ltr'}>
-      {/* Left - Visual */}
-      <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden">
-        <div className="mesh-gradient absolute inset-0" />
-        <div className="relative z-10 flex flex-col justify-between p-12">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center border border-white/10">
-              <Zap size={18} className="text-white" />
-            </div>
-            <span className="font-bold text-lg text-white/90 tracking-tight">WAZZA</span>
-          </div>
+    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--paper)' }} dir={isAr ? 'rtl' : 'ltr'}>
+      <AuthPlate isAr={isAr} reading={0.34} headline={ui.plateHead} blurb={ui.plateBlurb}>
+        {creditStrip}
+      </AuthPlate>
 
-          <div className="max-w-sm">
-            <h2 className="text-3xl font-semibold leading-snug mb-3 text-white/90">
-              {isAr ? 'ابدأ رحلتك مع الذكاء الاصطناعي' : 'Start your AI journey today'}
-            </h2>
-            <p className="text-white/40 text-base leading-relaxed">
-              {isAr ? 'انضم إلى آلاف المبدعين الذين يستخدمون Wazza' : 'Join thousands of creators already using Wazza to power their ideas.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-4 text-sm text-white/30">
-            <span>WAZZA v1.0</span>
-            <span>·</span>
-            <button onClick={() => setLanguage(isAr ? 'en' : 'ar')} className="hover:text-white/60 transition-colors">
-              {isAr ? 'English' : 'العربية'}
-            </button>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-4 p-6">
+          <AuthLockup isAr={isAr} />
+          <div className="ms-auto">
+            <AuthRocker isAr={isAr} setLanguage={setLanguage} />
           </div>
         </div>
-      </div>
 
-      {/* Right - Form */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm animate-slideUp">
-          <div className="flex lg:hidden items-center gap-3 mb-10">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--accent)' }}>
-              <Zap size={18} className="text-white" />
-            </div>
-            <span className="font-bold text-lg tracking-tight" style={{ color: 'var(--text-primary)' }}>WAZZA</span>
-          </div>
+        <div className="flex flex-1 items-center justify-center overflow-y-auto px-6 py-4">
+          <AuthBlock isAr={isAr} title={t.title} subtitle={t.subtitle} onSubmit={handleSubmit}>
+            {error && (
+              <AuthNotice isAr={isAr} kind="credentials" legend={ui.failed} message={error} />
+            )}
 
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>{t.title}</h1>
-            <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t.subtitle}</p>
-          </div>
-
-          {error && (
-            <div className="mb-5 px-4 py-3 rounded-lg text-sm animate-fadeIn" style={{ backgroundColor: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)', color: '#fb7185' }}>
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t.name}</label>
+            <FieldRow index="01" id="register-name" label={t.name}>
               <input
+                id="register-name"
                 type="text"
                 required
+                autoComplete="name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="input-claude"
+                className="field field--underline"
+                style={{ fontSize: 15 }}
                 placeholder={isAr ? 'محمد أحمد' : 'John Doe'}
               />
-            </div>
+            </FieldRow>
 
-            <div>
-              <label className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t.email}</label>
+            <FieldRow index="02" id="register-email" label={t.email}>
               <input
+                id="register-email"
                 type="email"
                 required
+                autoComplete="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="input-claude"
+                className="field field--underline"
+                style={{ fontSize: 15 }}
                 placeholder="you@example.com"
               />
-            </div>
+            </FieldRow>
 
-            <div>
-              <label className="block text-[13px] font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>{t.password}</label>
+            <FieldRow
+              index="03"
+              id="register-password"
+              label={t.password}
+              below={
+                /* The rule the submit handler actually enforces, made visible
+                   before you press it. Determinate, so reduced motion still
+                   shows the true value. */
+                <div className="flex items-center gap-3" style={{ marginBlockStart: 10 }}>
+                  <Meter
+                    cells={8}
+                    value={Math.min(1, pwLen / 8)}
+                    tone={pwMet ? 'done' : 'ink'}
+                    label={t.passwordHint}
+                  />
+                  <span
+                    id="register-password-hint"
+                    style={{ fontSize: 11, color: pwMet ? 'var(--state-done)' : 'var(--ink-3)' }}
+                  >
+                    {t.passwordHint}
+                  </span>
+                </div>
+              }
+            >
               <div className="relative">
                 <input
+                  id="register-password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="new-password"
+                  aria-describedby="register-password-hint"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="input-claude ltr:pr-10 rtl:pl-10"
+                  className="field field--underline"
+                  style={{ fontSize: 15, paddingInlineEnd: 32 }}
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 ltr:right-3 rtl:left-3 flex items-center transition-colors"
-                  style={{ color: 'var(--text-tertiary)' }}
+                  aria-label={showPassword ? ui.conceal : ui.reveal}
+                  aria-pressed={showPassword}
+                  className="text-action absolute inset-y-0 end-0 items-center"
+                  style={{ paddingBlock: 0, color: 'var(--ink-3)' }}
                 >
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPassword ? <RevealOff size={16} /> : <Reveal size={16} />}
                 </button>
               </div>
-              <p className="mt-1.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>{t.passwordHint}</p>
-            </div>
+            </FieldRow>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full btn-primary py-3 rounded-lg flex items-center justify-center gap-2 text-[14px]"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  {isAr ? 'جاري الإنشاء...' : 'Creating account...'}
-                </span>
-              ) : (
-                <>
-                  {t.submit}
-                  <ArrowRight size={15} className={isAr ? 'rotate-180' : ''} />
-                </>
-              )}
-            </button>
-          </form>
+            <SubmitRow loading={loading} label={t.submit} working={ui.working} />
+          </AuthBlock>
+        </div>
 
-          <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            {t.hasAccount}{' '}
-            <Link to="/login" className="font-medium transition-opacity hover:opacity-80" style={{ color: 'var(--accent)' }}>
-              {t.login}
-            </Link>
-          </p>
+        <div
+          className="flex items-center justify-between gap-4 px-6 py-4"
+          style={{ borderBlockStart: '1px solid var(--etch)' }}
+        >
+          <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>{t.hasAccount}</span>
+          <Link to="/login" className="text-action">
+            {t.login}
+            <Caret direction="end" size={14} />
+          </Link>
         </div>
       </div>
     </div>

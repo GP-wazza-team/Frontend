@@ -1,58 +1,74 @@
-import React from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
-import { BarChart, Bar } from 'recharts'
-import { Calendar } from 'lucide-react'
+/* DAILY METRICS.
 
-function formatCost(val) {
-  const n = parseFloat(val) || 0
-  return `$${n.toFixed(2)}`
+   The area gradient is deleted. There is exactly one gradient in this
+   application and it is on the auth plate; a translucent wash under a line is
+   atmosphere inside a working surface, and it made the two charts on this row
+   read as one blurry mass rather than two separate readings.
+
+   What is left is the reading itself: a 1.5px line, no dots, no gridlines,
+   Commit Mono axis type, a chamfered tooltip of ledger lines, and the two
+   metrics taking DIFFERENT steps off the ramp so cost and runs are
+   distinguishable side by side without reading the legend.
+
+   Props are unchanged: { data, metric }. */
+
+import React from 'react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { Money, Duration } from '../ui/Money'
+import { ChartFrame, ChartTooltip, useChartAxes } from '../dashboard/Instruments'
+import EmptyState from '../ui/EmptyState'
+
+const SPEC = {
+  cost: { key: 'total_cost', name: 'Cost', color: 'var(--chart-1)' },
+  runs: { key: 'run_count', name: 'Runs', color: 'var(--chart-5)' },
+  duration: { key: 'duration_avg', name: 'Avg duration (s)', color: 'var(--chart-3)' },
 }
 
 export default function DailyMetricsChart({ data = [], metric = 'cost' }) {
+  const { xAxis, yAxis } = useChartAxes()
+  const spec = SPEC[metric] || SPEC.duration
+
   if (data.length === 0) {
     return (
-      <div className="surface p-5 rounded-lg">
-        <div className="mb-4">
-          <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Daily Metrics</h3>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Trends over time</p>
-        </div>
-        <div className="h-56 flex items-center justify-center text-sm" style={{ color: 'var(--text-tertiary)' }}>No data</div>
-      </div>
+      <ChartFrame
+        height={220}
+        empty={<EmptyState legend={spec.name} line="No data in this window." />}
+      />
     )
   }
 
-  const isCost = metric === 'cost'
-  const isRuns = metric === 'runs'
-  const color = isCost ? 'var(--accent)' : isRuns ? '#10b981' : '#f59e0b'
-  const dataKey = isCost ? 'total_cost' : isRuns ? 'run_count' : 'duration_avg'
-  const name = isCost ? 'Cost' : isRuns ? 'Runs' : 'Avg Duration (s)'
-  const formatter = isCost ? (v) => formatCost(v) : (v) => `${v}`
+  const tickFormat = metric === 'cost'
+    ? (v) => `$${Number(v).toFixed(2)}`
+    : (v) => `${v}`
+
+  const tooltipValue = (p) => {
+    if (metric === 'cost') return <Money usd={p.value} digits={2} />
+    if (metric === 'duration') return <Duration seconds={p.value} />
+    return <span className="mono">{p.value}</span>
+  }
 
   return (
-    <div className="surface p-5 rounded-lg">
-      <div className="mb-4">
-        <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Daily Metrics</h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Last {data.length} days</p>
-      </div>
-      <ResponsiveContainer width="100%" height={260}>
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient id={`grad-${metric}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={color} stopOpacity={0.15} />
-              <stop offset="95%" stopColor={color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-          <XAxis dataKey="date" stroke="var(--border)" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-          <YAxis stroke="var(--border)" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} tickFormatter={formatter} />
+    <ChartFrame height={220}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+          <XAxis dataKey="date" {...xAxis} />
+          <YAxis {...yAxis} tickFormatter={tickFormat} allowDecimals={metric !== 'runs'} />
           <Tooltip
-            contentStyle={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
-            labelStyle={{ color: 'var(--text-secondary)' }}
-            formatter={(value) => [formatter(value), name]}
+            cursor={{ stroke: 'var(--edge)', strokeWidth: 1 }}
+            content={<ChartTooltip rows={tooltipValue} />}
           />
-          <Area type="monotone" dataKey={dataKey} name={name} stroke={color} strokeWidth={2} fill={`url(#grad-${metric})`} dot={{ fill: color, r: 2, strokeWidth: 0 }} activeDot={{ r: 4 }} />
-        </AreaChart>
+          <Line
+            type="linear"
+            dataKey={spec.key}
+            name={spec.name}
+            stroke={spec.color}
+            strokeWidth={1.5}
+            dot={false}
+            activeDot={{ r: 2.5, fill: spec.color, strokeWidth: 0 }}
+            isAnimationActive={false}
+          />
+        </LineChart>
       </ResponsiveContainer>
-    </div>
+    </ChartFrame>
   )
 }

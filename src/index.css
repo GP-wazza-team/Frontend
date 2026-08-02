@@ -1,210 +1,798 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAZZA · MIQYAS — FOUNDATION
+   The design system. Read this block before styling anything.
+
+   THE FIVE LAWS
+     L1  FILL IS MONEY. Nothing is filled unless pressing it spends credits.
+         Exactly one filled element may be visible on a screen at a time.
+     L2  ONE CUT. Every container, control and icon carries the same 45 degree
+         chamfer on one corner (block-start / inline-end). Border radius is 0
+         everywhere, with no exceptions.
+     L3  RAISED IS BRIGHTER, in both themes. --panel is brighter than --paper
+         in light AND in dark.
+     L4  STATE IS SHAPE FIRST, hue second. Read run state without colour.
+     L5  CONTENT IS VISIBLE ON FIRST PAINT. No animation ever starts at
+         opacity 0. Motion moves things that are already on screen.
+
+   ───────────────────────────────────────────────────────────────────────────
+   COLOUR TOKENS — every one is defined for BOTH :root and .dark.
+   Ratios are computed WCAG 2.1, worst case across all surfaces.
+
+     SURFACES        --paper         the page
+                     --panel         raised: cards, plates, sticky headers
+                     --panel-hover   hover on an already-raised surface
+                     --sunk          hover on the page, wells, draft zones
+                     --recess        media wells only (inside a Frame)
+
+     EDGES           --etch          hairline: plate self-edge, row rules
+                     --etch-strong   structural: table header rule, recess
+                                     inset, the Meter's unlit track
+                     --edge          CONTROL boundary, >= 3:1 both themes.
+                                     Use for: field, select, rocker housing,
+                                     anything whose outline is what tells you
+                                     the thing is interactive. The spec's
+                                     0.18/0.17 alpha computes to 1.45:1 and
+                                     fails that rule, so control edges moved
+                                     to this token at 0.50/0.42 (3.10 / 3.38).
+
+     INK             --ink           primary text   (>= 12.7:1 everywhere)
+                     --ink-2         secondary      (>= 6.3:1 everywhere)
+                     --ink-3         tertiary, captions (>= 4.69:1 everywhere)
+
+     ACCENT          --signal        amber AS TEXT / as a live indicator
+                     --signal-deep   the fill under a filled action (slab)
+                     --signal-edge   1px edge ON that fill (mandatory in dark)
+                     --signal-hot    the slab's hover corner
+                     --signal-press  the slab's active fill
+                     The accent NEVER decorates. It means exactly two things:
+                     THIS IS RUNNING, or THIS COSTS MONEY.
+
+     STATE           --state-done --state-fail --state-run --state-queued
+
+     CONTROL         --btn-label     #FFFFFF, the only literal hex permitted
+                                     in a component, and only as a label on
+                                     --signal-deep
+                     --fraction-op   0.82 — the opacity of the fraction digits
+                                     in <Money> when it sits on --signal-deep.
+                                     Computed: 5.17:1 light, 4.52:1 dark. Do
+                                     not lower it; 0.78 fails AA in dark.
+                     --focus         focus ring colour (>= 5.1:1 on every surface)
+                     --focus-halo    the soft outer ring, same hue at 30%
+
+     CHART           --chart-1 .. --chart-5   five tonal steps, no rainbow.
+                     Every one clears 3:1 against --panel in both themes.
+
+     DEPTH           --shadow-overlay   the ONLY box-shadow spec in the app.
+                     Used on exactly three things: MediaLightbox,
+                     RunDetailDrawer, ConfirmDialog. Nothing else casts.
+
+     GEOMETRY        --chamfer-lg 8px  containers >= 56px tall
+                     --chamfer-md 5px  controls 28-56px
+                     --chamfer-sm 3px  icons, chips, tile action bars
+                     --rail-spine 56px   --rail-panel 240px   --statusbar 36px
+
+   ───────────────────────────────────────────────────────────────────────────
+   COMPONENT CLASSES — use these, do not re-invent them.
+
+     GEOMETRY   .cut + .cut-lg | .cut-md | .cut-sm
+                Applies the chamfer, mirrored automatically per direction.
+                CLEAR THE CUT: minimum inline padding on the chamfered side is
+                chamfer + 10px. The helper classes below already budget it.
+                A clip-path clips borders and outlines too, so a chamfered
+                element draws its edge with `box-shadow: inset 0 0 0 1px`,
+                never `border`. Focus rings on .cut elements are inset.
+
+     SURFACE    .plate                raised surface, inset etch, cut-lg, 16px pad
+                .plate--sunken        the same on --sunk (draft / well)
+                .plate--recess        the same on --recess (media only)
+                .plate--flush         no padding (you supply your own)
+
+     ACTION     .slab                 THE FILLED ACTION. 40px. L1: only use it
+                                      when pressing it spends credits.
+                .slab--sm             32px variant
+                .text-action          every free action. Bare label + hollow
+                                      mark. There is no outlined button.
+                .text-action--danger  destructive, still not a fill
+                .stow                 row / tile actions that rest invisible
+                                      and arrive on hover or focus-within.
+                                      Put it on the wrapper inside a .group.
+                                      Hover is not a capability every device
+                                      has, so a coarse pointer always sees
+                                      them. NEVER hand-roll opacity-0 +
+                                      group-hover: on touch that hides the
+                                      control permanently.
+
+     INPUT      .field                text input / textarea on --sunk
+                .field--underline     auth variant: no box, etched underline
+                .select               .field + room for the caret mark
+                .rocker / .rocker__cell / [data-on="true"]
+                                      the segmented control. Active cell is
+                                      RAISED + ink, never an accent fill.
+
+     TYPE       .legend    group legend (11px, uppercase+tracked in LTR only)
+                .mono      Commit Mono, tabular, LTR-isolated
+                .figure    same isolation for a bare numeral in Arabic prose
+                .page-title  17px — the ONLY heading size on a working screen
+                .prose     15px transcript / plan body at 68ch
+
+     LAYOUT     .wz-page   the route mat: 24px gutter + the 56px leading
+                           gutter grid. Every route uses it.
+                .wz-page--flush   same grid, no padding (chat does its own)
+                .wz-gutter        the 56px marker column cell
+                .wz-col           the content column cell
+                .wz-col--span     content that spans gutter + column
+                .wz-stack         24px vertical rhythm inside .wz-col
+
+     OVERLAY    .overlay-cast   the ONE cast shadow, as a filter. A clip-path
+                                clips an outer box-shadow away, so chamfered
+                                overlay surfaces cast with this instead.
+                                Four call sites: MediaLightbox, RunDetailDrawer,
+                                ConfirmDialog, the account popup. Pair it with
+                                `inset 0 0 0 1px var(--etch-strong)` — a dark
+                                shadow on a dark ground carries no separation,
+                                the edge does.
+
+     STATE      .marker    a status marker row (shape glyph + word)
+                .skel      skeleton block. No pulse. True final height.
+                .settle    the ONLY entrance animation. Transform only.
+                           Opacity is pinned at 1 for its whole duration.
+
+     ICONS      .wz-icon         set by <Icon>; do not style stroke directly
+                .wz-icon--flip   mirrors in RTL (directional marks only)
+
+   REACT PRIMITIVES already built and owned by the foundation — import these,
+   do not write your own:
+     components/Icon.jsx           the whole drawn mark set
+     components/ui/Meter.jsx       the ONLY progress indicator in the app
+     components/ui/Money.jsx       <Money> <Duration> <RunId> — the ledger line
+     components/RunStatusContext   how the status bar reads the live run
+     components/Sidebar.jsx        exports <RailPanelPortal> for route controls
+
+   MOTION: three durations, no others.
+     120ms  cubic-bezier(.2,0,0,1)  state change on a control
+     180ms  cubic-bezier(.2,0,0,1)  surface arrival (drawer, dialog, popup)
+     1200ms linear                  meter fill / indeterminate sweep
+   Forbidden: hover lift, scale on press, growing underlines, pulsing dots,
+   glow rings, spinners. Every loading state is <Meter>.
+
+   ARABIC LAWS — these are bugs, not preferences.
+     A1  Arabic never receives letter-spacing (it breaks glyph joining).
+         Enforced globally below. Author Latin tracking inside [dir=ltr].
+     A2  Arabic never receives text-transform: uppercase. It has no case.
+     A3  Latin numerals and currency inside an Arabic run must be isolated.
+         Use .mono or .figure. Without it "$0.0842" flips its currency mark.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Light mode (default) */
+/* ── FACES ─────────────────────────────────────────────────────────────────
+   All self-hosted. No CDN, no remote @import. One stack resolves both
+   scripts per glyph: Latin renders Supreme, Arabic falls through to Plex
+   Arabic inside the same string. Do not fork the stack on [dir=rtl]. */
+
+@font-face {
+  font-family: 'Supreme';
+  src: url('./assets/fonts/Supreme-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Supreme';
+  src: url('./assets/fonts/Supreme-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  /* Fontshare names this cut "Bold"; it is the 600 in our scale. */
+  font-family: 'Supreme';
+  src: url('./assets/fonts/Supreme-Bold.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+
+/* size-adjust brings Plex Arabic's x-height up to Supreme's so a mixed
+   English/Arabic string does not step mid-line. Do NOT solve this by scaling
+   the root font-size under [dir=rtl] — that rescales Latin numerals and
+   breaks every tabular column in the app. */
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  src: url('./assets/fonts/IBMPlexSansArabic-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  src: url('./assets/fonts/IBMPlexSansArabic-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+@font-face {
+  font-family: 'IBM Plex Sans Arabic';
+  src: url('./assets/fonts/IBMPlexSansArabic-SemiBold.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap; size-adjust: 106%;
+}
+
+@font-face {
+  font-family: 'Commit Mono';
+  src: url('./assets/fonts/CommitMono-400-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Commit Mono';
+  src: url('./assets/fonts/CommitMono-500-Regular.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+
+/* Identity face. Used in EXACTLY two places: the auth plate legend and the
+   Latin lockup beside the drawn mark. Never on a working screen, never on a
+   button, never on body copy. */
+@font-face {
+  font-family: 'Bespoke Stencil';
+  src: url('./assets/fonts/BespokeStencil-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+
+/* ── TOKENS · LIGHT ("the label sheet") ────────────────────────────────────
+   Warm olive-graphite. The base #E9EBE2 has its BLUE channel lowest — the
+   literal inverse of the #f3f4f6 UI-kit neutral family. Not cream, not bone. */
 :root {
-  --bg: #fafafa;
-  --bg-surface: #ffffff;
-  --bg-hover: #f4f4f5;
-  --text-primary: #18181b;
-  --text-secondary: #71717a;
-  --text-tertiary: #a1a1aa;
-  --border: rgba(0,0,0,0.08);
-  --border-hover: rgba(0,0,0,0.12);
-  --accent: #d97757;
-  --accent-hover: #c96a4e;
-  --input-bg: #ffffff;
-  --input-border: rgba(0,0,0,0.12);
-  --badge-green-bg: rgba(16,185,129,0.1);
-  --badge-green-text: #059669;
-  --badge-red-bg: rgba(244,63,94,0.1);
-  --badge-red-text: #e11d48;
-  --badge-amber-bg: rgba(245,158,11,0.1);
-  --badge-amber-text: #d97706;
+  --paper:          #E9EBE2;
+  --panel:          #F7F8F3;
+  --panel-hover:    #FFFFFF;
+  --sunk:           #DEE1D5;
+  --recess:         #DBDED1;
+
+  --etch:           rgba(25,26,20,0.10);
+  --etch-strong:    rgba(25,26,20,0.22);
+  --edge:           rgba(25,26,20,0.50);   /* 3.10:1 worst case */
+
+  --ink:            #191A14;   /* 12.83 : 17.51 */
+  --ink-2:          #4B4C3E;   /*  6.40 :  8.74 */
+  --ink-3:          #565748;   /*  5.39 :  7.36 */
+
+  --signal:         #7E520F;   /* 4.96 : 6.77 as text */
+  --signal-deep:    #7E520F;   /* white label = 6.77 */
+  --signal-edge:    #7E520F;
+  --signal-hot:     #C08A25;
+  --signal-press:   #6E470C;
+
+  --state-done:     #3E6636;   /* 4.87 : 6.65 */
+  --state-fail:     #9C3520;   /* 5.23 : 7.13 */
+  --state-run:      #7E520F;
+  --state-queued:   #565748;
+
+  --btn-label:      #FFFFFF;
+  --fraction-op:    0.82;
+  --focus:          #7E520F;   /* 5.11 : 6.77 */
+  --focus-halo:     rgba(126,82,15,0.30);
+
+  --shadow-overlay: 0 2px 8px rgba(25,26,20,0.22);
+  --drop-overlay:   drop-shadow(0 2px 8px rgba(25,26,20,0.22));
+  --scrim:          rgba(20,21,15,0.55);
+
+  --chart-1: #7E520F;  /* 6.35 vs panel */
+  /* A chart mark is a non-text boundary: it has to clear 3:1 on EVERY surface
+     it can be drawn on, not just --panel. #A8823C was 3.32 vs panel but only
+     2.95 vs paper, and charts sit on both. Darkened one step. */
+  --chart-2: #9A7634;  /* 3.92 vs panel · 3.48 vs paper */
+  --chart-3: #565748;  /* 6.90 */
+  --chart-4: #7C7C68;  /* 3.98 */
+  --chart-5: #3E6636;  /* 6.23 */
+
+  --chamfer-lg: 8px;
+  --chamfer-md: 5px;
+  --chamfer-sm: 3px;
+
+  --rail-spine: 56px;
+  --rail-panel: 240px;
+  --statusbar:  36px;
+
+  --lh-body: 1.45;
+  --ease:    cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Dark mode */
+/* ── TOKENS · DARK ("the panel") ───────────────────────────────────────────
+   #14150F is a warm olive-black, not the cool blue-charcoal (#0c0e15) family. */
 .dark {
-  --bg: #0d0d0d;
-  --bg-surface: #1a1a1a;
-  --bg-hover: #1f1f1f;
-  --text-primary: #e4e4e7;
-  --text-secondary: #a1a1aa;
-  --text-tertiary: #52525b;
-  --border: rgba(255,255,255,0.06);
-  --border-hover: rgba(255,255,255,0.1);
-  --accent: #d97757;
-  --accent-hover: #c96a4e;
-  --input-bg: transparent;
-  --input-border: rgba(255,255,255,0.08);
-  --badge-green-bg: rgba(16,185,129,0.08);
-  --badge-green-text: #34d399;
-  --badge-red-bg: rgba(244,63,94,0.08);
-  --badge-red-text: #fb7185;
-  --badge-amber-bg: rgba(245,158,11,0.08);
-  --badge-amber-text: #fbbf24;
+  --paper:          #14150F;
+  --panel:          #1C1E16;
+  --panel-hover:    #24261C;
+  --sunk:           #181A12;
+  --recess:         #0E0F0A;
+
+  --etch:           rgba(233,230,214,0.09);
+  --etch-strong:    rgba(233,230,214,0.20);
+  --edge:           rgba(233,230,214,0.42);   /* 3.38:1 worst case */
+
+  --ink:            #EDEADB;   /* 12.70 : 15.94 */
+  --ink-2:          #A9A794;   /*  6.31 :  7.92 */
+  --ink-3:          #918F7C;   /*  4.69 :  5.89 */
+
+  --signal:         #E3A32B;   /* 6.97 : 8.74 as text */
+  --signal-deep:    #8A5B12;   /* white label = 5.86 */
+  /* The fill alone is 2.88:1 against --panel, which fails the 3:1 non-text
+     boundary rule. The amber edge is 7.65:1 and resolves it. This is the hot
+     edge on a live control, not a patch. */
+  --signal-edge:    #E3A32B;
+  --signal-hot:     #E3A32B;
+  --signal-press:   #6E480E;
+
+  --state-done:     #93BE83;   /* 7.26 : 9.10 */
+  --state-fail:     #E58163;   /* 5.59 : 7.01 */
+  --state-run:      #E3A32B;
+  --state-queued:   #918F7C;
+
+  --btn-label:      #FFFFFF;
+  --fraction-op:    0.82;
+  --focus:          #E3A32B;   /* 6.97 : 8.74 */
+  --focus-halo:     rgba(227,163,43,0.30);
+
+  --shadow-overlay: 0 2px 8px rgba(10,11,7,0.34);
+  --drop-overlay:   drop-shadow(0 2px 8px rgba(10,11,7,0.34));
+  --scrim:          rgba(10,11,7,0.62);
+
+  --chart-1: #E3A32B;  /* 7.65 vs panel */
+  --chart-2: #B08228;  /* 4.87 */
+  --chart-3: #A9A794;  /* 6.93 */
+  --chart-4: #6E6C5B;  /* 3.18 */
+  --chart-5: #93BE83;  /* 7.97 */
 }
 
-* {
-  @apply box-border;
+/* ── BASE ──────────────────────────────────────────────────────────────────
+   L2: border radius is 0 globally. tailwind.config.js maps every rounded-*
+   utility to 0 as well, so a stray legacy class cannot reintroduce a curve. */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    border-radius: 0;
+  }
+
+  html {
+    font-family: 'Supreme', 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis: none;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--paper);
+    color: var(--ink);
+    font-size: 13px;
+    line-height: var(--lh-body);
+    scrollbar-width: thin;
+    scrollbar-color: var(--edge) transparent;
+  }
+
+  /* Arabic ascenders and descenders need more room; 1.45 reads cramped. */
+  html[dir="rtl"] { --lh-body: 1.65; direction: rtl; text-align: start; }
+  html[dir="ltr"] { direction: ltr; text-align: start; }
+
+  /* A1 — Arabic never receives tracking. Author Latin tracking inside
+     [dir="ltr"] rules or Tailwind's ltr: variant. */
+  html[dir="rtl"] * { letter-spacing: 0 !important; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--etch-strong); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--edge); }
+
+  /* --paper on --signal, not white: white on the dark theme's amber is 1.9:1. */
+  ::selection { background: var(--signal); color: var(--paper); }
+
+  /* Default focus for anything not chamfered. Chamfered elements clip their
+     outline, so .cut carries an inset ring instead (see below). */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  input, textarea, select, button { font: inherit; color: inherit; }
+  textarea { resize: vertical; }
 }
 
-html {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* ── GEOMETRY · THE CHAMFER ────────────────────────────────────────────────
+   One 45 degree cut at the block-start / inline-end corner, mirrored per
+   direction. Nothing in this application is rounded. */
+.cut { clip-path: polygon(0 0, calc(100% - var(--c, 5px)) 0, 100% var(--c, 5px), 100% 100%, 0 100%); }
+[dir="rtl"] .cut { clip-path: polygon(var(--c, 5px) 0, 100% 0, 100% 100%, 0 100%, 0 var(--c, 5px)); }
 
-body {
-  background-color: var(--bg);
-  color: var(--text-primary);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(128,128,128,0.3) transparent;
-}
+.cut-lg { --c: var(--chamfer-lg); }
+.cut-md { --c: var(--chamfer-md); }
+.cut-sm { --c: var(--chamfer-sm); }
 
-body::-webkit-scrollbar {
-  width: 6px;
-}
+/* A clipped element cannot show an outline, so focus becomes an inset ring. */
+.cut:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
 
-body::-webkit-scrollbar-track {
-  background: transparent;
-}
+/* THE ONE CAST SHADOW, and how to apply it to a chamfered surface.
+   clip-path clips an outer box-shadow away, so overlay surfaces cast with a
+   filter instead — a filter runs AFTER the clip, so the shadow follows the
+   cut corner exactly. Three call sites in the whole application:
+   MediaLightbox, RunDetailDrawer, ConfirmDialog (plus the account popup).
+   Nothing else in Wazza casts a shadow. */
+.overlay-cast { filter: var(--drop-overlay); }
 
-body::-webkit-scrollbar-thumb {
-  background: rgba(128,128,128,0.2);
-  border-radius: 100px;
+/* ── SURFACES ──────────────────────────────────────────────────────────────
+   Depth is surface value + a 1px self-coloured etch + the cut. Never a shadow.
+   L3: raised is brighter than the page in BOTH themes. */
+.plate {
+  background-color: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--etch);
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-lg)) 0, 100% var(--chamfer-lg), 100% 100%, 0 100%);
+  padding-block: 16px;
+  padding-inline-start: 16px;
+  padding-inline-end: 24px;   /* clears the 8px cut + 10px minimum */
+  color: var(--ink);
 }
-
-body::-webkit-scrollbar-thumb:hover {
-  background: rgba(128,128,128,0.35);
+[dir="rtl"] .plate {
+  clip-path: polygon(var(--chamfer-lg) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-lg));
 }
+.plate--sunken { background-color: var(--sunk); }
+.plate--recess { background-color: var(--recess); box-shadow: inset 0 0 0 1px var(--etch-strong); }
+.plate--flush  { padding: 0; }
 
-html[dir="rtl"] {
-  direction: rtl;
-  text-align: right;
-}
-
-html[dir="ltr"] {
-  direction: ltr;
-  text-align: left;
-}
-
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* Surface card */
-.surface {
-  background-color: var(--bg-surface);
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
-}
-
-/* Primary button */
-.btn-primary {
-  padding: 0.625rem 1rem;
-  border-radius: 0.5rem;
+/* ── THE FILLED ACTION ─────────────────────────────────────────────────────
+   L1. The only filled thing on any screen. If pressing it does not spend
+   credits, it is a .text-action instead. */
+.slab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  block-size: 40px;
+  padding-inline-start: 16px;
+  padding-inline-end: 22px;    /* clears the 5px cut + 10px, plus optical */
+  font-size: 13px;
   font-weight: 500;
-  color: white;
-  background-color: var(--accent);
-  transition: all 0.2s;
+  line-height: 1;
+  color: var(--btn-label);
+  background-color: var(--signal-deep);
+  box-shadow: inset 0 0 0 1px var(--signal-edge);
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
+  transition: background-color 120ms var(--ease);
+  cursor: pointer;
 }
-
-.btn-primary:hover {
-  background-color: var(--accent-hover);
+[dir="rtl"] .slab {
+  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
 }
+.slab--sm { block-size: 32px; padding-inline-start: 12px; padding-inline-end: 18px; }
 
-.btn-primary:active {
-  transform: scale(0.98);
+/* The app's one authored micro-interaction: the cut corner runs hot. The cap
+   geometry never moves — a fixed triangle fades in on the chamfer itself. */
+.slab::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 0;
+  inline-size: 14px;
+  block-size: 14px;
+  background: var(--signal-hot);
+  clip-path: polygon(100% 0, 100% 100%, 0 0);
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+  pointer-events: none;
 }
+[dir="rtl"] .slab::after { clip-path: polygon(0 0, 0 100%, 100% 0); }
+.slab:hover:not(:disabled)::after { opacity: 1; }
+.slab:active:not(:disabled)       { background-color: var(--signal-press); transition-duration: 0ms; }
+.slab:disabled { opacity: 0.45; cursor: not-allowed; }
+.slab:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--btn-label), inset 0 0 0 3px var(--signal-edge); }
 
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Secondary button */
-.btn-secondary {
-  padding: 0.625rem 1rem;
-  border-radius: 0.5rem;
+/* ── THE FREE ACTION ───────────────────────────────────────────────────────
+   There is no outlined button in this system, which structurally eliminates
+   the filled-plus-outlined pair. */
+.text-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 6px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--text-secondary);
-  background-color: transparent;
-  border: 1px solid var(--border);
-  transition: all 0.2s;
+  line-height: 1.2;
+  color: var(--ink-2);
+  background: none;
+  transition: color 120ms var(--ease);
+  cursor: pointer;
+  text-align: start;
+}
+.text-action:hover:not(:disabled) { color: var(--ink); }
+.text-action:disabled { opacity: 0.45; cursor: not-allowed; }
+.text-action--danger { color: var(--state-fail); }
+.text-action--danger:hover:not(:disabled) { color: var(--state-fail); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── STOWED ROW ACTIONS ────────────────────────────────────────────────────
+   The pair of bare marks that rests invisible on a row or a tile — rename and
+   delete on a chat, download and delete on an asset, open and delete on an
+   admin run — and arrives on hover or keyboard focus.
+
+   THE RULE THIS ENCODES: hover is not a capability every device has. On a
+   touch device there is no hover, and :focus-within never fires either,
+   because the first tap lands on the row's OWN open handler. Gating the
+   controls on `opacity-0 group-hover:opacity-100` therefore makes deleting an
+   asset or renaming a chat literally impossible on a tablet. So the stow is
+   gated on pointer capability: a coarse pointer always sees the controls.
+   Never write the hover-only utility chain again; use this. */
+.stow {
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+.stow:focus-within { opacity: 1; }
+.group:hover .stow { opacity: 1; }
+@media (hover: none), (pointer: coarse) {
+  .stow { opacity: 1; }
 }
 
-.btn-secondary:hover {
-  background-color: var(--bg-hover);
-  border-color: var(--border-hover);
-}
-
-/* Input */
-.input-claude {
-  width: 100%;
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 0.75rem;
-  padding: 0.75rem 1rem;
-  color: var(--text-primary);
-  transition: all 0.2s;
-}
-
-.input-claude::placeholder {
-  color: var(--text-tertiary);
-}
-
-.input-claude:focus {
-  border-color: var(--accent);
+/* ── INPUTS ────────────────────────────────────────────────────────────────
+   The control edge is --edge, not --etch-strong: a boundary that identifies
+   an interactive control has to clear 3:1. */
+.field {
+  inline-size: 100%;
+  background-color: var(--sunk);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
+  padding-block: 10px;
+  padding-inline-start: 14px;
+  padding-inline-end: 19px;
+  font-size: 13px;
   outline: none;
+  transition: box-shadow 120ms var(--ease);
+}
+[dir="rtl"] .field {
+  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
+}
+.field::placeholder { color: var(--ink-3); opacity: 1; }
+/* The outer half of the ring is inset too — a clip-path would eat an outer one. */
+.field:focus, .field:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--focus), inset 0 0 0 3px var(--focus-halo);
+}
+.field--sm { padding-block: 6px; font-size: 12px; }
+
+/* Auth variant: no box at all, an etched underline. */
+.field--underline {
+  background: transparent;
+  box-shadow: none;
+  clip-path: none;
+  border-block-end: 1px solid var(--edge);
+  padding-inline: 0;
+  transition: border-color 120ms var(--ease);
+}
+/* The underline variant kills the base focus ring, so the underline itself has
+   to carry the whole focus state — a 1px hue shift is the weakest indicator in
+   the app and it sits on every field of /login and /register. It thickens to
+   2px and drops the halo one line below it. Still no box, still no glow. */
+.field--underline:focus, .field--underline:focus-visible {
+  border-block-end-width: 2px;
+  border-block-end-color: var(--focus);
+  box-shadow: 0 1px 0 0 var(--focus-halo);
 }
 
-/* Mesh gradient for auth */
-.mesh-gradient {
-  background:
-    radial-gradient(at 0% 0%, hsla(15,60%,50%,0.25) 0, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(280,40%,40%,0.25) 0, transparent 50%),
-    radial-gradient(at 0% 100%, hsla(220,40%,35%,0.25) 0, transparent 50%),
-    radial-gradient(at 100% 100%, hsla(340,40%,40%,0.25) 0, transparent 50%);
-  background-size: 200% 200%;
-  animation: meshMove 20s ease infinite;
+.select {
+  appearance: none;
+  padding-inline-end: 34px;   /* caret sits at inset-inline-end:12px, clear of the cut */
+  cursor: pointer;
 }
 
-@keyframes meshMove {
-  0% { background-position: 0% 0%; }
-  50% { background-position: 100% 100%; }
-  100% { background-position: 0% 0%; }
+/* ── ROCKER — the segmented control ────────────────────────────────────────
+   Replaces every filled-pill filter row. The active cell is RAISED plus ink,
+   the same logic as the rail. Never an accent fill. Labels are always words. */
+.rocker {
+  display: inline-flex;
+  align-items: stretch;
+  background-color: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
+}
+[dir="rtl"] .rocker {
+  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
+}
+.rocker__cell {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink-3);
+  background: transparent;
+  transition: background-color 120ms var(--ease), color 120ms var(--ease);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rocker__cell + .rocker__cell { border-inline-start: 1px solid var(--etch); }
+.rocker__cell:hover { color: var(--ink-2); }
+/* The active cell steps to --panel-hover, the brightest surface in the system,
+   NOT to --panel. A rocker is frequently mounted on a --panel surface (the
+   status bar, a plate), and a --panel active cell against a --panel ground has
+   zero contrast — which inverts the reading: the inactive cell shows the
+   darker housing and looks selected instead. --panel-hover is brighter than
+   every surface in both themes, so the raised cell reads anywhere. */
+.rocker__cell[data-on="true"] {
+  background-color: var(--panel-hover);
+  box-shadow: inset 0 0 0 1px var(--etch);
+  color: var(--ink);
+  font-weight: 600;
+}
+.rocker__cell:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
+/* the last cell sits under the housing's cut; give it room */
+.rocker__cell:last-child { padding-inline-end: 16px; }
+
+/* ── TYPOGRAPHY ────────────────────────────────────────────────────────────
+   Working screens never exceed 20px. 17px is the only heading size. */
+.mono, .figure {
+  font-family: 'Commit Mono', ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums lining-nums;
+  /* A3 — isolate Latin numerals and currency inside an Arabic run. */
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: end;
+}
+.mono { font-size: 12px; }
+
+/* The group legend. Replaces the deleted tracked-caps costume everywhere.
+   No icon, no rule beside it, no chip. A2: never uppercase in Arabic. */
+.legend {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-3);
+  margin-block-start: 16px;
+  margin-block-end: 8px;
+}
+[dir="ltr"] .legend { text-transform: uppercase; letter-spacing: 0.08em; }
+[dir="rtl"] .legend { font-size: 12px; }   /* one step up to hold equal weight */
+.legend:first-child { margin-block-start: 0; }
+
+.page-title { font-size: 17px; font-weight: 600; line-height: 1.25; color: var(--ink); }
+.prose      { font-size: 15px; line-height: var(--lh-body); color: var(--ink); max-inline-size: 68ch; }
+.caption    { font-size: 11px; line-height: 1.3; color: var(--ink-3); }
+
+.stencil {
+  font-family: 'Bespoke Stencil', 'Supreme', system-ui, sans-serif;
+  font-weight: 500;
+}
+[dir="ltr"] .stencil { letter-spacing: 0.14em; }
+
+/* ── THE GUTTER GRID — the app-wide compositional spine ────────────────────
+   The 56px leading gutter runs unbroken from under the status bar to the
+   bottom of the page on EVERY route. It carries markers, row indices, scene
+   numbers, status shapes and seam figures. This is what makes chat and the
+   dashboard read as one application. */
+.wz-page {
+  display: grid;
+  grid-template-columns: var(--rail-spine) minmax(0, 1fr);
+  column-gap: 0;
+  align-content: start;
+  padding: 24px;
+  min-block-size: 100%;
+}
+.wz-page--flush { padding: 0; block-size: 100%; align-content: stretch; }
+.wz-gutter {
+  grid-column: 1;
+  font-size: 11px;
+  color: var(--ink-3);
+  padding-inline-end: 12px;
+  text-align: start;
+}
+.wz-col      { grid-column: 2; min-inline-size: 0; }
+.wz-col--span{ grid-column: 1 / -1; min-inline-size: 0; }
+.wz-stack > * + * { margin-block-start: 24px; }
+
+/* ── TABLE ─────────────────────────────────────────────────────────────────
+   36px rows, zebra by a rule not a fill, sticky header on --panel. */
+.dtable { inline-size: 100%; border-collapse: collapse; font-size: 12px; }
+.dtable thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  background-color: var(--panel);
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: start;
+  padding: 8px 12px;
+  border-block-end: 1px solid var(--etch-strong);
+  white-space: nowrap;
+}
+[dir="ltr"] .dtable thead th { text-transform: uppercase; letter-spacing: 0.08em; }
+.dtable tbody td {
+  block-size: 36px;
+  padding: 0 12px;
+  color: var(--ink-2);
+  border-block-end: 1px solid var(--etch);
+  vertical-align: middle;
+}
+.dtable tbody tr { transition: background-color 120ms var(--ease); }
+.dtable tbody tr:hover { background-color: var(--panel-hover); }
+.dtable .num { text-align: end; }
+
+/* ── STATUS MARKER — shape first, hue second (L4) ──────────────────────────
+   No background, no border, no pill, no glow, no pulse. */
+.marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+.marker--done      { color: var(--state-done); }
+.marker--fail      { color: var(--state-fail); }
+.marker--run       { color: var(--state-run); }
+.marker--queued    { color: var(--state-queued); }
+.marker--cancelled { color: var(--ink-3); }
+
+/* ── SKELETON — no pulse. A pulsing skeleton is decorative motion. ─────────
+   Rows sit at the true final height so nothing reflows when data lands. */
+.skel {
+  background-color: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--etch);
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
+}
+[dir="rtl"] .skel {
+  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* ── MOTION ────────────────────────────────────────────────────────────────
+   L5: opacity is pinned at 1 for the whole duration. Content is on screen on
+   frame one, always. There is no fade-in in this application. */
+@keyframes settle { from { transform: translateY(6px); } to { transform: none; } }
+.settle { animation: settle 180ms var(--ease) both; opacity: 1; }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+@keyframes settle-inline { from { transform: translateX(24px); } to { transform: none; } }
+[dir="rtl"] .settle-inline { animation-name: settle-inline-rtl; }
+@keyframes settle-inline-rtl { from { transform: translateX(-24px); } to { transform: none; } }
+.settle-inline { animation: settle-inline 180ms var(--ease) both; opacity: 1; }
 
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+/* ── METER ─────────────────────────────────────────────────────────────────
+   The app's only progress indicator. The fill is a clip-path inset over a
+   pre-drawn full tick row — never scaleX, never width, never a rounded cap.
+   The inset is authored logically so the fill runs in the reading direction. */
+.wz-meter {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  line-height: 0;
 }
-
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(100%); }
-  to { opacity: 1; transform: translateX(0); }
+.wz-meter__track { display: flex; inline-size: 100%; }
+/* The clip-path itself is set inline by the component (it is direction-
+   dependent, and one source of truth beats a cascade). */
+.wz-meter__fill {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  transition: clip-path 1200ms linear;
 }
+.wz-meter--full { inline-size: 100%; }   /* required by variant="stage" */
 
-.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
-.animate-slideUp { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-.animate-scaleIn { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-.animate-slideInRight { animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+/* ── THE LEDGER LINE ───────────────────────────────────────────────────────
+   Every currency and time value in the application goes through <Money> /
+   <Duration>. The fractional digits render one step down the ink ramp, so
+   scanning a column of run costs lands magnitude first and precision second.
+   No component formats a cost inline. Ever. */
+.ledger { display: inline-flex; align-items: baseline; }
+.ledger__fraction { color: var(--ink-2); }
+/* On a filled slab the fraction is the label colour at --fraction-op (0.82):
+   5.17:1 light, 4.52:1 dark. 0.78 fails AA in dark — do not lower it. */
+.ledger--on-fill { color: var(--btn-label); }
+.ledger--on-fill .ledger__fraction { color: var(--btn-label); opacity: var(--fraction-op); }
+
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* ── ICONS ─────────────────────────────────────────────────────────────────
+   Only directional marks mirror. A mirrored `search` reads broken, so the set
+   is never blanket-flipped. */
+.wz-icon { display: block; flex: none; }
+[dir="rtl"] .wz-icon--flip { transform: scaleX(-1); }
+
+/* ── REDUCED MOTION ────────────────────────────────────────────────────────
+   Nothing disappears. The meter resolves to its TRUE value, never half-lit —
+   a static half meter is a lie about the run's progress. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

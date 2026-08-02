@@ -1,20 +1,49 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { X, ExternalLink } from 'lucide-react'
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE LIGHTBOX — full-size view of a generated artifact.
 
-/**
- * Full-screen viewer for generated images and video.
- *
- * Media is rendered at thumbnail size in six different places (chat bubbles,
- * scene results, plan previews, the asset grid, the run timeline), so this is a
- * context rather than a prop: any of them can call openMedia() without the
- * lightbox having to be threaded through every component in between.
- */
+   Media is rendered at thumbnail size in six different places (the transcript,
+   scene results, plan previews, the asset grid, the run drawer), so this is a
+   context rather than a prop: any of them can call openMedia() without the
+   lightbox being threaded through every component in between. That behaviour —
+   openMedia, close, Escape, the body-overflow lock — is unchanged.
+
+   WHAT CHANGED is that the artifact is now rendered in the app's ONE <Frame>:
+   the same recess well, the same registration marks and the same Commit Mono
+   caption rail as a print in the library and a preview in the transcript. This
+   is the surface a user lands on every time they open an image, and it was the
+   last screen still carrying the previous design's vocabulary.
+
+   The two controls are bare marks in the Frame's caption rail — no floating
+   tiles, no tinted boxes, and no absolute `top-3 right-3`, which pinned them to
+   the visual right in Arabic instead of the reading end. There is nothing left
+   to mirror: the rail is a flex row on logical properties.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import Frame from './ui/Frame'
+import { Close, External } from './Icon'
+import { useUIStore } from '../store/uiStore'
+
 const LightboxContext = createContext(() => {})
 
 export const useLightbox = () => useContext(LightboxContext)
 
+/* The caption reads real data off the object, the way every other Frame in the
+   application does: the artifact's kind and its file name. */
+function fileNameOf(url) {
+  try {
+    const path = new URL(url, window.location.origin).pathname
+    const last = path.split('/').filter(Boolean).pop()
+    return last ? decodeURIComponent(last) : ''
+  } catch (_) {
+    return ''
+  }
+}
+
 export function LightboxProvider({ children }) {
   const [item, setItem] = useState(null)
+  const language = useUIStore((s) => s.language)
+  const ar = language === 'ar'
 
   const openMedia = useCallback((url, type = 'image') => {
     if (url) setItem({ url, type })
@@ -37,56 +66,82 @@ export function LightboxProvider({ children }) {
     }
   }, [item, close])
 
+  const labels = {
+    view: ar ? 'عرض الوسائط' : 'Media viewer',
+    original: ar ? 'فتح الأصل في تبويب جديد' : 'Open the original in a new tab',
+    close: ar ? 'إغلاق (Esc)' : 'Close (Esc)',
+  }
+
   return (
     <LightboxContext.Provider value={openMedia}>
       {children}
       {item && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center animate-fadeIn"
-          style={{ backgroundColor: 'rgba(0,0,0,0.88)' }}
+          className="fixed inset-0 z-overlay flex items-center justify-center"
+          style={{ padding: 24, backgroundColor: 'var(--scrim)' }}
           onClick={close}
           role="dialog"
           aria-modal="true"
+          aria-label={labels.view}
         >
-          <div className="absolute top-3 right-3 flex items-center gap-2">
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              title="Open original in a new tab"
-              className="p-2 rounded-lg transition-colors"
-              style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff' }}
+          {/* Clicks on the artifact itself must not close it — only the scrim. */}
+          <div
+            className="settle overlay-cast"
+            style={{ maxInlineSize: '92vw' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Frame
+              caption={[item.type === 'video' ? 'video' : 'image', fileNameOf(item.url)]}
+              actions={(
+                <span className="flex items-center gap-3 flex-none">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-action"
+                    style={{ padding: 0 }}
+                    title={labels.original}
+                    aria-label={labels.original}
+                  >
+                    <External size={14} />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="text-action"
+                    style={{ padding: 0 }}
+                    title={labels.close}
+                    aria-label={labels.close}
+                    autoFocus
+                  >
+                    <Close size={14} />
+                  </button>
+                </span>
+              )}
             >
-              <ExternalLink size={16} />
-            </a>
-            <button
-              type="button"
-              onClick={close}
-              title="Close (Esc)"
-              className="p-2 rounded-lg transition-colors"
-              style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff' }}
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          {/* Clicks on the media itself must not close it — only the backdrop. */}
-          <div className="max-w-[92vw] max-h-[92vh]" onClick={(e) => e.stopPropagation()}>
-            {item.type === 'video' ? (
-              <video
-                controls
-                autoPlay
-                src={item.url}
-                className="max-w-[92vw] max-h-[92vh] rounded-lg"
-              />
-            ) : (
-              <img
-                src={item.url}
-                alt="Generated"
-                className="max-w-[92vw] max-h-[92vh] object-contain rounded-lg"
-              />
-            )}
+              {item.type === 'video' ? (
+                <video
+                  controls
+                  autoPlay
+                  src={item.url}
+                  style={{
+                    display: 'block',
+                    maxInlineSize: 'calc(92vw - 68px)',
+                    maxBlockSize: 'calc(92vh - 84px)',
+                  }}
+                />
+              ) : (
+                <img
+                  src={item.url}
+                  alt=""
+                  style={{
+                    display: 'block',
+                    maxInlineSize: 'calc(92vw - 68px)',
+                    maxBlockSize: 'calc(92vh - 84px)',
+                  }}
+                />
+              )}
+            </Frame>
           </div>
         </div>
       )}

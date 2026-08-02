@@ -1,10 +1,76 @@
 import React, { useEffect, useRef, useState } from 'react'
 import ChatMessages from '../components/chat/ChatMessages'
 import PromptInput from '../components/chat/PromptInput'
+import { useChatText } from '../components/chat/chatKit'
+import { useRunStatus } from '../components/RunStatusContext'
+import Meter from '../components/ui/Meter'
+import { Duration } from '../components/ui/Money'
+import { ShapeRun } from '../components/Icon'
+import { useUIStore } from '../store/uiStore'
 import { useChatStore } from '../store/chatStore'
 import { generateService } from '../services/generateService'
 import { chatService } from '../services/chatService'
 import { assetService } from '../services/assetService'
+
+/**
+ * THE RUN STRIP.
+ *
+ * Progress used to be a text string mutating in place inside a message that
+ * scrolled away mid-generation. This is a fixed strip pinned ABOVE the composer
+ * and OUTSIDE the scroll container, so the machine's state cannot leave the
+ * screen while it is spending money.
+ *
+ * It is a READER, not a controller. `patchMessage` keeps writing its progress
+ * line into the transcript exactly as it did — the strip is an additional
+ * surface over the same values, and it owns no behaviour of its own.
+ */
+function RunStrip({ phase, percent, sceneNumber, elapsedMs }) {
+  const { t } = useUIStore()
+  const { tx } = useChatText()
+  const hasPercent = typeof percent === 'number' && Number.isFinite(percent)
+
+  return (
+    <div
+      className="shrink-0 grid grid-cols-[56px_minmax(0,1fr)] items-center"
+      style={{
+        backgroundColor: 'var(--panel)',
+        borderBlockStart: '1px solid var(--etch)',
+        paddingInline: 24,
+        paddingBlock: 8,
+      }}
+    >
+      <span className="wz-gutter" style={{ fontSize: 10 }}>{tx('runLegend')}</span>
+
+      <div className="flex items-center gap-4 min-w-0">
+        <span className="marker marker--run">
+          <ShapeRun size={10} />
+          <span className="truncate">{phase || t('generating')}</span>
+        </span>
+
+        {sceneNumber ? (
+          <span className="mono shrink-0" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+            {tx('scene')} {String(sceneNumber).padStart(2, '0')}
+          </span>
+        ) : null}
+
+        <Meter
+          cells={5}
+          value={hasPercent ? percent : 0}
+          mode={hasPercent ? 'determinate' : 'indeterminate'}
+          tone="signal"
+          label={t('generating')}
+        />
+
+        {Number.isFinite(elapsedMs) && (
+          <span className="ms-auto flex items-center gap-2 shrink-0">
+            <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>{tx('elapsed')}</span>
+            <Duration ms={elapsedMs} style={{ fontSize: 11, color: 'var(--ink-2)' }} />
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // A message that is nothing but "retry" (or the Arabic equivalent) after a
 // failed run is the Retry button said out loud. Anything with more to it —
@@ -28,6 +94,38 @@ function ChatPage() {
   // Fetched once; the card falls back to showing the run's current model until
   // it arrives, so a slow or failed fetch never blocks reviewing a plan.
   const [modelCatalog, setModelCatalog] = useState(null)
+
+  // ── PRESENTATION-ONLY RUN TELEMETRY ───────────────────────────────────────
+  // The same values `openRunSocket`'s onmessage already parses out of the
+  // payload, held as local state so the run strip and the status bar can read
+  // them. No store gains state, no service changes, and the transcript's
+  // progress line is written exactly as before.
+  const { publish, clear } = useRunStatus()
+  const [phase, setPhase] = useState(null)
+  const [percent, setPercent] = useState(null)
+  const [sceneNumber, setSceneNumber] = useState(null)
+  const [elapsedMs, setElapsedMs] = useState(null)
+  const [sessionCostUsd, setSessionCostUsd] = useState(0)
+
+  // Elapsed is a local clock, started when a run becomes active and stopped
+  // when it ends. It reports nothing the server does not already know.
+  useEffect(() => {
+    if (!activeRunId) {
+      setElapsedMs(null)
+      return undefined
+    }
+    const started = Date.now()
+    setElapsedMs(0)
+    const id = setInterval(() => setElapsedMs(Date.now() - started), 1000)
+    return () => clearInterval(id)
+  }, [activeRunId])
+
+  useEffect(() => {
+    publish({ activeRunId, loading, awaitingUser, phase, percent, sceneNumber, elapsedMs, sessionCostUsd })
+  }, [activeRunId, loading, awaitingUser, phase, percent, sceneNumber, elapsedMs, sessionCostUsd, publish])
+
+  // Leaving the chat leaves nothing stale in the status bar.
+  useEffect(() => () => clear(), [clear])
 
   useEffect(() => {
     return () => {
@@ -114,6 +212,10 @@ function ChatPage() {
     setActiveRunId(null)
     setAwaitingUser(false)
     setLoading(false)
+    // Presentation only: the strip and the status bar have nothing left to read.
+    setPhase(null)
+    setPercent(null)
+    setSceneNumber(null)
   }
 
   const pushError = (error, fallback = 'Generation failed') => {
@@ -238,6 +340,13 @@ function ChatPage() {
         // Follows the run across both phases: the pre-plan line first, then
         // the post-confirm line. Null while a card awaits the user.
         patchMessage(progressTargetRef.current, { content: `${prefix} - ${data.message}` })
+        // The SAME values, published for the run strip and the status bar. This
+        // adds a reader; it changes nothing about the line above.
+        setPhase(data.message || null)
+        setPercent(Number.isFinite(Number(data.progress))
+          ? Math.min(1, Math.max(0, Number(data.progress) / 100))
+          : null)
+        setSceneNumber(data.scene_number || null)
       } catch {
         // Ignore malformed WebSocket messages and keep the current progress text.
       }
@@ -576,7 +685,13 @@ function ChatPage() {
   })
 
   const handleConfirm = (runId) => withCardBusy(async (index) => {
+    // Read before the patch: this is what the user just authorised, and it is
+    // what the session spend in the status bar accumulates. Presentation only —
+    // the figure comes off the card that is already on screen.
+    const authorised = Number(useChatStore.getState().messages[index]?.plan?.total_cost_usd)
+
     patchMessage(index, { resolved: true, resolution: 'confirmed' })
+    if (Number.isFinite(authorised)) setSessionCostUsd((total) => total + authorised)
     setLoading(true)
     setAwaitingUser(false)
 
@@ -597,6 +712,8 @@ function ChatPage() {
       // put the card back rather than stranding it: once the user tops up,
       // Confirm works again and nothing has to be described a second time.
       patchMessage(index, { resolved: false, resolution: null, busy: false })
+      // Nothing was spent, so the session total gives it back.
+      if (Number.isFinite(authorised)) setSessionCostUsd((total) => Math.max(0, total - authorised))
       cardIndexRef.current = index
       patchMessage(progressIndex, {
         content: `Error: ${error?.response?.data?.detail || error?.message || 'Generation failed'}`
@@ -622,12 +739,24 @@ function ChatPage() {
     modelCatalog,
   }
 
+  const composerDisabled = loading || (!!activeRunId && !awaitingUser)
+
+  /* Three bands: the transcript scrolls, the run strip and the composer are
+     pinned. No viewport calc — <main> is a flex child with a definite height,
+     so the page is simply h-full. */
   return (
-    <div className="flex h-[calc(100vh-48px)] overflow-hidden" style={{ backgroundColor: 'var(--bg)' }}>
-      <div className="flex-1 flex flex-col min-w-0 max-w-3xl mx-auto w-full">
-        <ChatMessages messages={messages} loading={loading} handlers={handlers} />
-        <PromptInput onSubmit={handleSendPrompt} disabled={loading || (!!activeRunId && !awaitingUser)} />
-      </div>
+    <div className="flex flex-col h-full min-h-0" style={{ backgroundColor: 'var(--paper)' }}>
+      <ChatMessages
+        messages={messages}
+        loading={loading}
+        handlers={handlers}
+        onSubmit={handleSendPrompt}
+        phase={phase}
+      />
+      {composerDisabled && (
+        <RunStrip phase={phase} percent={percent} sceneNumber={sceneNumber} elapsedMs={elapsedMs} />
+      )}
+      <PromptInput onSubmit={handleSendPrompt} disabled={composerDisabled} />
     </div>
   )
 }

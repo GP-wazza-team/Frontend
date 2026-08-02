@@ -1,5 +1,32 @@
-import React from 'react'
-import { X, Clock, DollarSign, CheckCircle2, XCircle, Loader2, AlertCircle, Zap, Layers } from 'lucide-react'
+/* THE RUN DRAWER — inspect one run, end to end.
+
+   THE RECOMPOSITION
+     · It docks to the inline-end edge with a real chamfer, casts the app's
+       ONE shadow through .overlay-cast, and pairs it with an inset edge —
+       a dark shadow on a dark ground carries no separation, the edge does.
+     · Six nested `.surface` cards became ruled groups on the 56px gutter
+       grid. A drawer 480px wide cannot afford six sets of padding, and the
+       cards were carrying no information the rules do not.
+     · The top three stat boxes became the rubric strip the rest of the app
+       uses.
+     · The step list lost its circle-icon-and-vertical-line timeline. Steps
+       are ruled entries with a shape marker; the spinning Loader2 on a
+       running step is a static ShapeRun — nothing in this system spins.
+     · Model calls became ledger rows: the cost sits on the ledger line at the
+       trailing edge and the row rules do the grouping.
+     · Assets render as Frames at their true aspect ratio. aspect-video +
+       object-cover cropped every 9:16 asset in the drawer.
+     · Escape now closes it, focus is trapped and returned. None of that
+       existed; the drawer was mouse-only.
+
+   Props are unchanged: { run, onClose }. */
+
+import React, { useEffect, useRef } from 'react'
+import { Close, Caret } from '../Icon'
+import { Money, Duration, RunId } from '../ui/Money'
+import { Rubric, RunMarker, En } from '../dashboard/Instruments'
+import Frame, { mediaStyle } from '../ui/Frame'
+import EmptyState from '../ui/EmptyState'
 
 function formatTime(ts) {
   if (!ts) return '—'
@@ -10,196 +37,288 @@ function formatTime(ts) {
   }
 }
 
-function formatDuration(ms) {
-  if (!ms && ms !== 0) return '—'
-  if (ms < 1000) return `${ms}ms`
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-  const mins = Math.floor(ms / 60000)
-  const secs = ((ms % 60000) / 1000).toFixed(1)
-  return `${mins}m ${secs}s`
-}
-
-function formatCost(val) {
-  const n = parseFloat(val) || 0
-  return `$${n.toFixed(6)}`
-}
-
-function StatusBadge({ status }) {
-  const styles = {
-    completed: { bg: 'var(--badge-green-bg)', text: 'var(--badge-green-text)' },
-    succeeded: { bg: 'var(--badge-green-bg)', text: 'var(--badge-green-text)' },
-    failed: { bg: 'var(--badge-red-bg)', text: 'var(--badge-red-text)' },
-    running: { bg: 'var(--badge-amber-bg)', text: 'var(--badge-amber-text)' },
-    pending: { bg: 'var(--badge-amber-bg)', text: 'var(--badge-amber-text)' },
-  }
-  const s = (status || '').toLowerCase()
-  const style = styles[s] || styles.pending
+/* A ruled label/value pair. Replaces the label-above-value stack that used to
+   sit inside a bordered box inside another bordered box. */
+function Entry({ label, value, mono = false }) {
   return (
-    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase" style={{ backgroundColor: style.bg, color: style.text }}>
-      {status || '—'}
-    </span>
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 96px) minmax(0, 1fr)',
+        gap: 12,
+        paddingBlock: 8,
+        borderBlockStart: '1px solid var(--etch)',
+      }}
+    >
+      <span className="legend" style={{ marginBlock: 0 }}>{label}</span>
+      {/* justify-self, not text-align: .mono forces direction:ltr, so a
+          text-align inside it resolves against the ISOLATE, not the page —
+          which parks a mono value at the far physical edge of the column in
+          RTL. Letting the box hug its content puts it at the reading start
+          in both directions. */}
+      <span
+        className={mono ? 'mono' : undefined}
+        style={{ fontSize: 12, color: 'var(--ink)', justifySelf: 'start', minInlineSize: 0, wordBreak: 'break-word' }}
+      >
+        {value || '—'}
+      </span>
+    </div>
   )
 }
 
-function StepIcon({ status }) {
-  const s = (status || '').toLowerCase()
-  if (s === 'completed' || s === 'succeeded') return <CheckCircle2 size={14} style={{ color: 'var(--badge-green-text)' }} />
-  if (s === 'failed') return <XCircle size={14} style={{ color: 'var(--badge-red-text)' }} />
-  if (s === 'running') return <Loader2 size={14} className="animate-spin" style={{ color: 'var(--badge-amber-text)' }} />
-  return <AlertCircle size={14} style={{ color: 'var(--text-tertiary)' }} />
+function Group({ index, legend, children }) {
+  return (
+    <section style={{ display: 'grid', gridTemplateColumns: 'var(--rail-spine) minmax(0, 1fr)', marginBlockStart: 24 }}>
+      <div className="wz-gutter">
+        <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start', display: 'block' }}>
+          {String(index).padStart(2, '0')}
+        </span>
+      </div>
+      <div className="min-w-0">
+        <span className="legend" style={{ marginBlockStart: 0 }}>{legend}</span>
+        {children}
+      </div>
+    </section>
+  )
 }
 
 export default function RunDetailDrawer({ run, onClose }) {
+  const panelRef = useRef(null)
+  const closeRef = useRef(null)
+  const restoreRef = useRef(null)
+
+  /* Every caller passes an inline arrow for onClose, so its identity changes on
+     every parent render — and the route DOES re-render while the drawer is open
+     (it awaits the run detail and sets it). With onClose in the dep list the
+     trap tore down and rebuilt mid-open: the cleanup handed focus back to the
+     trigger, and the re-run then captured the drawer's own Close button as the
+     thing to restore to. On close, focus landed on an unmounting node — i.e.
+     on <body>. The callback lives in a ref so the effect depends on `run`
+     alone, and the capture happens ONCE per open. */
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  useEffect(() => {
+    if (!run) return undefined
+    if (!restoreRef.current) restoreRef.current = document.activeElement
+    closeRef.current?.focus()
+    const onKey = (e) => {
+      if (e.key === 'Escape') { onCloseRef.current(); return }
+      if (e.key !== 'Tab' || !panelRef.current) return
+      const focusables = panelRef.current.querySelectorAll(
+        'button, [href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'
+      )
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      if (restoreRef.current && typeof restoreRef.current.focus === 'function') restoreRef.current.focus()
+      restoreRef.current = null
+    }
+  }, [run])
+
   if (!run) return null
 
   const steps = Array.isArray(run.steps) ? run.steps : []
   const assets = Array.isArray(run.assets) ? run.assets : []
   const modelCalls = Array.isArray(run.model_calls) ? run.model_calls : []
+  let group = 0
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 animate-fadeIn" onClick={onClose} />
+    <div className="fixed inset-0 z-overlay flex justify-end">
+      <div className="absolute inset-0" style={{ backgroundColor: 'var(--scrim)' }} onClick={onClose} />
 
-      {/* Drawer */}
-      <div className="relative w-full max-w-2xl h-full overflow-y-auto animate-slideInRight"
-        style={{ backgroundColor: 'var(--bg)', borderLeft: '1px solid var(--border)' }}>
-
-        {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4"
-          style={{ backgroundColor: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
-              <Zap size={16} style={{ color: 'var(--accent)' }} />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Run ${run.id}`}
+        className="relative h-full overflow-y-auto plate plate--flush overlay-cast settle-inline"
+        style={{
+          inlineSize: 520,
+          maxInlineSize: '100%',
+          boxShadow: 'inset 0 0 0 1px var(--etch-strong)',
+        }}
+      >
+        {/* HEADER — sticky, on --panel, so the run identity never scrolls away */}
+        <div
+          className="sticky top-0 z-10 flex items-start justify-between gap-4"
+          style={{
+            backgroundColor: 'var(--panel)',
+            paddingBlock: 14,
+            paddingInlineStart: 20,
+            paddingInlineEnd: 24,
+            borderBlockEnd: '1px solid var(--etch-strong)',
+          }}
+        >
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-3">
+              <RunId id={run.id} style={{ fontSize: 13, color: 'var(--ink)' }} />
+              <RunMarker status={run.status} />
             </div>
-            <div>
-              <h2 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Run #{run.id}</h2>
-              <p className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{formatTime(run.started_at)}</p>
-            </div>
+            <p className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', textAlign: 'start', marginBlockStart: 2 }}>
+              {formatTime(run.started_at)}
+            </p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
-            <X size={18} style={{ color: 'var(--text-tertiary)' }} />
+          <button ref={closeRef} type="button" onClick={onClose} className="text-action flex-none" aria-label="Close">
+            <Close size={16} />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Top Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="surface p-3 rounded-lg">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <DollarSign size={12} style={{ color: 'var(--accent)' }} />
-                <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>Total Cost</span>
-              </div>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{formatCost(run.total_cost_usd)}</p>
-            </div>
-            <div className="surface p-3 rounded-lg">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Clock size={12} style={{ color: 'var(--accent)' }} />
-                <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>Duration</span>
-              </div>
-              <p className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{formatDuration(run.duration_ms)}</p>
-            </div>
-            <div className="surface p-3 rounded-lg">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Layers size={12} style={{ color: 'var(--accent)' }} />
-                <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>Status</span>
-              </div>
-              <div className="pt-0.5"><StatusBadge status={run.status} /></div>
-            </div>
-          </div>
+        <div style={{ paddingBlock: 16, paddingInlineStart: 16, paddingInlineEnd: 24 }}>
+          <Rubric
+            columns={3}
+            cells={[
+              {
+                key: 'cost',
+                legend: 'Total cost',
+                value: <Money usd={run.total_cost_usd} digits={6} style={{ fontSize: 17, lineHeight: 1.15 }} />,
+                note: <En>{`${modelCalls.length} calls`}</En>,
+              },
+              {
+                key: 'duration',
+                legend: 'Duration',
+                value: (run.duration_ms != null
+                  ? <Duration ms={run.duration_ms} style={{ fontSize: 17, lineHeight: 1.15 }} />
+                  : <span className="mono" style={{ fontSize: 17 }}>—</span>),
+                note: <En>{`${steps.length} steps`}</En>,
+              },
+              {
+                key: 'assets',
+                legend: 'Assets',
+                value: <span className="mono" style={{ fontSize: 17, color: 'var(--ink)' }}>{assets.length}</span>,
+                note: run.provider || undefined,
+              },
+            ]}
+          />
 
-          {/* Prompt Section */}
-          <div className="surface p-4 rounded-lg">
-            <h3 className="text-[13px] font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>User Prompt</h3>
-            <p className="text-[13px] leading-relaxed p-3 rounded-md" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-secondary)' }}>
+          <Group index={++group} legend="User prompt">
+            <p
+              className="plate--sunken cut cut-md"
+              style={{
+                fontSize: 13,
+                color: 'var(--ink)',
+                lineHeight: 'var(--lh-body)',
+                paddingBlock: 10,
+                paddingInlineStart: 12,
+                paddingInlineEnd: 16,
+                boxShadow: 'inset 0 0 0 1px var(--etch)',
+              }}
+            >
               {run.user_prompt || 'No prompt recorded'}
             </p>
             {run.system_prompt && (
-              <div className="mt-3">
-                <h4 className="text-[11px] font-medium uppercase tracking-wide mb-1" style={{ color: 'var(--text-tertiary)' }}>System Prompt</h4>
-                <pre className="text-[11px] p-3 rounded-md overflow-x-auto whitespace-pre-wrap" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}>
+              <details style={{ marginBlockStart: 10 }}>
+                <summary className="text-action" style={{ fontSize: 12 }}>
+                  <Caret direction="down" size={14} />
+                  System prompt
+                </summary>
+                <pre
+                  className="mono plate--sunken cut cut-md"
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--ink-2)',
+                    whiteSpace: 'pre-wrap',
+                    textAlign: 'start',
+                    paddingBlock: 10,
+                    paddingInlineStart: 12,
+                    paddingInlineEnd: 16,
+                    marginBlockStart: 8,
+                    overflowX: 'auto',
+                  }}
+                >
                   {run.system_prompt}
                 </pre>
-              </div>
+              </details>
             )}
-          </div>
+          </Group>
 
-          {/* Path & Chat Info */}
-          <div className="surface p-4 rounded-lg">
-            <h3 className="text-[13px] font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Execution Context</h3>
-            <div className="grid grid-cols-2 gap-3 text-[12px]">
-              <div>
-                <span className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-tertiary)' }}>Selected Path</span>
-                <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>{run.selected_path || '—'}</span>
-              </div>
-              <div>
-                <span className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-tertiary)' }}>Chat ID</span>
-                <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>{run.chat_id || '—'}</span>
-              </div>
-              <div>
-                <span className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-tertiary)' }}>User</span>
-                <span style={{ color: 'var(--text-secondary)' }}>{run.user_email || run.user_id || '—'}</span>
-              </div>
-              <div>
-                <span className="block text-[10px] uppercase tracking-wide mb-0.5" style={{ color: 'var(--text-tertiary)' }}>Provider</span>
-                <span style={{ color: 'var(--text-secondary)' }}>{run.provider || '—'}</span>
-              </div>
+          <Group index={++group} legend="Execution context">
+            <div>
+              <Entry label="Path" value={run.selected_path} mono />
+              <Entry label="Chat" value={run.chat_id} mono />
+              <Entry label="User" value={run.user_email || run.user_id} />
+              <Entry label="Provider" value={run.provider} />
             </div>
-          </div>
+          </Group>
 
-          {/* Model Calls Breakdown */}
           {modelCalls.length > 0 && (
-            <div className="surface p-4 rounded-lg">
-              <h3 className="text-[13px] font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Model Calls ({modelCalls.length})</h3>
-              <div className="space-y-2">
+            <Group index={++group} legend={`Model calls — ${modelCalls.length}`}>
+              <div>
                 {modelCalls.map((call, idx) => (
-                  <div key={idx} className="p-3 rounded-md" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-mono font-semibold" style={{ color: 'var(--accent)' }}>{call.model || call.provider || 'Unknown'}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-tertiary)' }}>{call.operation || 'call'}</span>
-                      </div>
-                      <span className="text-[12px] font-semibold" style={{ color: 'var(--badge-green-text)' }}>{formatCost(call.cost_usd)}</span>
+                  <div key={idx} style={{ paddingBlock: 10, borderBlockStart: '1px solid var(--etch)' }}>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <span className="mono truncate" style={{ fontSize: 12, color: 'var(--ink)', textAlign: 'start' }}>
+                        {call.model || call.provider || 'Unknown'}
+                      </span>
+                      <Money usd={call.cost_usd} digits={6} />
                     </div>
-                    <div className="flex items-center gap-4 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-                      <span>Duration: {formatDuration(call.duration_ms)}</span>
-                      {call.tokens_input !== undefined && <span>Tokens In: {call.tokens_input}</span>}
-                      {call.tokens_output !== undefined && <span>Tokens Out: {call.tokens_output}</span>}
-                      {call.tokens_total !== undefined && <span>Total Tokens: {call.tokens_total}</span>}
+                    <div
+                      className="flex flex-wrap items-baseline gap-x-4 gap-y-1"
+                      style={{ fontSize: 11, color: 'var(--ink-3)', marginBlockStart: 3 }}
+                    >
+                      <span>{call.operation || 'call'}</span>
+                      {call.duration_ms != null && (
+                        <span className="flex items-baseline gap-1">
+                          <Duration ms={call.duration_ms} />
+                        </span>
+                      )}
+                      {call.tokens_input !== undefined && <span className="mono">in {call.tokens_input}</span>}
+                      {call.tokens_output !== undefined && <span className="mono">out {call.tokens_output}</span>}
+                      {call.tokens_total !== undefined && <span className="mono">tot {call.tokens_total}</span>}
                     </div>
                     {call.purpose && (
-                      <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-secondary)' }}>
-                        <span style={{ color: 'var(--text-tertiary)' }}>Purpose: </span>{call.purpose}
-                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--ink-2)', marginBlockStart: 4 }}>{call.purpose}</p>
                     )}
                   </div>
                 ))}
               </div>
-            </div>
+            </Group>
           )}
 
-          {/* Steps Timeline */}
           {steps.length > 0 && (
-            <div className="surface p-4 rounded-lg">
-              <h3 className="text-[13px] font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Execution Steps ({steps.length})</h3>
-              <div className="space-y-0">
+            <Group index={++group} legend={`Execution steps — ${steps.length}`}>
+              <div>
                 {steps.map((step, idx) => (
-                  <div key={idx} className="flex gap-3 pb-4 relative">
-                    {/* Timeline line */}
-                    {idx < steps.length - 1 && (
-                      <div className="absolute left-[7px] top-5 bottom-0 w-px" style={{ backgroundColor: 'var(--border)' }} />
-                    )}
-                    <div className="mt-0.5 shrink-0"><StepIcon status={step.status} /></div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-[12px] font-medium" style={{ color: 'var(--text-primary)' }}>{step.name || `Step ${idx + 1}`}</span>
-                        <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{formatDuration(step.duration_ms)}</span>
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '16px minmax(0, 1fr)',
+                      gap: 10,
+                      paddingBlock: 9,
+                      borderBlockStart: '1px solid var(--etch)',
+                    }}
+                  >
+                    <span style={{ paddingBlockStart: 3 }}>
+                      <RunMarker status={step.status} word={false} />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span style={{ fontSize: 12, color: 'var(--ink)' }}>{step.name || `Step ${idx + 1}`}</span>
+                        {step.duration_ms != null && <Duration ms={step.duration_ms} />}
                       </div>
                       {step.description && (
-                        <p className="text-[11px] mb-1" style={{ color: 'var(--text-secondary)' }}>{step.description}</p>
+                        <p style={{ fontSize: 11, color: 'var(--ink-2)', marginBlockStart: 2 }}>{step.description}</p>
                       )}
                       {step.error && (
-                        <pre className="text-[11px] p-2 rounded mt-1 overflow-x-auto" style={{ backgroundColor: 'rgba(251,113,133,0.08)', color: 'var(--badge-red-text)' }}>
+                        <pre
+                          className="mono"
+                          style={{
+                            fontSize: 11,
+                            color: 'var(--state-fail)',
+                            whiteSpace: 'pre-wrap',
+                            textAlign: 'start',
+                            marginBlockStart: 6,
+                            paddingInlineStart: 10,
+                            borderInlineStart: '2px solid var(--state-fail)',
+                          }}
+                        >
                           {step.error}
                         </pre>
                       )}
@@ -207,45 +326,68 @@ export default function RunDetailDrawer({ run, onClose }) {
                   </div>
                 ))}
               </div>
-            </div>
+            </Group>
           )}
 
-          {/* Generated Assets */}
           {assets.length > 0 && (
-            <div className="surface p-4 rounded-lg">
-              <h3 className="text-[13px] font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Generated Assets ({assets.length})</h3>
-              <div className="grid grid-cols-2 gap-2">
+            <Group index={++group} legend={`Generated assets — ${assets.length}`}>
+              <div className="grid grid-cols-2" style={{ gap: 12, marginBlockStart: 4 }}>
                 {assets.map((asset, idx) => {
                   const url = asset.url || asset.public_url || asset.storage_url || ''
                   const type = (asset.asset_type || '').toLowerCase()
                   return (
-                    <div key={idx} className="p-2 rounded-md" style={{ backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+                    <Frame key={idx} caption={asset.filename || asset.id || type || 'file'}>
                       {type === 'image' && url ? (
-                        <img src={url} alt="" className="w-full aspect-video object-cover rounded mb-2" />
+                        <img src={url} alt="" style={mediaStyle} />
                       ) : type === 'video' && url ? (
-                        <video src={url} className="w-full aspect-video object-cover rounded mb-2" />
+                        <video src={url} controls style={mediaStyle} />
                       ) : (
-                        <div className="w-full aspect-video flex items-center justify-center rounded mb-2" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                          <span className="text-[11px] uppercase font-semibold" style={{ color: 'var(--text-tertiary)' }}>{type || 'file'}</span>
-                        </div>
+                        <span
+                          className="mono flex items-center"
+                          style={{ blockSize: 72, fontSize: 11, color: 'var(--ink-3)', textAlign: 'start' }}
+                        >
+                          {type || 'file'}
+                        </span>
                       )}
-                      <p className="text-[10px] font-mono truncate" style={{ color: 'var(--text-tertiary)' }}>{asset.filename || asset.id}</p>
-                    </div>
+                    </Frame>
                   )
                 })}
               </div>
-            </div>
+            </Group>
           )}
 
-          {/* Raw JSON (collapsible) */}
-          <details className="surface rounded-lg overflow-hidden">
-            <summary className="px-4 py-3 text-[12px] font-medium cursor-pointer select-none" style={{ color: 'var(--text-secondary)' }}>
-              Raw Run Data
-            </summary>
-            <pre className="p-4 text-[11px] overflow-x-auto" style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}>
-              {JSON.stringify(run, null, 2)}
-            </pre>
-          </details>
+          {steps.length === 0 && modelCalls.length === 0 && assets.length === 0 && (
+            <Group index={++group} legend="Trace">
+              <EmptyState
+                line="No steps, calls or assets were recorded for this run."
+                compact
+              />
+            </Group>
+          )}
+
+          <Group index={++group} legend="Raw">
+            <details>
+              <summary className="text-action" style={{ fontSize: 12 }}>
+                <Caret direction="down" size={14} />
+                Raw run data
+              </summary>
+              <pre
+                className="mono plate--sunken cut cut-md"
+                style={{
+                  fontSize: 10,
+                  color: 'var(--ink-2)',
+                  textAlign: 'start',
+                  overflowX: 'auto',
+                  paddingBlock: 10,
+                  paddingInlineStart: 12,
+                  paddingInlineEnd: 16,
+                  marginBlockStart: 8,
+                }}
+              >
+                {JSON.stringify(run, null, 2)}
+              </pre>
+            </details>
+          </Group>
         </div>
       </div>
     </div>

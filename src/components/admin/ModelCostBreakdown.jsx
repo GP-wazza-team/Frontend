@@ -1,105 +1,95 @@
+/* MODEL COST BREAKDOWN — a ranked ledger, not a donut and a bar chart.
+
+   THE RECOMPOSITION, and it is the biggest one on this route.
+
+   This was a horizontal bar chart AND a 3px-padded donut AND a dot legend —
+   three encodings of one eight-row dataset, side by side, in a component
+   under 110 lines. A donut asks you to compare arc lengths you cannot
+   compare; the legend then re-states every value the donut just failed to
+   communicate; and the coloured dot beside each row is the icon-in-a-tinted-
+   context tell.
+
+   Replaced by the thing the data actually is: a RANKED LEDGER. One row per
+   model, sorted by spend, with a rank ordinal on the gutter axis, a 24-cell
+   magnitude Meter scaled to the top spender, the cost on the ledger line and
+   the share of total. You can read the ordering, the magnitude, the exact
+   figure and the proportion in one pass, and it stays readable without colour
+   — which the donut never was.
+
+   The Meter is the app's own object, so this row is built from the same
+   vocabulary as the run strip and the plan card. Props are unchanged:
+   { data, totalCost }. */
+
 import React from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { Cpu } from 'lucide-react'
-
-function formatCost(val) {
-  const n = parseFloat(val) || 0
-  return `$${n.toFixed(4)}`
-}
-
-const COLORS = [
-  'var(--accent)',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#8b5cf6',
-  '#06b6d4',
-  '#ec4899',
-  '#84cc16',
-]
+import Meter from '../ui/Meter'
+import { Money } from '../ui/Money'
+import EmptyState from '../ui/EmptyState'
 
 export default function ModelCostBreakdown({ data = [], totalCost = 0 }) {
   if (data.length === 0) {
     return (
-      <div className="surface p-5 rounded-lg">
-        <div className="mb-4">
-          <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Model Cost Breakdown</h3>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Cost by model / provider</p>
-        </div>
-        <div className="h-56 flex items-center justify-center text-sm" style={{ color: 'var(--text-tertiary)' }}>No data</div>
-      </div>
+      <EmptyState
+        legend="No model calls"
+        line="Nothing has been billed in this window."
+      />
     )
   }
 
-  // Sort by cost desc
   const sorted = [...data].sort((a, b) => (b.cost_usd || 0) - (a.cost_usd || 0))
   const topModels = sorted.slice(0, 8)
+  const max = Math.max(...topModels.map((m) => Number(m.cost_usd) || 0), 0)
 
   return (
-    <div className="surface p-5 rounded-lg">
-      <div className="mb-4">
-        <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>Model Cost Breakdown</h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Cost by model / provider — Total: {formatCost(totalCost)}</p>
-      </div>
+    <div style={{ borderBlockStart: '1px solid var(--etch-strong)' }}>
+      {topModels.map((m, idx) => {
+        const cost = Number(m.cost_usd) || 0
+        const pct = totalCost > 0 ? (cost / totalCost) * 100 : 0
+        return (
+          <div
+            key={m.model ?? idx}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) 132px 96px 56px',
+              alignItems: 'center',
+              gap: 16,
+              blockSize: 40,
+              borderBlockEnd: '1px solid var(--etch)',
+            }}
+          >
+            <span className="flex items-baseline gap-3 min-w-0">
+              <span className="mono flex-none" style={{ fontSize: 10, color: 'var(--ink-3)', inlineSize: 18, textAlign: 'start' }}>
+                {String(idx + 1).padStart(2, '0')}
+              </span>
+              <span className="truncate" style={{ fontSize: 12, color: 'var(--ink)' }} title={m.model}>
+                {m.model || '—'}
+              </span>
+            </span>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bar Chart */}
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={topModels} layout="vertical" margin={{ left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-            <XAxis type="number" stroke="var(--border)" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v.toFixed(2)}`} />
-            <YAxis dataKey="model" type="category" stroke="var(--border)" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} width={100} />
-            <Tooltip
-              contentStyle={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
-              labelStyle={{ color: 'var(--text-secondary)' }}
-              formatter={(value) => [formatCost(value), 'Cost']}
+            {/* Natural width, deliberately: the Meter's fill layer is an
+                absolute overlay sized to the track, so stretching the host
+                box would decouple the clip from the cells it clips. */}
+            <Meter
+              cells={24}
+              value={max > 0 ? cost / max : 0}
+              tone="signal"
+              label={`${m.model}: ${pct.toFixed(1)}% of spend`}
             />
-            <Bar dataKey="cost_usd" name="Cost" fill="var(--accent)" radius={[0, 4, 4, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
 
-        {/* Pie Chart + Legend */}
-        <div className="flex flex-col items-center">
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie
-                data={topModels}
-                dataKey="cost_usd"
-                nameKey="model"
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={3}
-              >
-                {topModels.map((_, idx) => (
-                  <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
-                formatter={(value) => formatCost(value)}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="w-full mt-2 space-y-1">
-            {topModels.map((m, idx) => {
-              const pct = totalCost > 0 ? ((m.cost_usd / totalCost) * 100).toFixed(1) : 0
-              return (
-                <div key={idx} className="flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                    <span className="truncate max-w-[120px]" style={{ color: 'var(--text-secondary)' }}>{m.model}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span style={{ color: 'var(--text-tertiary)' }}>{formatCost(m.cost_usd)}</span>
-                    <span className="w-10 text-right font-medium" style={{ color: 'var(--text-secondary)' }}>{pct}%</span>
-                  </div>
-                </div>
-              )
-            })}
+            <span style={{ textAlign: 'end' }}><Money usd={cost} /></span>
+
+            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)', textAlign: 'end', display: 'block' }}>
+              {pct.toFixed(1)}%
+            </span>
           </div>
-        </div>
+        )
+      })}
+
+      <div
+        className="flex items-baseline justify-between"
+        style={{ blockSize: 36, borderBlockEnd: '1px solid var(--etch-strong)' }}
+      >
+        <span className="legend" style={{ marginBlock: 0 }}>Total</span>
+        <Money usd={totalCost} style={{ fontSize: 13 }} />
       </div>
     </div>
   )

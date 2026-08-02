@@ -1,13 +1,51 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE COMMIT GATE
+
+   This card is the product. Everything before it is instrumentation for one
+   decision, and everything after it costs money. So it is composed as a WORK
+   ORDER, not a chat bubble:
+
+     LEADING COLUMN   the editable prose as ruled entries — legend, prose, a 1px
+                      rule between, and the amend mark parked at --ink-3 on the
+                      trailing edge of each row. The spec asks for it on hover
+                      only; it stays visible because a hover-only control is
+                      unreachable on a touch device, and this is the one place
+                      a user rewrites the brief.
+     TRAILING COLUMN  the SPEC BLOCK, 236px, Commit Mono, on a shared baseline
+                      grid so MODEL / QUALITY / ASPECT / SCENES / SECONDS / EST.
+                      stack in a rigid aligned column. The three that are
+                      changeable are selects sitting on that same grid — the
+                      block is both the readout and the control surface, which
+                      is what an instrument panel is.
+     THE COMMIT STRIP free actions with HOLLOW marks (Revise, Cancel), costing
+                      actions with FILLED marks (the two previews), and then the
+                      single filled thing on the entire screen: a slab whose
+                      LABEL IS THE PRICE. You press the number.
+
+   `resolved` freezes the card and the footer is replaced by the seam.
+   `outcome` is how it was resolved ('cancelled' | 'confirmed'). It used to be
+   called `resolution`, which now belongs to the video's output quality — two
+   different meanings for one word on the same component.
+
+   Every handler, prop name, guard and network call is exactly as it was.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 import React, { useState } from 'react'
-import { Check, X, Pencil, Image as ImageIcon, User, RefreshCw, Film, Loader2, AlertTriangle, Monitor } from 'lucide-react'
+import {
+  Commit, Void, Amend, Environment, Character, Revise, Script, Caret, Check,
+} from '../Icon'
+import Meter from '../ui/Meter'
+import { Money } from '../ui/Money'
 import { useLightbox } from '../MediaLightbox'
+import { useChatText } from './chatKit'
+import Frame from '../ui/Frame'
 
 // Fields the backend accepts for the free, no-LLM /edit call.
 const EDITABLE_FIELDS = [
-  { key: 'brief_summary', label: 'Summary' },
-  { key: 'characters', label: 'Characters' },
-  { key: 'environment', label: 'Environment' },
-  { key: 'scenario', label: 'Scenario' },
+  { key: 'brief_summary', label: 'summary' },
+  { key: 'characters', label: 'characters' },
+  { key: 'environment', label: 'environment' },
+  { key: 'scenario', label: 'scenario' },
 ]
 
 // Fallbacks for the very first render, before /generate/models has answered.
@@ -17,35 +55,58 @@ const FALLBACK_RESOLUTIONS = ['480p', '720p', '1080p']
 const FALLBACK_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '21:9']
 const FALLBACK_DURATIONS = [5, 10, 15, 20]
 
-/**
- * One labelled dropdown in the output-settings row.
- *
- * Changes commit immediately — each is a free server-side field update, and
- * making the user press an extra Save button to change a dropdown they can see
- * the result of is friction for nothing.
- */
-function SettingSelect({ label, value, options, disabled, onChange, title }) {
+/* ── THE SPEC BLOCK ───────────────────────────────────────────────────────── */
+
+/** One row of the spec block: a label in the leading column, the value or the
+ *  control in the trailing one, both on the same baseline grid. */
+function SpecRow({ label, children, title }) {
   return (
-    <label className="flex flex-col gap-1 min-w-0" title={title}>
-      <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
+    <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-x-2" title={title}>
+      <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', textAlign: 'start' }}>
         {label}
       </span>
+      <span className="min-w-0">{children}</span>
+    </div>
+  )
+}
+
+/**
+ * A spec-block dropdown. Changes commit immediately — each is a free
+ * server-side field update, and making the user press an extra Save button to
+ * change a dropdown they can see the result of is friction for nothing.
+ */
+function SpecSelect({ value, options, disabled, onChange, label }) {
+  return (
+    <span className="relative block min-w-0">
       <select
         value={value ?? ''}
         disabled={disabled}
+        aria-label={label}
         onChange={(e) => onChange(e.target.value)}
-        className="text-[12px] rounded-md px-2 py-1.5 outline-none disabled:opacity-50 max-w-full truncate"
-        style={{
-          backgroundColor: 'var(--bg)',
-          color: 'var(--text-primary)',
-          border: '1px solid var(--border)',
-        }}
+        className="field field--sm select mono disabled:opacity-50"
+        style={{ fontSize: 11, textAlign: 'start', direction: 'ltr' }}
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
-    </label>
+      <span
+        aria-hidden="true"
+        className="absolute pointer-events-none"
+        style={{ insetInlineEnd: 12, insetBlockStart: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }}
+      >
+        <Caret size={12} direction="down" />
+      </span>
+    </span>
+  )
+}
+
+/** A static spec value — never editable, always a ledger line. */
+function SpecValue({ children }) {
+  return (
+    <span className="mono block" style={{ fontSize: 12, color: 'var(--ink)', textAlign: 'end' }}>
+      {children}
+    </span>
   )
 }
 
@@ -56,15 +117,17 @@ function SettingSelect({ label, value, options, disabled, onChange, title }) {
  * the consequences of the current combination (for example that Runway has no
  * 1080p tier, so 1080p would come back as 720p). Showing that here is the
  * point: the user can switch model and watch the warning clear, instead of
- * discovering it in the finished video.
+ * discovering it in the finished video. The warning is amber TEXT — the colour
+ * already carries it, so the alert triangle is gone.
  */
-function OutputSettings({ plan, catalog, disabled, onChange }) {
+function SpecBlock({ plan, catalog, disabled, onChange, tx }) {
   const resolutions = catalog?.resolutions?.length ? catalog.resolutions : FALLBACK_RESOLUTIONS
   const aspectRatios = catalog?.aspect_ratios?.length ? catalog.aspect_ratios : FALLBACK_ASPECT_RATIOS
   const durations = catalog?.durations?.length ? catalog.durations : FALLBACK_DURATIONS
 
   const isVideo = plan.needs_video
   const notes = plan.render_notes || []
+  const sceneCount = plan.scenes?.length || 0
 
   /**
    * Options for one model dropdown.
@@ -93,71 +156,105 @@ function OutputSettings({ plan, catalog, disabled, onChange }) {
   const imageOptions = modelOptions(catalog?.image, plan.image_model)
 
   return (
-    <div className="flex flex-col gap-2 pt-1" style={{ borderTop: '1px solid var(--border)' }}>
-      <div className="flex items-center gap-1.5 pt-2">
-        <Monitor size={12} style={{ color: 'var(--text-tertiary)' }} />
-        <span className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-          Output
-        </span>
-      </div>
+    <div className="flex flex-col gap-3">
+      <span className="legend" style={{ margin: 0 }}>{tx('spec')}</span>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        <SettingSelect
-          label="Quality"
-          value={plan.resolution}
-          options={resolutions.map((r) => ({ value: r, label: r }))}
-          disabled={disabled}
-          onChange={(value) => onChange({ resolution: value })}
-        />
-        <SettingSelect
-          label="Aspect"
-          value={plan.aspect_ratio}
-          options={aspectRatios.map((r) => ({ value: r, label: r }))}
-          disabled={disabled}
-          onChange={(value) => onChange({ aspect_ratio: value })}
-        />
-        {isVideo && (
-          <SettingSelect
-            label="Seconds"
-            value={plan.duration_seconds}
-            options={durations.map((d) => ({ value: d, label: `${d}s` }))}
-            disabled={disabled}
-            onChange={(value) => onChange({ duration_seconds: Number(value) })}
-            title="Length of each scene. Longer than a model supports is capped — the warning below says by how much."
-          />
-        )}
+      <div className="flex flex-col gap-2">
         {/* Both pickers are shown on a video run: the reference image and the
             video are produced by different models, and the image model is what
             decides whether an uploaded photo's likeness can be kept. */}
-        {isVideo && videoOptions.length > 0 && (
-          <SettingSelect
-            label="Video model"
-            value={plan.video_model}
-            options={videoOptions}
-            disabled={disabled}
-            onChange={(value) => onChange({ video_model: value })}
+        {isVideo && videoOptions.length > 0 && onChange && (
+          <SpecRow
+            label={tx('model')}
             title="Runs on this model. If its account is out of credit, another provider takes over automatically."
-          />
+          >
+            <SpecSelect
+              label={tx('model')}
+              value={plan.video_model}
+              options={videoOptions}
+              disabled={disabled}
+              onChange={(value) => onChange({ video_model: value })}
+            />
+          </SpecRow>
         )}
-        {plan.needs_images && imageOptions.length > 0 && (
-          <SettingSelect
-            label="Image model"
-            value={plan.image_model}
-            options={imageOptions}
-            disabled={disabled}
-            onChange={(value) => onChange({ image_model: value })}
+
+        {plan.needs_images && imageOptions.length > 0 && onChange && (
+          <SpecRow
+            label={tx('imageModel')}
             title="Draws the reference image. Only GPT Image 2 can read an uploaded photo and keep the person's likeness."
-          />
+          >
+            <SpecSelect
+              label={tx('imageModel')}
+              value={plan.image_model}
+              options={imageOptions}
+              disabled={disabled}
+              onChange={(value) => onChange({ image_model: value })}
+            />
+          </SpecRow>
+        )}
+
+        {onChange ? (
+          <SpecRow label={tx('quality')}>
+            <SpecSelect
+              label={tx('quality')}
+              value={plan.resolution}
+              options={resolutions.map((r) => ({ value: r, label: r }))}
+              disabled={disabled}
+              onChange={(value) => onChange({ resolution: value })}
+            />
+          </SpecRow>
+        ) : plan.resolution && (
+          <SpecRow label={tx('quality')}><SpecValue>{plan.resolution}</SpecValue></SpecRow>
+        )}
+
+        {onChange ? (
+          <SpecRow label={tx('aspect')}>
+            <SpecSelect
+              label={tx('aspect')}
+              value={plan.aspect_ratio}
+              options={aspectRatios.map((r) => ({ value: r, label: r }))}
+              disabled={disabled}
+              onChange={(value) => onChange({ aspect_ratio: value })}
+            />
+          </SpecRow>
+        ) : plan.aspect_ratio && (
+          <SpecRow label={tx('aspect')}><SpecValue>{plan.aspect_ratio}</SpecValue></SpecRow>
+        )}
+
+        {isVideo && (onChange ? (
+          <SpecRow
+            label={tx('seconds')}
+            title="Length of each scene. Longer than a model supports is capped — the warning below says by how much."
+          >
+            <SpecSelect
+              label={tx('seconds')}
+              value={plan.duration_seconds}
+              options={durations.map((d) => ({ value: d, label: `${d}s` }))}
+              disabled={disabled}
+              onChange={(value) => onChange({ duration_seconds: Number(value) })}
+            />
+          </SpecRow>
+        ) : (
+          <SpecRow label={tx('seconds')}><SpecValue>{plan.duration_seconds}s</SpecValue></SpecRow>
+        ))}
+
+        {sceneCount > 0 && (
+          <SpecRow label={tx('sceneCount')}><SpecValue>{sceneCount}</SpecValue></SpecRow>
+        )}
+
+        {plan.total_cost_usd > 0 && (
+          <SpecRow label={tx('estimate')}>
+            <Money usd={plan.total_cost_usd} style={{ fontSize: 12, color: 'var(--ink)', display: 'block' }} />
+          </SpecRow>
         )}
       </div>
 
       {notes.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1" style={{ borderBlockStart: '1px solid var(--etch)', paddingBlockStart: 8 }}>
           {notes.map((note) => (
-            <div key={note} className="flex items-start gap-1.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-              <AlertTriangle size={11} className="flex-shrink-0 mt-0.5" style={{ color: '#d97706' }} />
-              <span>{note}</span>
-            </div>
+            <span key={note} style={{ fontSize: 11, lineHeight: 1.4, color: 'var(--signal)' }}>
+              {note}
+            </span>
           ))}
         </div>
       )}
@@ -165,7 +262,9 @@ function OutputSettings({ plan, catalog, disabled, onChange }) {
   )
 }
 
-function EditableField({ label, value, disabled, onSave }) {
+/* ── THE PROSE ENTRIES ────────────────────────────────────────────────────── */
+
+function EditableField({ label, value, disabled, onSave, tx }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value || '')
   const [saving, setSaving] = useState(false)
@@ -192,68 +291,72 @@ function EditableField({ label, value, disabled, onSave }) {
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5">
-        <span className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-          {label}
-        </span>
-        {!disabled && !editing && (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="opacity-60 hover:opacity-100 transition-opacity"
-            title={`Edit ${label.toLowerCase()}`}
+    <div
+      className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3"
+      style={{ paddingBlock: 12, borderBlockEnd: '1px solid var(--etch)' }}
+    >
+      <div className="min-w-0">
+        <span className="legend" style={{ margin: 0, marginBlockEnd: 4 }}>{tx(label)}</span>
+
+        {editing ? (
+          <div className="flex flex-col gap-2" style={{ marginBlockStart: 4 }}>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={3}
+              autoFocus
+              className="field"
+              style={{ fontSize: 13, lineHeight: 'var(--lh-body)' }}
+            />
+            <div className="flex items-center gap-6">
+              <button type="button" onClick={commit} disabled={saving} className="text-action">
+                {saving ? <Meter cells={3} mode="indeterminate" tone="signal" /> : <Check size={16} />}
+                {saving ? tx('saving') : tx('save')}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEditing(false); setDraft(value || '') }}
+                disabled={saving}
+                className="text-action"
+              >
+                <Void size={16} />
+                {tx('cancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p
+            className="whitespace-pre-wrap break-words"
+            style={{ fontSize: 15, lineHeight: 'var(--lh-body)', color: 'var(--ink)', maxInlineSize: '68ch' }}
           >
-            <Pencil size={11} style={{ color: 'var(--text-tertiary)' }} />
-          </button>
+            {value || <span style={{ color: 'var(--ink-3)' }}>{tx('empty')}</span>}
+          </p>
         )}
       </div>
 
-      {editing ? (
-        <div className="flex flex-col gap-1.5">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={3}
-            autoFocus
-            className="w-full text-[13px] rounded-lg px-2.5 py-2 resize-y outline-none"
-            style={{
-              backgroundColor: 'var(--bg)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-hover)',
-            }}
-          />
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={commit}
-              disabled={saving}
-              className="text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
-              style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setEditing(false); setDraft(value || '') }}
-              disabled={saving}
-              className="text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
-              style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <p className="text-[13px] leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--text-secondary)' }}>
-          {value || <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
-        </p>
+      {/* The amend mark rests invisible and arrives on hover or keyboard focus.
+          It is never hidden from the keyboard — focus-within brings it back. */}
+      {!disabled && !editing && (
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          title={`${tx('edit')} — ${tx(label)}`}
+          aria-label={`${tx('edit')} — ${tx(label)}`}
+          className="text-action"
+          style={{ padding: 2, color: 'var(--ink-3)' }}
+        >
+          <Amend size={16} />
+        </button>
       )}
     </div>
   )
 }
 
-function SceneList({ scenes, disabled, onSave }) {
+/**
+ * The scene list. Scene indices sit in the SAME leading gutter the transcript's
+ * turn indices use, so a scene number and a turn number land on one axis.
+ */
+function SceneList({ scenes, disabled, onSave, tx }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
@@ -279,59 +382,66 @@ function SceneList({ scenes, disabled, onSave }) {
   }
 
   return (
-    <div className="flex flex-col gap-1.5 pt-1">
-      <div className="flex items-center gap-1.5">
-        <Film size={12} style={{ color: 'var(--text-tertiary)' }} />
-        <span className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-          Script — {scenes.length} scenes
+    <div style={{ paddingBlock: 12 }}>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
+        <span className="legend" style={{ margin: 0 }}>
+          {tx('script')} — {scenes.length} {tx('scenes')}
         </span>
         {!disabled && !editing && (
-          <button type="button" onClick={startEditing} className="opacity-60 hover:opacity-100 transition-opacity" title="Edit script">
-            <Pencil size={11} style={{ color: 'var(--text-tertiary)' }} />
+          <button
+            type="button"
+            onClick={startEditing}
+            title={`${tx('edit')} — ${tx('script')}`}
+            aria-label={`${tx('edit')} — ${tx('script')}`}
+            className="text-action"
+            style={{ padding: 2, color: 'var(--ink-3)' }}
+          >
+            <Amend size={16} />
           </button>
         )}
       </div>
 
       {editing ? (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2" style={{ marginBlockStart: 4 }}>
+          {/* Raw editing field: mono is honest here — the user is looking at one
+              prompt per line, not at prose. */}
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             rows={Math.max(4, scenes.length + 1)}
             autoFocus
-            className="w-full text-[13px] rounded-lg px-2.5 py-2 resize-y outline-none font-mono"
-            style={{ backgroundColor: 'var(--bg)', color: 'var(--text-primary)', border: '1px solid var(--border-hover)' }}
+            className="field mono"
+            style={{ fontSize: 12, lineHeight: 1.6, textAlign: 'start', direction: 'ltr' }}
           />
-          <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>One scene per line.</span>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={commit}
-              disabled={saving}
-              className="text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
-              style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-            >
-              {saving ? 'Saving…' : 'Save script'}
+          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{tx('onePerLine')}</span>
+          <div className="flex items-center gap-6">
+            <button type="button" onClick={commit} disabled={saving} className="text-action">
+              {saving ? <Meter cells={3} mode="indeterminate" tone="signal" /> : <Check size={16} />}
+              {saving ? tx('saving') : tx('saveScript')}
             </button>
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              disabled={saving}
-              className="text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
-              style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-            >
-              Cancel
+            <button type="button" onClick={() => setEditing(false)} disabled={saving} className="text-action">
+              <Void size={16} />
+              {tx('cancel')}
             </button>
           </div>
         </div>
       ) : (
-        <ol className="flex flex-col gap-1">
+        <ol style={{ marginBlockStart: 4 }}>
           {scenes.map((scene) => (
-            <li key={scene.scene_number} className="flex gap-2 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-              <span className="flex-shrink-0 tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
-                {scene.scene_number}.
+            <li
+              key={scene.scene_number}
+              className="grid grid-cols-[36px_minmax(0,1fr)] items-baseline"
+              style={{ paddingBlock: 6, borderBlockStart: '1px solid var(--etch)' }}
+            >
+              <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start' }}>
+                {String(scene.scene_number).padStart(2, '0')}
               </span>
-              <span className="break-words">{scene.summary || scene.scene_prompt}</span>
+              <span
+                className="break-words"
+                style={{ fontSize: 15, lineHeight: 'var(--lh-body)', color: 'var(--ink)', maxInlineSize: '68ch' }}
+              >
+                {scene.summary || scene.scene_prompt}
+              </span>
             </li>
           ))}
         </ol>
@@ -340,17 +450,11 @@ function SceneList({ scenes, disabled, onSave }) {
   )
 }
 
-/**
- * The review step of the confirmation gate. Everything here is free except the
- * preview buttons (which generate a real image) and Confirm (which runs the
- * full generation). `resolved` freezes the card once the user has decided.
- *
- * `outcome` is how the card was resolved ('cancelled' | 'confirmed'). It used to
- * be called `resolution`, which now belongs to the video's output quality —
- * two different meanings for one word on the same component.
- */
+/* ── THE CARD ─────────────────────────────────────────────────────────────── */
+
 function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEdit, onEditScript, onPreview, onRevise, onConfirm, onCancel, onSettings }) {
   const openMedia = useLightbox()
+  const { tx } = useChatText()
   const [feedback, setFeedback] = useState('')
   const [showRevise, setShowRevise] = useState(false)
   const disabled = resolved || busy
@@ -363,160 +467,191 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
     await onRevise(trimmed)
   }
 
+  const cost = Number(plan.total_cost_usd)
+  const hasCost = Number.isFinite(cost) && cost > 0
+
   return (
     <div
-      className="rounded-xl overflow-hidden"
-      style={{ border: '1px solid var(--border)', backgroundColor: 'rgba(128,128,128,0.04)' }}
+      className="cut cut-lg"
+      style={{
+        /* RESOLVED: the docket freezes into the draft surface — it is a
+           record now, not a control. It is NOT dimmed: --ink at 60% over
+           --sunk computes to 4.16:1 in the light theme and fails AA, and
+           dimming the whole container drags --ink-3 down to 3.32:1. A
+           settled work order still has to be readable a hundred turns
+           later, so the surface changes and the ink does not. */
+        backgroundColor: resolved ? 'var(--sunk)' : 'var(--panel)',
+        boxShadow: 'inset 0 0 0 1px var(--etch)',
+        paddingBlock: 16,
+        paddingInlineStart: 16,
+        paddingInlineEnd: 24,
+      }}
     >
-      <div className="px-3.5 py-2.5 flex items-center justify-between gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
-        <span className="text-[12px] font-medium" style={{ color: 'var(--text-primary)' }}>
-          Review before generating
-        </span>
-        <span className="text-[11px] tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
-          {plan.needs_video ? `${plan.duration_seconds}s video` : 'image'}
-          {plan.scenes?.length > 1 && ` × ${plan.scenes.length} scenes`}
-          {plan.resolution && ` · ${plan.resolution} ${plan.aspect_ratio}`}
-          {plan.total_cost_usd > 0 && ` · $${plan.total_cost_usd.toFixed(3)} so far`}
-        </span>
+      <div className="flex items-center gap-3" style={{ marginBlockEnd: 8 }}>
+        <Script size={16} style={{ color: 'var(--ink-3)' }} />
+        <span className="legend" style={{ margin: 0 }}>{tx('workOrder')}</span>
+        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{tx('reviewBefore')}</span>
+        {/* The docket's own busy state. It lives here rather than inside the
+            commit slab: an amber meter on an amber fill is unreadable in the
+            light theme, and the header is where the eye already is. */}
+        {busy && (
+          <span className="ms-auto">
+            <Meter cells={5} mode="indeterminate" tone="signal" label={tx('workOrder')} />
+          </span>
+        )}
       </div>
 
-      <div className="px-3.5 py-3 flex flex-col gap-3">
-        {EDITABLE_FIELDS.map(({ key, label }) => (
-          <EditableField
-            key={key}
-            label={label}
-            value={plan[key]}
-            disabled={disabled}
-            onSave={(text) => onEdit(key, text)}
-          />
-        ))}
+      {/* The asymmetry is the point: prose runs to the measure, the spec block
+          is a fixed 236px column of numerals that never reflows. */}
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_236px] gap-x-6">
+        <div className="min-w-0">
+          {EDITABLE_FIELDS.map(({ key, label }) => (
+            <EditableField
+              key={key}
+              label={label}
+              value={plan[key]}
+              disabled={disabled}
+              onSave={(text) => onEdit(key, text)}
+              tx={tx}
+            />
+          ))}
 
-        <SceneList scenes={plan.scenes} disabled={disabled} onSave={onEditScript} />
+          <SceneList scenes={plan.scenes} disabled={disabled} onSave={onEditScript} tx={tx} />
 
-        {onSettings && (
-          <OutputSettings
-            plan={plan}
-            catalog={catalog}
-            disabled={disabled}
-            onChange={onSettings}
-          />
-        )}
-
-        {previews && previews.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            {previews.map((p) => (
-              <div key={p.preview_type} className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-                  {p.preview_type}
-                </span>
-                <img
-                  src={p.image_url}
-                  alt={`${p.preview_type} preview`}
-                  className="w-full rounded-lg object-cover max-h-40 cursor-zoom-in"
-                  onClick={() => openMedia(p.image_url, 'image')}
-                />
+          {previews && previews.length > 0 && (
+            <div style={{ paddingBlockStart: 8 }}>
+              <span className="legend">{tx('previews')}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {previews.map((p) => (
+                  <Frame
+                    key={p.preview_type}
+                    maxWidth={320}
+                    caption={[p.preview_type, plan.aspect_ratio]}
+                  >
+                    <img
+                      src={p.image_url}
+                      alt={`${p.preview_type} preview`}
+                      className="cursor-zoom-in"
+                      style={{ display: 'block', inlineSize: '100%', blockSize: 'auto' }}
+                      onClick={() => openMedia(p.image_url, 'image')}
+                    />
+                  </Frame>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
+
+        <div
+          className="min-w-0"
+          style={{ paddingBlockStart: 12 }}
+        >
+          <SpecBlock plan={plan} catalog={catalog} disabled={disabled} onChange={onSettings} tx={tx} />
+        </div>
       </div>
 
-      {resolved ? (
-        <div className="px-3.5 py-2.5 text-[12px]" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-tertiary)' }}>
-          {outcome === 'cancelled' ? 'Cancelled.' : 'Confirmed — generating.'}
-        </div>
-      ) : (
-        <div className="px-3.5 py-2.5 flex flex-col gap-2" style={{ borderTop: '1px solid var(--border)' }}>
+      {/* ── THE COMMIT STRIP ────────────────────────────────────────────────
+          Free above, costing below, and exactly one filled element. */}
+      {!resolved && (
+        <div style={{ borderBlockStart: '1px solid var(--etch)', marginBlockStart: 12, paddingBlockStart: 12 }}>
           {showRevise ? (
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2" style={{ maxInlineSize: '68ch' }}>
               <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 rows={2}
                 autoFocus
-                placeholder="What should change?"
-                className="w-full text-[13px] rounded-lg px-2.5 py-2 resize-y outline-none"
-                style={{ backgroundColor: 'var(--bg)', color: 'var(--text-primary)', border: '1px solid var(--border-hover)' }}
+                placeholder={tx('whatShouldChange')}
+                className="field"
+                style={{ fontSize: 13, lineHeight: 'var(--lh-body)' }}
               />
-              <div className="flex gap-1.5">
+              <div className="flex items-center gap-6">
                 <button
                   type="button"
                   onClick={submitRevise}
                   disabled={busy || !feedback.trim()}
-                  className="text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
-                  style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
+                  className="text-action"
                 >
-                  Send feedback
+                  <Revise size={16} />
+                  {tx('sendFeedback')}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowRevise(false)}
-                  className="text-[11px] px-2 py-1 rounded-md"
-                  style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                >
-                  Back
+                <button type="button" onClick={() => setShowRevise(false)} className="text-action">
+                  <Caret size={16} direction="start" />
+                  {tx('back')}
                 </button>
               </div>
             </div>
           ) : (
-            <>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => onPreview('character')}
-                  disabled={disabled}
-                  className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
-                  style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                  title="Generates a real image — this costs credits"
-                >
-                  <User size={11} /> Preview character
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onPreview('environment')}
-                  disabled={disabled}
-                  className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
-                  style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                  title="Generates a real image — this costs credits"
-                >
-                  <ImageIcon size={11} /> Preview environment
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowRevise(true)}
-                  disabled={disabled}
-                  className="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md disabled:opacity-50"
-                  style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                >
-                  <RefreshCw size={11} /> Revise
-                </button>
-              </div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <button type="button" onClick={() => setShowRevise(true)} disabled={disabled} className="text-action">
+                <Revise size={16} />
+                {tx('revise')}
+              </button>
 
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={onConfirm}
-                  disabled={disabled}
-                  className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-lg disabled:opacity-50"
-                  style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
-                >
-                  {busy ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
-                  Generate
-                </button>
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  disabled={disabled}
-                  className="flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-lg disabled:opacity-50"
-                  style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-                >
-                  <X size={12} /> Cancel
-                </button>
-              </div>
-            </>
+              <button type="button" onClick={onCancel} disabled={disabled} className="text-action">
+                <Void size={16} />
+                {tx('cancel')}
+              </button>
+
+              {/* FILLED MARKS: these two spend credits. Still text actions —
+                  they are secondary spends, and the gate below is the decision. */}
+              <button
+                type="button"
+                onClick={() => onPreview('character')}
+                disabled={disabled}
+                className="text-action"
+                title={tx('previewCosts')}
+              >
+                <Character size={16} />
+                {tx('previewCharacter')}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onPreview('environment')}
+                disabled={disabled}
+                className="text-action"
+                title={tx('previewCosts')}
+              >
+                <Environment size={16} />
+                {tx('previewEnvironment')}
+              </button>
+
+              {/* YOU PRESS THE NUMBER. */}
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={disabled}
+                className="slab slab--sm ms-auto"
+                title={tx('commitCosts')}
+              >
+                <Commit size={16} />
+                <span>{tx('commit')}</span>
+                {hasCost && (
+                  <>
+                    <span aria-hidden="true" style={{ opacity: 'var(--fraction-op)' }}>·</span>
+                    <Money usd={cost} onFill style={{ fontSize: 13 }} />
+                  </>
+                )}
+              </button>
+            </div>
           )}
         </div>
       )}
+
+      {resolved && outcome === 'cancelled' && (
+        <div
+          className="flex items-center gap-2"
+          style={{ borderBlockStart: '1px solid var(--etch)', marginBlockStart: 12, paddingBlockStart: 12, fontSize: 12, color: 'var(--ink-3)' }}
+        >
+          <Void size={14} />
+          {tx('cancelled')}
+        </div>
+      )}
+      {/* A confirmed card gets no footer caption at all: the SEAM below it in
+          the transcript is the record of what was authorised, and repeating
+          "Confirmed — generating." underneath it says nothing the seam and the
+          status bar are not already saying. */}
     </div>
   )
 }

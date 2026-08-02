@@ -1,33 +1,59 @@
+/* CALLS BY PROVIDER.
+
+   A categorical series, so each bar takes its own step off the five-tone ramp
+   rather than every bar sharing one accent fill — the providers are different
+   things and the chart should say so. Every step in the ramp clears 3:1
+   against --panel in both themes, so the bars are legible as UI objects, not
+   just as shapes.
+
+   Square caps. The old [4,4,0,0] radius is gone with every other curve in the
+   application. */
+
 import React from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { useUIStore } from '../../store/uiStore'
+import { ChartFrame, ChartTooltip, useChartAxes, CHART_RAMP } from './Instruments'
+import EmptyState from '../ui/EmptyState'
 
 function ProviderChart({ data = [] }) {
-  const { t } = useUIStore()
+  const { t, language } = useUIStore()
+  const ar = language === 'ar'
+  const { xAxis, yAxis } = useChartAxes()
+
+  if (data.length === 0) {
+    return (
+      <ChartFrame
+        height={220}
+        empty={(
+          <EmptyState
+            legend={t('noRuns')}
+            line={ar
+              ? 'لم يُستدعَ أي مزوّد بعد.'
+              : 'No provider has been called yet.'}
+          />
+        )}
+      />
+    )
+  }
 
   return (
-    <div className="surface p-5">
-      <div className="mb-4">
-        <h3 className="text-[15px] font-semibold" style={{ color: 'var(--text-primary)' }}>{t('providerUsage')}</h3>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>Calls by provider</p>
-      </div>
-      {data.length === 0 ? (
-        <div className="h-56 flex items-center justify-center text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('noRuns')}</div>
-      ) : (
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="provider" stroke="var(--border)" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-            <YAxis stroke="var(--border)" tick={{ fontSize: 11, fill: 'var(--text-tertiary)' }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '12px' }}
-              labelStyle={{ color: 'var(--text-secondary)' }}
-            />
-            <Bar dataKey="call_count" name="Calls" fill="var(--accent)" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      )}
-    </div>
+    <ChartFrame height={220}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+          <XAxis dataKey="provider" {...xAxis} />
+          <YAxis {...yAxis} width={40} allowDecimals={false} />
+          <Tooltip
+            cursor={{ fill: 'var(--sunk)' }}
+            content={<ChartTooltip rows={(p) => <span className="mono">{p.value}</span>} />}
+          />
+          <Bar dataKey="call_count" name={t('providerUsage')} isAnimationActive={false} maxBarSize={34}>
+            {data.map((entry, i) => (
+              <Cell key={i} fill={CHART_RAMP[i % CHART_RAMP.length]} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartFrame>
   )
 }
 

@@ -1,76 +1,95 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE TRANSCRIPT
+
+   One scroll surface, laid on the app-wide 56px gutter grid — the same spine
+   the ledger, the library and the admin table sit on. The old centred
+   `max-w-3xl mx-auto` island shared a grid with nothing else in the product.
+
+   THE EMPTY STATE. No 3xl wordmark, no atmosphere, and no dead controls: the
+   four `cursor-default` example chips did nothing on click and are replaced by
+   three REAL bilingual starter rows that submit the prompt they name.
+
+   THE WORKING STATE. The three bouncing dots are gone. While the machine is
+   thinking, the turn that is about to exist is drawn as a real row on the grid,
+   with the Meter — the application's only progress indicator — where the prose
+   will land. The scroll anchor is unchanged, so the view still follows the run.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 import React, { useEffect, useRef } from 'react'
 import MessageBubble from './MessageBubble'
+import Meter from '../ui/Meter'
+import EmptyState from '../ui/EmptyState'
+import { Caret } from '../Icon'
 import { useUIStore } from '../../store/uiStore'
-import { Zap, Wand2, Image, Film, PenTool } from 'lucide-react'
+import { useChatText, TurnRow } from './chatKit'
 
-function TypingIndicator() {
+function WorkingRow({ phase, t, tx }) {
   return (
-    <div className="flex gap-3 animate-fadeIn max-w-3xl mx-auto">
-      <div className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5" style={{ backgroundColor: 'var(--accent)' }}>
-        <Zap size={11} className="text-white" />
-      </div>
-      <div className="px-4 py-3 rounded-xl rounded-tl-sm flex items-center gap-1.5" style={{ backgroundColor: 'rgba(128,128,128,0.06)' }}>
-        <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--text-tertiary)', animationDelay: '0ms' }} />
-        <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--text-tertiary)', animationDelay: '150ms' }} />
-        <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--text-tertiary)', animationDelay: '300ms' }} />
+    <TurnRow gutter={<span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start' }}>··</span>}>
+      <span className="flex items-center gap-3" style={{ paddingBlock: 4 }}>
+        <Meter cells={5} mode="indeterminate" tone="signal" label={t('generating')} />
+        <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{phase || tx('working')}</span>
+      </span>
+    </TurnRow>
+  )
+}
+
+/* The transcript's empty state is the app-wide <EmptyState> — a legend, one
+   sentence, and real controls — laid on the gutter grid. Each starter row
+   submits the prompt it names; the four dead `cursor-default` chips are gone. */
+function TranscriptEmpty({ t, onSubmit, disabled }) {
+  const { tx } = useChatText()
+  const starters = [tx('starter1'), tx('starter2'), tx('starter3')]
+
+  return (
+    <div className="wz-page" style={{ alignContent: 'start' }}>
+      <span className="wz-gutter mono" style={{ fontSize: 11, paddingBlockStart: 2 }}>00</span>
+
+      <div className="wz-col">
+        <EmptyState legend={tx('emptyLegend')} line={t('enterPrompt')} measure="68ch">
+          <span className="legend" style={{ marginBlockStart: 24 }}>{tx('starterLegend')}</span>
+
+          <ul>
+            {starters.map((text) => (
+              <li key={text} style={{ borderBlockEnd: '1px solid var(--etch)' }}>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onSubmit?.(text)}
+                  className="text-action w-full"
+                  style={{ paddingBlock: 12, alignItems: 'start' }}
+                >
+                  <Caret size={16} style={{ marginBlockStart: 1 }} />
+                  <span style={{ fontSize: 13, lineHeight: 'var(--lh-body)' }}>{text}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </EmptyState>
       </div>
     </div>
   )
 }
 
-function EmptyState({ t }) {
-  const examples = [
-    { icon: Image, text: 'Generate an image of a futuristic city' },
-    { icon: PenTool, text: 'Write a short story about space' },
-    { icon: Film, text: 'Create a video concept' },
-    { icon: Wand2, text: 'Describe a product idea' },
-  ]
-
-  return (
-    <div className="flex flex-col items-center justify-center h-full gap-7 px-4 animate-scaleIn">
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--accent)' }}>
-        <Zap size={24} className="text-white" />
-      </div>
-      <div className="text-center">
-        <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>WAZZA</h2>
-        <p className="text-sm max-w-sm" style={{ color: 'var(--text-tertiary)' }}>{t('enterPrompt')}</p>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
-        {examples.map(({ icon: Icon, text }) => (
-          <div
-            key={text}
-            className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-[13px] transition-all duration-200 cursor-default"
-            style={{ border: '1px solid var(--border)', color: 'var(--text-tertiary)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--border-hover)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
-          >
-            <Icon size={14} className="flex-shrink-0" style={{ color: 'var(--text-tertiary)' }} />
-            <span className="line-clamp-1">{text}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ChatMessages({ messages, loading, handlers }) {
+function ChatMessages({ messages, loading, handlers, onSubmit, phase }) {
   const messagesEndRef = useRef(null)
   const { t } = useUIStore()
+  const { tx } = useChatText()
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
+    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
       {messages.length === 0 && !loading ? (
-        <EmptyState t={t} />
+        <TranscriptEmpty t={t} onSubmit={onSubmit} disabled={loading} />
       ) : (
-        <div className="max-w-3xl mx-auto space-y-5">
+        <div className="flex flex-col gap-6" style={{ paddingBlock: 24, paddingInline: 24 }}>
           {messages.map((message, index) => (
             <MessageBubble key={index} index={index} message={message} handlers={handlers} />
           ))}
-          {loading && <TypingIndicator />}
+          {loading && <WorkingRow phase={phase} t={t} tx={tx} />}
           <div ref={messagesEndRef} />
         </div>
       )}
