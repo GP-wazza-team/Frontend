@@ -76,10 +76,13 @@ export const generateService = {
     return response.data
   },
 
-  // previewType: 'environment' | 'character'. Charged like any image generation.
-  preview: async (runId, previewType) => {
+  // previewType: 'environment' | 'character'. characterName is required when
+  // previewType is 'character' — pick one from the plan's character_names.
+  // Charged like any image generation.
+  preview: async (runId, previewType, characterName = null) => {
     const response = await api.post(`/generate/runs/${runId}/preview`, {
       preview_type: previewType,
+      character_name: characterName || undefined,
     })
     return response.data
   },

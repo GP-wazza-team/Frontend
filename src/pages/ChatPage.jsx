@@ -11,6 +11,7 @@ import { useChatStore } from '../store/chatStore'
 import { generateService } from '../services/generateService'
 import { chatService } from '../services/chatService'
 import { assetService } from '../services/assetService'
+import { describeError } from '../services/errorText'
 
 /**
  * THE RUN STRIP.
@@ -85,6 +86,14 @@ function ChatPage() {
   // Index of the message that live WebSocket progress should be written into.
   // Null while a card is on screen — there is nothing running to report then.
   const progressTargetRef = useRef(null)
+  // Chat id whose next history-load effect should be skipped — see that
+  // effect below for why. Holds the id, not a bool, so a rapid second
+  // chat-create can't accidentally suppress the wrong chat's load.
+  const skipNextHistoryLoad = useRef(null)
+  // True once a run has reached a terminal state (completed, failed, cancelled,
+  // or torn down by a chat switch). Guards the socket's error/close handlers so
+  // the expected close after a completion is not reported as a lost connection.
+  const runFinishedRef = useRef(false)
   const [activeRunId, setActiveRunId] = useState(null)
   // True while a card is on screen waiting for the user. The run is still open,
   // but nothing is executing — so the prompt box stays usable and the user can
@@ -145,13 +154,31 @@ function ChatPage() {
 
   // Load messages whenever currentChatId changes while on this page, then pick
   // up any run that chat left unfinished.
+  //
+  // Skipped entirely for a chat this same tab just created (see
+  // handleSendPrompt): its local `messages` is already correct and running
+  // ahead of the server — the optimistic "Starting generation..." placeholder
+  // and the plan/clarification card only ever exist client-side, never
+  // persisted as chat messages. Without this guard, this fetch can resolve
+  // mid-flow and silently replace that array with the server's shorter one
+  // while cardIndexRef still points into the old, longer array — the next
+  // message-array write then lands past the end and corrupts the list.
+  //
+  // The guard has to come before endRun(): the run this tab just started is
+  // the one we would be tearing down, and there is no unfinished run to
+  // restore for a chat created moments ago.
   useEffect(() => {
     if (!currentChatId) return
+    if (skipNextHistoryLoad.current === currentChatId) {
+      skipNextHistoryLoad.current = null
+      return
+    }
     let cancelled = false
 
     // Switching chats must not leave the previous chat's socket open, or its
     // progress would be written into this chat's messages.
     endRun()
+
 
     chatService.getMessages(currentChatId)
       .then((data) => {
@@ -206,6 +233,9 @@ function ChatPage() {
   }
 
   const endRun = () => {
+    // Set before the socket closes: closing fires onclose, and that handler
+    // must not report a dropped connection for a run we deliberately ended.
+    runFinishedRef.current = true
     closeSocket()
     cardIndexRef.current = null
     progressTargetRef.current = null
@@ -218,12 +248,28 @@ function ChatPage() {
     setSceneNumber(null)
   }
 
-  const pushError = (error, fallback = 'Generation failed') => {
+  /**
+   * Put a failure in the transcript as a FAILURE, not as a sentence.
+   *
+   * `errorTitle` is the operation that failed and `errorDetail` is whatever the
+   * server or the agent actually said — kept as separate fields so the row can
+   * show both, and so nothing depends on sniffing the content string. `content`
+   * is still written for chat history, which is plain text on the server.
+   */
+  const pushError = (error, fallback = 'Generation failed', { runId = null } = {}) => {
+    const detail = describeError(error, fallback)
     addMessage({
       role: 'assistant',
-      content: `Error: ${error?.response?.data?.detail || error?.message || fallback}`,
+      kind: 'error',
+      errorTitle: fallback,
+      errorDetail: detail,
+      errorRunId: runId,
+      content: `Error: ${detail}`,
       created_at: new Date().toISOString(),
     })
+    // Anything that reaches here is worth having in the console with its stack
+    // intact — the row above is the readable summary, not the whole record.
+    console.error(`[${fallback}]`, error)
   }
 
   /**
@@ -280,7 +326,15 @@ function ChatPage() {
       // Keep the run id on the message: the plan and any scenes it already
       // finished are still on the server, so this is resumable rather than
       // something the user has to describe from scratch.
+      // `data.error` is the agent's own message, and it is the single most
+      // useful string in this whole flow — it is what the pipeline said when it
+      // gave up. It gets its own field so the row prints it verbatim instead of
+      // burying it in prose.
       patchMessage(target, {
+        kind: 'error',
+        errorTitle: 'Generation failed',
+        errorDetail: data.error || 'The run stopped without reporting a reason',
+        errorRunId: runId,
         content: `Error: ${data.error || 'Generation failed'}`,
         failedRunId: runId,
       })
@@ -351,6 +405,58 @@ function ChatPage() {
         // Ignore malformed WebSocket messages and keep the current progress text.
       }
     }
+
+    // Without these two, a socket that dies mid-run leaves the strip spinning
+    // on its last progress line forever: no completion event ever arrives, so
+    // nothing clears it and nothing says why. The run itself is usually still
+    // alive on the server, which is why this reports a lost CHANNEL rather than
+    // a failed run — the work is not gone, the reporting is.
+    //
+    // `runFinishedRef` separates this from the ordinary close that follows a
+    // completion event, and it is set before endRun() because endRun() closes
+    // the socket, which re-enters onclose.
+    const reportLostContact = (detail, short) => {
+      if (runFinishedRef.current) return
+      runFinishedRef.current = true
+
+      const patch = {
+        kind: 'error',
+        errorTitle: 'Lost contact with the run',
+        errorDetail: detail,
+        errorRunId: runId,
+        content: `Error: ${short}`,
+        // Resumable: the plan and any finished scenes are still server-side.
+        failedRunId: runId,
+      }
+
+      // While a card is on screen there is no progress line to overwrite, and
+      // patchMessage(null) is a silent no-op — the one outcome this whole
+      // change exists to prevent. Append instead.
+      if (progressTargetRef.current === null || progressTargetRef.current === undefined) {
+        addMessage({ role: 'assistant', created_at: new Date().toISOString(), ...patch })
+      } else {
+        patchMessage(progressTargetRef.current, patch)
+      }
+      endRun()
+    }
+
+    socket.onerror = () => {
+      reportLostContact(
+        'The progress connection dropped. The run may still be going on the server — reopen this chat to pick it up.',
+        'the progress connection dropped',
+      )
+    }
+
+    socket.onclose = (event) => {
+      // 1000 is a normal close; anything else ended the stream unexpectedly.
+      if (event.code === 1000) return
+      reportLostContact(
+        `The progress connection closed unexpectedly (code ${event.code}${event.reason ? `: ${event.reason}` : ''}). The run may still be going on the server — reopen this chat to pick it up.`,
+        `the progress connection closed (code ${event.code})`,
+      )
+    }
+
+    runFinishedRef.current = false
     await waitForSocketOpen(socket)
     return socket
   }
@@ -524,6 +630,7 @@ function ChatPage() {
       if (!chatId) {
         const chat = await chatService.createChat()
         chatId = chat.id
+        skipNextHistoryLoad.current = chat.id
         useChatStore.setState((state) => ({
           chats: [chat, ...state.chats],
           currentChatId: chat.id,
@@ -608,7 +715,7 @@ function ChatPage() {
       const updated = await generateService.edit(runId, field, text)
       patchMessage(index, { plan: updated, busy: false })
     } catch (error) {
-      pushError(error, 'Could not save the edit')
+      pushError(error, 'Could not save the edit', { runId })
     }
   })
 
@@ -617,7 +724,7 @@ function ChatPage() {
       const updated = await generateService.editScript(runId, scenes)
       patchMessage(index, { plan: updated, busy: false })
     } catch (error) {
-      pushError(error, 'Could not save the script')
+      pushError(error, 'Could not save the script', { runId })
     }
   })
 
@@ -635,18 +742,23 @@ function ChatPage() {
       const updated = await generateService.updateSettings(runId, settings)
       patchMessage(index, { plan: updated, busy: false })
     } catch (error) {
-      pushError(error, 'Could not change the output settings')
+      pushError(error, 'Could not change the output settings', { runId })
     }
   })
 
-  const handlePreview = (runId, previewType) => withCardBusy(async (index) => {
+  const handlePreview = (runId, previewType, characterName = null) => withCardBusy(async (index) => {
     try {
-      const preview = await generateService.preview(runId, previewType)
+      const preview = await generateService.preview(runId, previewType, characterName)
       const current = useChatStore.getState().messages[index]
-      const others = (current?.previews || []).filter((p) => p.preview_type !== previewType)
+      // Keyed by preview_type + character_name so re-previewing one character
+      // (e.g. regenerating "Rogue") replaces only that character's card
+      // instead of wiping out every other character's preview.
+      const others = (current?.previews || []).filter(
+        (p) => !(p.preview_type === preview.preview_type && p.character_name === preview.character_name)
+      )
       patchMessage(index, { previews: [...others, preview], busy: false })
     } catch (error) {
-      pushError(error, 'Could not generate the preview')
+      pushError(error, 'Could not generate the preview', { runId })
     }
   })
 
@@ -657,7 +769,7 @@ function ChatPage() {
       // Revise returns a fresh plan (or new questions) — swap the card in place.
       renderPlanResponse(result, runId, { replaceIndex: index })
     } catch (error) {
-      pushError(error, 'Could not revise the plan')
+      pushError(error, 'Could not revise the plan', { runId })
       patchMessage(index, { busy: false })
     }
   })
@@ -667,7 +779,7 @@ function ChatPage() {
       const result = await generateService.clarify(runId, answers)
       renderPlanResponse(result, runId, { replaceIndex: index })
     } catch (error) {
-      pushError(error, 'Could not submit your answers')
+      pushError(error, 'Could not submit your answers', { runId })
       patchMessage(index, { busy: false })
     }
   })
@@ -678,7 +790,7 @@ function ChatPage() {
       patchMessage(index, { resolved: true, resolution: 'cancelled', busy: false })
       addMessage({ role: 'assistant', content: 'Generation cancelled.', created_at: new Date().toISOString() })
     } catch (error) {
-      pushError(error, 'Could not cancel the run')
+      pushError(error, 'Could not cancel the run', { runId })
     } finally {
       endRun()
     }

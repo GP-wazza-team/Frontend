@@ -244,9 +244,85 @@ function CommitSeam({ usd, tx }) {
   )
 }
 
+/* ── THE FAILURE REPORT ────────────────────────────────────────────────────
+   A failure used to arrive as one grey-red sentence reading "Error: " plus
+   whatever survived `detail || message || fallback` — which for a validation
+   error was "[object Object]", and for a dropped socket was nothing at all.
+
+   Three lines instead, because they answer three different questions: WHAT
+   operation failed, WHAT the server or agent actually said, and WHICH run to
+   quote when asking about it. The detail is mono and selectable — it is a
+   machine string, and it exists to be copied into a bug report, so there is a
+   control that does exactly that. */
+function ErrorReport({ title, detail, runId, tx }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async () => {
+    const payload = [title, detail, runId ? `run ${runId}` : null].filter(Boolean).join('\n')
+    try {
+      await navigator.clipboard.writeText(payload)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch {
+      // Clipboard is permission-gated and blocked outright on insecure
+      // origins. The text is selectable regardless, so a failure here costs
+      // nothing worth reporting.
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2" style={{ maxInlineSize: '68ch' }}>
+      <span style={{ fontSize: 15, lineHeight: 'var(--lh-body)', color: 'var(--state-fail)' }}>
+        {title}
+      </span>
+
+      {detail && (
+        <span
+          className="mono whitespace-pre-wrap break-words"
+          style={{
+            fontSize: 12,
+            lineHeight: 1.55,
+            color: 'var(--ink-2)',
+            borderInlineStart: '2px solid var(--state-fail)',
+            paddingInlineStart: 10,
+            userSelect: 'text',
+          }}
+        >
+          {detail}
+        </span>
+      )}
+
+      <span className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        {runId && (
+          <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+            {tx('runRef')} <span style={{ userSelect: 'text' }}>{runId}</span>
+          </span>
+        )}
+        {detail && (
+          <button type="button" onClick={copy} className="text-action">
+            <Note size={16} />
+            {copied ? tx('copied') : tx('copyDetail')}
+          </button>
+        )}
+      </span>
+    </div>
+  )
+}
+
 /* ── THE TURN ─────────────────────────────────────────────────────────────── */
 
 function MessageBubble({ message, handlers, index }) {
+  // Defensive: a store bug or a stale index write can otherwise land an
+  // undefined slot in the messages array, and that one bad message would take
+  // the whole transcript down with it.
+  //
+  // This sits above the hooks, not between them. ChatMessages already skips
+  // falsy slots, so a message going null unmounts this component outright
+  // rather than re-rendering it — the hook order can never change underneath
+  // a live instance. Guarding after `useLightbox()` but before `useState`
+  // below would be the actual rules-of-hooks violation.
+  if (!message) return null
+
   const openMedia = useLightbox()
   const { tx } = useChatText()
   const rtl = useRtl()
@@ -274,7 +350,7 @@ function MessageBubble({ message, handlers, index }) {
             catalog={handlers?.modelCatalog}
             onEdit={(field, text) => handlers?.onEdit?.(message.runId, field, text)}
             onEditScript={(scenes) => handlers?.onEditScript?.(message.runId, scenes)}
-            onPreview={(type) => handlers?.onPreview?.(message.runId, type)}
+            onPreview={(type, characterName) => handlers?.onPreview?.(message.runId, type, characterName)}
             onRevise={(feedback) => handlers?.onRevise?.(message.runId, feedback)}
             onConfirm={() => handlers?.onConfirm?.(message.runId)}
             onCancel={() => handlers?.onCancel?.(message.runId)}
@@ -305,7 +381,13 @@ function MessageBubble({ message, handlers, index }) {
 
   // An error line is a state, not a sentence in grey. It reads in --state-fail
   // with the note mark in the gutter, so a failure is findable when scrolling.
-  const isError = typeof message.content === 'string' && message.content.startsWith('Error:')
+  //
+  // `kind` is the reliable signal. The content sniff stays for messages
+  // reloaded from chat history, which the server stores as plain text and which
+  // therefore carry no kind.
+  const isError = message.kind === 'error' ||
+    (typeof message.content === 'string' && message.content.startsWith('Error:'))
+  const hasErrorReport = message.kind === 'error' && (message.errorTitle || message.errorDetail)
 
   const gutter = (
     <span className="flex flex-col gap-1" style={{ textAlign: 'start' }}>
@@ -336,7 +418,18 @@ function MessageBubble({ message, handlers, index }) {
 
   const body = (
     <>
-      <div className="flex flex-col gap-3">
+      {hasErrorReport && (
+        <ErrorReport
+          title={message.errorTitle || tx('somethingFailed')}
+          detail={message.errorDetail}
+          runId={message.errorRunId}
+          tx={tx}
+        />
+      )}
+
+      {/* The content string duplicates the report above verbatim — it exists so
+          chat history (plain text, server-side) still reads correctly. */}
+      <div className="flex flex-col gap-3" hidden={hasErrorReport}>
         {parts.map((part, i) => {
           if (part.type === 'image' || part.type === 'video') {
             return (

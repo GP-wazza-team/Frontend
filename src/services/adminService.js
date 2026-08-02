@@ -12,6 +12,13 @@ export const adminService = {
     return response.data
   },
 
+  // Hits five vendors server-side, so it is slower than the other admin calls
+  // and is loaded separately from the overview rather than blocking it.
+  getProviderBalances: async (days = 30, refresh = false) => {
+    const response = await api.get('/admin/provider-balances', { params: { days, refresh } })
+    return response.data
+  },
+
   getRunDetail: async (runId) => {
     const response = await api.get(`/admin/runs/${runId}`)
     return response.data

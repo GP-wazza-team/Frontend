@@ -34,6 +34,18 @@ export const useChatStore = create((set, get) => ({
 
   updateMessage: (index, message) => {
     set((state) => {
+      // An index from a stale ref (e.g. the messages array was reloaded and
+      // shrank underneath a card still tracked by index) must not write past
+      // the end — spreading a sparse array later turns the gap into real
+      // `undefined` elements, which crashes MessageBubble on render.
+      //
+      // Appending rather than bailing out keeps the card visible: dropping it
+      // would lose a plan or clarification the user is waiting to answer.
+      // `index === state.messages.length` needs no special case — the write
+      // below already appends in that position.
+      if (index < 0 || index > state.messages.length) {
+        return { messages: [...state.messages, message] }
+      }
       const newMessages = [...state.messages]
       newMessages[index] = message
       return { messages: newMessages }

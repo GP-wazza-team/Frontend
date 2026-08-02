@@ -457,7 +457,17 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
   const { tx } = useChatText()
   const [feedback, setFeedback] = useState('')
   const [showRevise, setShowRevise] = useState(false)
+  const characterNames = plan.character_names || []
+  const [selectedCharacter, setSelectedCharacter] = useState(characterNames[0] || '')
   const disabled = resolved || busy
+
+  // The plan can be replaced entirely (revise, clarify, edit) — keep the
+  // selection valid, and pick a default the first time names show up.
+  React.useEffect(() => {
+    if (characterNames.length === 0) return
+    if (!characterNames.includes(selectedCharacter)) setSelectedCharacter(characterNames[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.character_names])
 
   const submitRevise = async () => {
     const trimmed = feedback.trim()
@@ -522,15 +532,18 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
             <div style={{ paddingBlockStart: 8 }}>
               <span className="legend">{tx('previews')}</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Keyed by type AND character: a plan with three characters
+                    holds three 'character' previews at once, and keying on
+                    type alone would collapse them into one React child. */}
                 {previews.map((p) => (
                   <Frame
-                    key={p.preview_type}
+                    key={`${p.preview_type}:${p.character_name || ''}`}
                     maxWidth={320}
-                    caption={[p.preview_type, plan.aspect_ratio]}
+                    caption={[p.character_name || p.preview_type, plan.aspect_ratio]}
                   >
                     <img
                       src={p.image_url}
-                      alt={`${p.preview_type} preview`}
+                      alt={`${p.character_name || p.preview_type} preview`}
                       className="cursor-zoom-in"
                       style={{ display: 'block', inlineSize: '100%', blockSize: 'auto' }}
                       onClick={() => openMedia(p.image_url, 'image')}
@@ -594,17 +607,40 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
               </button>
 
               {/* FILLED MARKS: these two spend credits. Still text actions —
-                  they are secondary spends, and the gate below is the decision. */}
-              <button
-                type="button"
-                onClick={() => onPreview('character')}
-                disabled={disabled}
-                className="text-action"
-                title={tx('previewCosts')}
-              >
-                <Character size={16} />
-                {tx('previewCharacter')}
-              </button>
+                  they are secondary spends, and the gate below is the decision.
+
+                  The character preview needs to know WHICH character, so the
+                  picker sits directly against its button — one control, read
+                  as one phrase. It only appears when there is a choice to
+                  make: a single-character plan has nothing to pick. */}
+              <span className="flex items-center gap-2">
+                {characterNames.length > 1 && (
+                  <select
+                    value={selectedCharacter}
+                    disabled={disabled}
+                    onChange={(e) => setSelectedCharacter(e.target.value)}
+                    className="field field--sm"
+                    style={{ inlineSize: 'auto', maxInlineSize: '18ch' }}
+                    aria-label={tx('whichCharacter')}
+                    title={tx('whichCharacter')}
+                  >
+                    {characterNames.map((name, i) => (
+                      <option key={`${name}-${i}`} value={name}>{name}</option>
+                    ))}
+                  </select>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => onPreview('character', selectedCharacter)}
+                  disabled={disabled || characterNames.length === 0}
+                  className="text-action"
+                  title={characterNames.length === 0 ? tx('noCharacters') : tx('previewCosts')}
+                >
+                  <Character size={16} />
+                  {tx('previewCharacter')}
+                </button>
+              </span>
 
               <button
                 type="button"

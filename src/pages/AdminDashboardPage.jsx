@@ -23,11 +23,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adminService } from '../services/adminService'
+import { describeFailure } from '../services/errorText'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { useToastStore } from '../store/toastStore'
 import AdminStatsCards from '../components/admin/AdminStatsCards'
 import ModelCostBreakdown from '../components/admin/ModelCostBreakdown'
+import ProviderBalances from '../components/admin/ProviderBalances'
 import DailyMetricsChart from '../components/admin/DailyMetricsChart'
 import AdminRunsTable, { RunsFilters } from '../components/admin/AdminRunsTable'
 import RunDetailDrawer from '../components/admin/RunDetailDrawer'
@@ -64,6 +66,8 @@ export default function AdminDashboardPage() {
   const [runToDelete, setRunToDelete] = useState(null)
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(true)
+  const [providerBalances, setProviderBalances] = useState([])
+  const [balancesLoading, setBalancesLoading] = useState(false)
 
   /* Presentation state over the runs already loaded by loadAll. No requests. */
   const [filters, setFilters] = useState({})
@@ -90,6 +94,35 @@ export default function AdminDashboardPage() {
       loadAll()
     }
   }, [loadAll, user])
+
+  const loadBalances = useCallback(async (refresh = false) => {
+    setBalancesLoading(true)
+    try {
+      const data = await adminService.getProviderBalances(days, refresh)
+      setProviderBalances(Array.isArray(data) ? data : [])
+    } catch (err) {
+      // A vendor being unreachable is not a reason to blank the whole
+      // dashboard, so this failure is reported and otherwise swallowed. The
+      // toast carries the reason, not just the fact — "Could not read provider
+      // balances" alone leaves nothing to act on.
+      console.error('Failed to load provider balances:', err)
+      addToast(
+        describeFailure(
+          ar ? 'تعذّرت قراءة أرصدة المزودين' : 'Could not read provider balances',
+          err,
+        ),
+        'error',
+      )
+    } finally {
+      setBalancesLoading(false)
+    }
+  }, [days, addToast, ar])
+
+  useEffect(() => {
+    if (user?.is_admin || user?.role === 'admin') {
+      loadBalances()
+    }
+  }, [loadBalances, user])
 
   const handleRunClick = async (run) => {
     setSelectedRun(run)
@@ -246,8 +279,29 @@ export default function AdminDashboardPage() {
           : <ModelCostBreakdown data={modelCosts} totalCost={stats.total_cost_usd || 0} />}
       </Band>
 
+      {/* Loaded separately from the overview — it calls five vendors
+          server-side, so it must not hold the rest of the page hostage. It
+          gets its own skeleton for the same reason. */}
       <Band
         index={4}
+        id="wz-admin-balances"
+        legend={ar ? 'أرصدة المزودين' : 'Provider balances'}
+        note={ar ? 'الرصيد المتبقي والإنفاق' : 'Remaining credit and spend'}
+      >
+        {balancesLoading
+          ? <div className="skel" style={{ blockSize: 5 * 40 + 36 }} />
+          : (
+            <ProviderBalances
+              data={providerBalances}
+              days={days}
+              loading={balancesLoading}
+              onRefresh={() => loadBalances(true)}
+            />
+          )}
+      </Band>
+
+      <Band
+        index={5}
         id="wz-admin-runs"
         legend={ar ? 'كل التشغيلات' : 'All runs'}
         note={filters.search || filters.status

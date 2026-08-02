@@ -20,6 +20,7 @@ import MessageBubble from './MessageBubble'
 import Meter from '../ui/Meter'
 import EmptyState from '../ui/EmptyState'
 import { Caret } from '../Icon'
+import ErrorBoundary from '../ErrorBoundary'
 import { useUIStore } from '../../store/uiStore'
 import { useChatText, TurnRow } from './chatKit'
 
@@ -87,7 +88,11 @@ function ChatMessages({ messages, loading, handlers, onSubmit, phase }) {
       ) : (
         <div className="flex flex-col gap-6" style={{ paddingBlock: 24, paddingInline: 24 }}>
           {messages.map((message, index) => (
-            <MessageBubble key={index} index={index} message={message} handlers={handlers} />
+            message && (
+              <ErrorBoundary key={index}>
+                <MessageBubble index={index} message={message} handlers={handlers} />
+              </ErrorBoundary>
+            )
           ))}
           {loading && <WorkingRow phase={phase} t={t} tx={tx} />}
           <div ref={messagesEndRef} />
