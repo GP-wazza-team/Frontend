@@ -25,22 +25,34 @@ function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, on
   const { tx } = useChatText()
   const disabled = resolved || busy
 
-  const setAnswer = (key, answer) => {
-    setAnswers((prev) => ({ ...prev, [key]: answer }))
+  // Answers are held BY POSITION, not by q.key.
+  //
+  // `needs_clarification` comes straight out of the enhancer LLM with no
+  // uniqueness check on the server, so two questions can arrive carrying the
+  // same key — or none at all. Keyed by q.key, those questions shared one slot
+  // in this object: answering "Brown" to the hair question wrote it into the
+  // time-of-day question's free-text box, and clearing one cleared the other.
+  // Position is the only identity a question here is guaranteed to have.
+  const setAnswer = (index, answer) => {
+    setAnswers((prev) => ({ ...prev, [index]: answer }))
   }
 
   // Clicking the selected suggestion again clears it, so a mis-click isn't
   // permanent — there is otherwise no way back to "no answer" for a question.
-  const toggleAnswer = (key, option) => {
-    setAnswers((prev) => ({ ...prev, [key]: prev[key] === option ? '' : option }))
+  const toggleAnswer = (index, option) => {
+    setAnswers((prev) => ({ ...prev, [index]: prev[index] === option ? '' : option }))
   }
 
-  const answered = questions.filter((q) => (answers[q.key] || '').trim())
+  const answered = questions
+    .map((q, i) => ({ q, i }))
+    .filter(({ i }) => (answers[i] || '').trim())
   const canSubmit = answered.length > 0 && !disabled
 
   const submit = () => {
     if (!canSubmit) return
-    onSubmit(answered.map((q) => ({ key: q.key, answer: answers[q.key].trim() })))
+    // The server still merges by key, so that is what goes back out — the
+    // positional indexing is this component's business only.
+    onSubmit(answered.map(({ q, i }) => ({ key: q.key, answer: answers[i].trim() })))
   }
 
   return (
@@ -64,7 +76,10 @@ function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, on
       <div>
         {questions.map((q, i) => (
           <div
-            key={q.key}
+            // Position, for the same reason the answers are: duplicate q.key
+            // values would collide as React keys and make the list re-order
+            // unpredictably as answers come in.
+            key={`${q.key || 'q'}-${i}`}
             className="grid grid-cols-[28px_minmax(0,1fr)] items-start"
             style={{
               paddingBlock: 12,
@@ -80,14 +95,14 @@ function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, on
 
               {(q.options || []).length > 0 && (
                 <div className="rocker self-start" role="group" aria-label={q.question}>
-                  {(q.options || []).map((option) => (
+                  {(q.options || []).map((option, oi) => (
                     <button
-                      key={option}
+                      key={`${option}-${oi}`}
                       type="button"
                       className="rocker__cell disabled:opacity-50"
-                      data-on={answers[q.key] === option ? 'true' : 'false'}
-                      aria-pressed={answers[q.key] === option}
-                      onClick={() => toggleAnswer(q.key, option)}
+                      data-on={answers[i] === option ? 'true' : 'false'}
+                      aria-pressed={answers[i] === option}
+                      onClick={() => toggleAnswer(i, option)}
                       disabled={disabled}
                     >
                       {option}
@@ -98,8 +113,8 @@ function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, on
 
               <input
                 type="text"
-                value={(q.options || []).includes(answers[q.key]) ? '' : (answers[q.key] || '')}
-                onChange={(e) => setAnswer(q.key, e.target.value)}
+                value={(q.options || []).includes(answers[i]) ? '' : (answers[i] || '')}
+                onChange={(e) => setAnswer(i, e.target.value)}
                 disabled={disabled}
                 placeholder={tx('typeYourOwn')}
                 className="field field--sm disabled:opacity-50"
