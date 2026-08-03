@@ -1,9 +1,11 @@
-/** Wazza · Miqyas — Tailwind is a delivery mechanism for the tokens in
+/** Wazza · الصَّكّ — Tailwind is a delivery mechanism for the tokens in
  *  src/index.css, never a second source of truth. Every colour below is a
  *  var() reference, so a token edit lands everywhere at once.
  *
- *  Border radius is 0 across the whole scale on purpose (L2): a stray legacy
- *  `rounded-full` cannot reintroduce a curve. The chamfer is the only cut.
+ *  Border radius is 0 across the whole scale on purpose: a stray legacy
+ *  `rounded-full` cannot reintroduce a curve. L2 — the 45 degree chamfer is
+ *  the only cut in the system, it means a committed record, and it lives on
+ *  exactly three surfaces.
  */
 export default {
   content: [
@@ -21,9 +23,11 @@ export default {
       fontFamily: {
         sans: ['Supreme', 'IBM Plex Sans Arabic', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         mono: ['Commit Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
-        // Two call sites in the entire app: the auth plate legend and the
-        // Latin lockup beside the mark. Never on a working screen.
-        stencil: ['Bespoke Stencil', 'Supreme', 'system-ui', 'sans-serif'],
+        // There is no `stencil` family. A military stencil face cannot carry a
+        // company's identity, and the wordmark is now the house hand at the
+        // record register. Do not add a second display family here: the
+        // standing goal is ONE HAND across both scripts (see the type debt
+        // recorded in index.css).
       },
       colors: {
         paper: 'var(--paper)',
@@ -55,8 +59,10 @@ export default {
       },
       // The only box-shadow specs in the application. `overlay` is used on
       // exactly three components: MediaLightbox, RunDetailDrawer, ConfirmDialog.
-      // `etch` / `edge` are the 1px container and control outlines — a
-      // chamfered element cannot carry a real border, so it draws one inset.
+      // `etch` / `edge` are the 1px container and control outlines. They stay
+      // as inset shadows for the three surfaces that still clip (a clip-path
+      // eats a real border), but every uncut surface should now use a real
+      // `border` instead — reach for these only when the element is cut.
       boxShadow: {
         overlay: 'var(--shadow-overlay)',
         etch: 'inset 0 0 0 1px var(--etch)',
@@ -71,14 +77,24 @@ export default {
         statusbar: 'var(--statusbar)',   // 36px
       },
       fontSize: {
-        // The working scale. Nothing on a working screen exceeds 20px.
+        // The working scale. Seven steps, nothing on a working screen above
+        // 20px, one document register above that.
+        //
+        // The base is 14px and the reason is mechanical, not comfort: Arabic
+        // separates ب ت ث ن ي and ج ح خ by DOTS, not by skeleton, and at 13px
+        // on a 1x display a dot PAIR merges into a smear — at exactly the size
+        // where a table row is densest. 14px is the floor at which they
+        // resolve. It is also half an alif on the nuqṭa/alif modulus (4/28px).
         tick: ['10px', { lineHeight: '1' }],
-        legend: ['11px', { lineHeight: '1.2' }],
-        dense: ['12px', { lineHeight: '1.35' }],
-        ui: ['13px', { lineHeight: '1.4' }],
-        body: ['15px', { lineHeight: 'var(--lh-body)' }],
-        title: ['17px', { lineHeight: '1.25' }],
-        rubric: ['20px', { lineHeight: '1.15' }],
+        legend: ['12px', { lineHeight: '1.25' }],
+        dense: ['13px', { lineHeight: '1.4' }],
+        ui: ['14px', { lineHeight: '1.45' }],
+        body: ['16px', { lineHeight: 'var(--lh-body)' }],
+        title: ['20px', { lineHeight: '1.25' }],
+        rubric: ['22px', { lineHeight: '1.2' }],
+        // THE RECORD REGISTER — one alif. Three call sites, all documents:
+        // the work order, the run receipt, the auth wordmark. Never a route.
+        record: ['28px', { lineHeight: '1.15' }],
       },
       transitionTimingFunction: { ease: 'var(--ease)' },
       transitionDuration: { state: '120ms', surface: '180ms', meter: '1200ms' },

@@ -504,15 +504,24 @@ function MessageBubble({ message, handlers, index }) {
     >
       {isUser ? (
         <div
-          className="cut cut-md"
           style={{
             backgroundColor: 'var(--sunk)',
-            /* the seam bar on the inline-start edge — an inset shadow, because
-               clip-path would eat a border on the cut corner */
-            boxShadow: `inset ${rtl ? '-2px' : '2px'} 0 0 0 var(--signal)`,
+            /* THE SEAM BAR, and it is no longer the accent.
+               L3 caps the second ink at two appearances per viewport, and a
+               signal-coloured seam on every user turn blew that budget by
+               itself: a scrolled transcript could show a dozen. The bar is
+               structure — it says "this turn is yours" — and structure is
+               what --etch-strong is for. The accent is reserved for the two
+               things it actually means: this is running, or this costs money.
+
+               L2: NOT CUT. A message is not a committed record. With the clip
+               gone this could be a real border-inline-start, but it stays an
+               inset shadow so the bar cannot enter the box model and shift
+               the text by 2px. */
+            boxShadow: `inset ${rtl ? '-2px' : '2px'} 0 0 0 var(--etch-strong)`,
             paddingBlock: 10,
             paddingInlineStart: 14,
-            paddingInlineEnd: 19,
+            paddingInlineEnd: 14,
             maxInlineSize: '72ch',
           }}
         >

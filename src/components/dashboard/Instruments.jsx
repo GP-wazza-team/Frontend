@@ -308,7 +308,7 @@ export function ChartTooltip({ active, payload, label, rows }) {
   if (!active || !payload || payload.length === 0) return null
   return (
     <div
-      className="cut cut-md instrument-tile"
+      className="instrument-tile"
       style={{
         backgroundColor: 'var(--panel)',
         boxShadow: 'inset 0 0 0 1px var(--etch-strong)',

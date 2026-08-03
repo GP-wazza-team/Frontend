@@ -6,15 +6,29 @@
    foundation's tokens and classes; nothing invents a second system.
 
    THE COMPOSITION
-     · A 45/55 split. The leading side is THE PLATE — a bespoke instrument
-       face, identical in both themes, and the only composed surface in the
-       application. It is scoped `.dark` so it draws its whole palette from the
-       foundation's dark token block: no literal hex, no theme fork, and every
-       contrast ratio on it is one the foundation already computed.
+     · A 45/55 split. The leading side is THE LEAF — the head of the
+       instrument, and the only composed surface in the application. ONE
+       object: the sealed square, the wordmark, and the hāshiya carrying the
+       folio. Nothing else.
+
+       WHAT USED TO BE HERE, and why it is gone. This panel was a working
+       instrument face: a 60-tick arc gauge with a needle drifting on a 6s
+       loop, four screw heads, a feTurbulence grain layer, a fake serial
+       ("WAZZA v1.0"), the internal codename "Miqyas" printed to customers,
+       the wordmark in a military STENCIL face at 56px, and the whole panel
+       force-scoped `.dark` in both themes. Each piece was craft. Stacked,
+       they made the first screen a customer sees look like a game terminal,
+       and that is the single loudest reason this system read as a game rather
+       than as a company. A gauge that measures nothing is a prop. It is
+       deleted, not restyled.
+
+       It is no longer scoped `.dark` either. Light is the product and the
+       theme the decisions are made in; a dark panel welded into a light page
+       is the artefact that travels into a procurement deck.
      · The trailing side is the form, laid on the SAME 56px leading gutter grid
        every route uses. The gutter carries the field index (01 · 02), the
        error's shape marker and the live meter while a request is in flight —
-       so the auth screen reads as the same machine as the console behind it.
+       so the auth screen reads as the same document as the console behind it.
      · One filled element on the screen: the submit slab (§11.6 authorises it).
        Everything else free is a text action or a rocker.
 
@@ -31,197 +45,117 @@
    shipping a dead live-looking link; its string is retained below.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mark, Reveal, RevealOff, Caret, ShapeFail, ShapeCancelled } from '../components/Icon'
 import Meter from '../components/ui/Meter'
-import { useReducedMotion } from '../components/ui/useReducedMotion'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
 import { clearAllStores } from '../utils/clearStores'
 
-/* ── THE INSTRUMENT ────────────────────────────────────────────────────────
-   The plate's one authored motion: the needle drifts across a 6s ease-in-out
-   loop while the ticks beneath it light in sequence. Under reduced motion it
-   sits at its mid position — readable, honest, never hidden. */
+/* ── THE WORDMARK ──────────────────────────────────────────────────────────
+   The lockup, and it is the fix for the clearest single tell that this was a
+   Latin-first system wearing Arabic. It used to set وزّة in the BODY face at
+   60px while the Latin "WAZZA" got a separate identity face — so the Arabic
+   was the fallback and the Latin was the brand, in an Arabic-first product.
+   That is exactly backwards.
 
-function useDrift(center, swing) {
-  /* The foundation's reactive hook, not a read during render — flipping the OS
-     preference has to settle a needle that is already drifting. */
-  const reduce = useReducedMotion()
-  const [value, setValue] = useState(center)
-  useEffect(() => {
-    if (reduce) { setValue(center); return undefined }
-    const t0 = Date.now()
-    /* The ticks are discrete and the whole drift is ~4 of 60 ticks, so a 120ms
-       step is smoother than the eye can resolve and costs almost nothing. */
-    const id = setInterval(() => {
-      const p = ((Date.now() - t0) % 6000) / 6000
-      setValue(center + swing * Math.sin(p * 2 * Math.PI))
-    }, 120)
-    return () => clearInterval(id)
-  }, [center, swing, reduce])
-  return value
-}
+   Now: وزّة is primary by size, by weight and by ink value, and "Wazza"
+   beneath it is a subordinate TRANSLITERATION LINE. There is no second face,
+   in either script, which is the point — the identity is the hand, not the
+   alphabet. A manuscript does not pair typefaces; it is one hand written at
+   different sizes, and the scribe does not switch alphabets for the title.
 
-const G = { w: 280, h: 180, cx: 140, cy: 170, r: 134, a0: 160, span: 140 }
-
-function polar(radius, t) {
-  const a = ((G.a0 - t * G.span) * Math.PI) / 180
-  return [G.cx + radius * Math.cos(a), G.cy - radius * Math.sin(a)]
-}
-
-/* 60 ticks, every tenth long. Lit ticks are --signal (the accent means LIVE);
-   unlit ticks are engraved edges. No text inside the SVG, so the whole face
-   can mirror wholesale in RTL and the scale still runs in the reading
-   direction. */
-function ArcGauge({ value, isAr }) {
-  const ticks = []
-  for (let i = 0; i < 60; i += 1) {
-    const t = i / 59
-    const major = i % 10 === 0 || i === 59
-    const [x1, y1] = polar(G.r, t)
-    const [x2, y2] = polar(G.r - (major ? 16 : 9), t)
-    const lit = t <= value
-    ticks.push(
-      <line
-        key={i}
-        x1={x1} y1={y1} x2={x2} y2={y2}
-        stroke={lit ? 'var(--signal)' : major ? 'var(--edge)' : 'var(--etch-strong)'}
-        strokeWidth={major ? 2 : 1}
-      />
-    )
-  }
-
-  const [ax, ay] = polar(G.r - 22, 0)
-  const [bx, by] = polar(G.r - 22, 1)
-  /* The needle runs from the pivot's own centre; the pivot plate is drawn after
-     it and covers the join, so the two read as one machined part. */
-  const [nx2, ny2] = polar(G.r - 16, value)
-  const p = G.r - 22
-
+   Sentence case, not tracked-out caps: A1 forbids tracking in Arabic anyway,
+   and a letterspaced Latin wordmark beside an untracked Arabic one would
+   reintroduce the same two-tier lockup by other means. Latin gets 0.02em, and
+   only inside [dir=ltr]. */
+export function Wordmark({ size = 'record' }) {
+  const isRecord = size === 'record'
   return (
-    <svg
-      viewBox={`0 0 ${G.w} ${G.h}`}
-      width="100%"
-      style={{ height: 'auto', display: 'block' }}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <g transform={isAr ? `translate(${G.w},0) scale(-1,1)` : undefined}>
-        <path
-          d={`M${ax} ${ay} A${p} ${p} 0 0 1 ${bx} ${by}`}
-          fill="none"
-          stroke="var(--etch-strong)"
-          strokeWidth="1"
-        />
-        {ticks}
-        <line x1={G.cx} y1={G.cy} x2={nx2} y2={ny2} stroke="var(--signal)" strokeWidth="1.5" strokeLinecap="butt" />
-        {/* The pivot is a notched plate, not a disc. Nothing here is round. */}
-        <path
-          d={`M${G.cx - 8} ${G.cy - 8} H${G.cx + 4} L${G.cx + 8} ${G.cy - 4} V${G.cy + 8} H${G.cx - 8} Z`}
-          fill="var(--panel)"
-          stroke="var(--edge)"
-          strokeWidth="1"
-        />
-        <rect x={G.cx - 2} y={G.cy - 2} width="4" height="4" fill="var(--signal)" />
-      </g>
-    </svg>
+    <div>
+      <span
+        className={isRecord ? 'record' : undefined}
+        style={{
+          display: 'block',
+          color: 'var(--ink)',
+          ...(isRecord ? null : { fontSize: 17, fontWeight: 600, lineHeight: 1.2 }),
+        }}
+      >
+        وزّة
+      </span>
+      <span
+        className="ltr:tracking-[0.02em]"
+        style={{
+          display: 'block',
+          fontSize: isRecord ? 14 : 11,
+          fontWeight: 500,
+          lineHeight: 1.2,
+          color: 'var(--ink-3)',
+          marginBlockStart: isRecord ? 6 : 2,
+        }}
+      >
+        Wazza
+      </span>
+    </div>
   )
 }
 
-function Screw({ isAr, style }) {
-  return (
-    <svg
-      width="10" height="10" viewBox="0 0 10 10"
-      fill="none" stroke="var(--edge)" strokeWidth="1"
-      aria-hidden="true" focusable="false"
-      style={{ position: 'absolute', transform: isAr ? 'scaleX(-1)' : undefined, ...style }}
-    >
-      <path d="M0.5 0.5 H7 L9.5 3 V9.5 H0.5 Z" />
-      <path d="M3.2 6.8 L6.8 3.2" />
-    </svg>
-  )
-}
+/* ── THE LEAF ──────────────────────────────────────────────────────────────
+   ONE composed object, on --paper, in whichever theme the user is actually
+   in. No gauge, no needle, no screws, no serial, no codename, no grain layer
+   (the page's own substrate tooth already runs beneath this), no stencil, no
+   forced .dark.
 
-/* feTurbulence grain sits BEHIND every element on the plate and never over the
-   type — it is a texture on the housing, not a filter on the content. */
-function Grain() {
+   What carries it instead is structure, which is the whole claim of this
+   system: a hāshiya down the leading edge with the jadwal on its trailing
+   rule and the folio at its foot, and the leaf beside it holding the mark,
+   the sentence, and the wordmark anchored to the bottom. That is a set page.
+   It is the same apparatus every route in the application runs on, which is
+   why signing in already looks like the product. */
+export function AuthPlate({ isAr, headline, blurb, children }) {
   return (
-    <svg
-      className="absolute inset-0 h-full w-full"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      focusable="false"
-      style={{ opacity: 0.045, pointerEvents: 'none' }}
-    >
-      <filter id="wz-auth-grain" x="0" y="0" width="100%" height="100%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch" />
-        <feColorMatrix type="saturate" values="0" />
-      </filter>
-      <rect width="100%" height="100%" filter="url(#wz-auth-grain)" />
-    </svg>
-  )
-}
-
-/* ── THE PLATE ─────────────────────────────────────────────────────────────
-   `.dark` is applied deliberately: the plate is its own world in both themes,
-   and scoping it to the foundation's dark token block is how it stays that way
-   without a single literal colour in this file. */
-export function AuthPlate({ isAr, reading, headline, blurb, children }) {
-  const value = useDrift(reading, 0.03)
-
-  return (
-    <div
-      className="dark cut cut-lg relative hidden overflow-hidden lg:flex lg:w-[45%]"
-      style={{ backgroundColor: 'var(--paper)' }}
-    >
-      <Grain />
-      <Screw isAr={isAr} style={{ insetBlockStart: 16, insetInlineStart: 16 }} />
-      <Screw isAr={isAr} style={{ insetBlockStart: 16, insetInlineEnd: 16 }} />
-      <Screw isAr={isAr} style={{ insetBlockEnd: 16, insetInlineStart: 16 }} />
-      <Screw isAr={isAr} style={{ insetBlockEnd: 16, insetInlineEnd: 16 }} />
-      {/* the seam: a single engraved edge where the plate meets the page */}
+    <div className="relative hidden overflow-hidden lg:flex lg:w-[45%]" style={{ backgroundColor: 'var(--paper)' }}>
+      {/* THE HĀSHIYA. The margin the whole app is built on, drawn at full
+          height, with the jadwal on its trailing edge — the only vertical rule
+          this system permits. */}
       <div
         aria-hidden="true"
-        style={{ position: 'absolute', insetBlock: 0, insetInlineEnd: 0, inlineSize: 1, background: 'var(--edge)' }}
+        className="flex flex-col justify-end"
+        style={{
+          inlineSize: 'var(--rail-spine)',
+          flex: 'none',
+          backgroundColor: 'var(--margin)',
+          boxShadow: `inset ${isAr ? '1px' : '-1px'} 0 0 0 var(--etch-strong)`,
+          paddingBlockEnd: 48,
+        }}
+      >
+        {/* the folio — real data, not a colophon */}
+        <span className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', paddingInline: 12 }}>00</span>
+      </div>
+
+      {/* the seam where the leaf meets the form */}
+      <div
+        aria-hidden="true"
+        style={{ position: 'absolute', insetBlock: 0, insetInlineEnd: 0, inlineSize: 1, background: 'var(--etch-strong)' }}
       />
 
-      <div className="relative flex w-full flex-col" style={{ padding: 48, zIndex: 1 }}>
-        {/* HEAD — the maker's mark and the serial. */}
-        <div className="flex items-center justify-between gap-4">
-          <Mark size={20} style={{ color: 'var(--ink)' }} />
-          <span className="mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>WAZZA v1.0</span>
-        </div>
+      <div className="relative flex min-w-0 flex-1 flex-col" style={{ padding: 48 }}>
+        <Mark size={20} style={{ color: 'var(--ink)' }} />
 
-        {/* BODY — the gauge. مقياس. */}
-        <div className="flex flex-1 flex-col justify-center" style={{ gap: 32, paddingBlock: 32 }}>
-          <div style={{ maxInlineSize: 360 }}>
-            <ArcGauge value={value} isAr={isAr} />
-            <div className="flex items-baseline justify-between" style={{ marginBlockStart: 12 }}>
-              <span className="mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>0</span>
-              <span className="legend" style={{ margin: 0 }}>{isAr ? 'مقياس' : 'Miqyas'}</span>
-              <span className="mono" style={{ fontSize: 10, color: 'var(--ink-3)' }}>MAX</span>
-            </div>
-          </div>
+        <div className="flex flex-1 flex-col justify-center" style={{ paddingBlock: 32 }}>
+          <p style={{ fontSize: 16, color: 'var(--ink)', maxInlineSize: '34ch' }}>{headline}</p>
+          <p style={{ fontSize: 14, color: 'var(--ink-3)', maxInlineSize: '42ch', marginBlockStart: 8 }}>{blurb}</p>
           {children}
         </div>
 
-        {/* FOOT — engraved legends, then the model name cut into the plate. */}
+        {/* THE FOOT — the validation foot of the instrument. One rule, then
+            the wordmark anchored to the bottom with real clearance above and
+            below, so no glyph is ever shaved. */}
         <div>
-          <p style={{ fontSize: 13, color: 'var(--ink-2)', maxInlineSize: '34ch' }}>{headline}</p>
-          <p style={{ fontSize: 12, color: 'var(--ink-3)', maxInlineSize: '42ch', marginBlockStart: 6 }}>{blurb}</p>
-          <div aria-hidden="true" style={{ blockSize: 1, background: 'var(--etch-strong)', marginBlockStart: 24 }} />
-          <div style={{ marginBlockStart: 24 }}>
-            {isAr ? (
-              <span style={{ fontSize: 60, fontWeight: 600, lineHeight: 1.15, color: 'var(--ink)' }}>وزّة</span>
-            ) : (
-              <span className="stencil" style={{ fontSize: 56, lineHeight: 1, color: 'var(--ink)', display: 'block' }}>
-                WAZZA
-              </span>
-            )}
-          </div>
+          <div aria-hidden="true" style={{ blockSize: 1, background: 'var(--etch-strong)', marginBlockEnd: 24 }} />
+          <Wordmark />
         </div>
       </div>
     </div>
@@ -282,10 +216,14 @@ export function AuthBlock({ isAr, title, subtitle, onSubmit, children }) {
       <div className="grid" style={{ gridTemplateColumns: GRID }}>
         <div className="wz-gutter" />
         <div className="wz-col" style={COLPAD}>
-          <h1 style={{ fontSize: 32, fontWeight: 600, lineHeight: isAr ? 1.35 : 1.15, color: 'var(--ink)' }}>
+          {/* 22px, the rubric step. It used to be 32, which put the greeting
+              above the wordmark in the hierarchy — on the one screen whose job
+              is to say whose product this is. The wordmark owns the record
+              register (28px); nothing else on this screen goes near it. */}
+          <h1 style={{ fontSize: 22, fontWeight: 600, lineHeight: isAr ? 1.35 : 1.2, color: 'var(--ink)' }}>
             {title}
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--ink-2)', marginBlockStart: 8 }}>{subtitle}</p>
+          <p style={{ fontSize: 14, color: 'var(--ink-2)', marginBlockStart: 8 }}>{subtitle}</p>
         </div>
         <form
           onSubmit={onSubmit}
@@ -348,7 +286,7 @@ export function AuthNotice({ isAr, kind, legend, message }) {
       <div className="wz-col" style={COLPAD}>
         <div
           role="alert"
-          className="cut cut-md"
+          /* L2: not cut. A refused credential is not a committed record. */
           style={{
             backgroundColor: 'var(--sunk)',
             boxShadow: `inset ${isAr ? '-2px' : '2px'} 0 0 0 var(--state-fail), inset 0 0 0 1px var(--etch)`,
@@ -358,23 +296,21 @@ export function AuthNotice({ isAr, kind, legend, message }) {
           }}
         >
           <span className="legend" style={{ margin: 0, color: 'var(--state-fail)' }}>{legend}</span>
-          <p style={{ fontSize: 13, color: 'var(--ink)', marginBlockStart: 4 }}>{message}</p>
+          <p style={{ fontSize: 14, color: 'var(--ink)', marginBlockStart: 4 }}>{message}</p>
         </div>
       </div>
     </>
   )
 }
 
-/* The compact lockup, shown only where the plate is not: below lg. */
-export function AuthLockup({ isAr }) {
+/* The compact lockup, shown only where the leaf is not: below lg. Same
+   relationship at a smaller size — Arabic primary, Latin subordinate — rather
+   than a different lockup for the phone. */
+export function AuthLockup() {
   return (
     <div className="flex items-center gap-3 lg:hidden">
       <Mark size={20} style={{ color: 'var(--ink)' }} />
-      {isAr ? (
-        <span style={{ fontSize: 17, fontWeight: 600, lineHeight: 1, color: 'var(--ink)' }}>وزّة</span>
-      ) : (
-        <span className="stencil" style={{ fontSize: 15, lineHeight: 1, color: 'var(--ink)' }}>WAZZA</span>
-      )}
+      <Wordmark size="compact" />
     </div>
   )
 }
@@ -443,11 +379,11 @@ function LoginPage() {
 
   return (
     <div className="flex min-h-shell safe-inset" style={{ backgroundColor: 'var(--paper)' }} dir={isAr ? 'rtl' : 'ltr'}>
-      <AuthPlate isAr={isAr} reading={0.71} headline={ui.plateHead} blurb={ui.plateBlurb} />
+      <AuthPlate isAr={isAr} headline={ui.plateHead} blurb={ui.plateBlurb} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-4 p-6">
-          <AuthLockup isAr={isAr} />
+          <AuthLockup />
           <div className="ms-auto">
             <AuthRocker isAr={isAr} setLanguage={setLanguage} />
           </div>
@@ -473,7 +409,7 @@ function LoginPage() {
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="field field--underline"
-                style={{ fontSize: 15 }}
+                style={{ fontSize: 16 }}
                 placeholder="you@example.com"
               />
             </FieldRow>
@@ -488,7 +424,7 @@ function LoginPage() {
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="field field--underline"
-                  style={{ fontSize: 15, paddingInlineEnd: 32 }}
+                  style={{ fontSize: 16, paddingInlineEnd: 32 }}
                   placeholder="••••••••"
                 />
                 <button
@@ -512,7 +448,7 @@ function LoginPage() {
           className="flex items-center justify-between gap-4 px-6 py-4"
           style={{ borderBlockStart: '1px solid var(--etch)' }}
         >
-          <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>{t.noAccount}</span>
+          <span style={{ fontSize: 14, color: 'var(--ink-3)' }}>{t.noAccount}</span>
           <Link to="/register" className="text-action">
             {t.register}
             <Caret direction="end" size={14} />

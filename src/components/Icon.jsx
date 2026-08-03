@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WAZZA · MIQYAS — THE ICON SET
+   WAZZA · الصَّكّ — THE ICON SET
    Hand-drawn. Nothing here comes from an icon package.
 
    HOUSE STYLE — non-negotiable, applies to every mark.
@@ -13,11 +13,21 @@
 
    THE THREE INVENTED CONSTANTS — this is what makes the set ours.
      I1  THE NOTCH. Every plate-bodied mark carries one 3.5px 45 degree
-         chamfer at its block-start / inline-end corner — the identical cut
-         that every panel, button and the auth plate carries. Icons and
-         containers are stamped from one die. The notch follows the LOGICAL
-         corner: marks flagged `mirror` flip their geometry inside the SVG
-         under [dir=rtl], so the cut is top-end in both directions.
+         chamfer at its block-start / inline-end corner. The notch follows the
+         LOGICAL corner: marks flagged `mirror` flip their geometry inside the
+         SVG under [dir=rtl], so the cut is top-end in both directions.
+
+         L2 CHANGED WHAT THIS MEANS, and it is worth being exact about it.
+         The notch used to be true because every panel and button in the app
+         was chamfered too — icons and containers were stamped from one die.
+         Under L2 the containers are no longer cut; the seal is reserved for
+         a committed record. So the notch is no longer a shared die. It is a
+         PICTURE of one: a mark whose body is an instrument with its corner
+         clipped, drawn the way the real thing is clipped. A drawing of a
+         sealed document may show the seal — that is what a drawing is for.
+         The set keeps its invented constant instead of being squared off to
+         play safe, which would have cost the iconography its point of view
+         and bought nothing.
      I2  THE TICK ROW. Any mark representing a MEASURABLE QUANTITY — cost,
          duration, credits, progress, tokens, count — carries three marks
          along its bottom edge at x = 5, 10, 15. Non-quantitative marks never
@@ -137,9 +147,19 @@ export const Settings = (p) => (
 /* ── THE BRAND MARK ─────────────────────────────────────────────────────── */
 
 /* THE GATE. A chamfered plate carrying three ascending meter ticks. Two are
-   hollow, the tallest is filled. The logo teaches the product's own rule:
-   two things are free, one costs money. Same geometry as every panel in the
-   app, language-neutral, legible at 16px. */
+   THE SEALED SQUARE. A square with its block-start / inline-end corner cut,
+   and one rule across it at the baseline position: the seal and the jadwal,
+   the two ideas the whole system is built from. A cut corner means this
+   record was issued and cannot be issued again (L2); the rule is the ruled
+   line of a set page, and the only line this system permits.
+
+   It replaces the old meter-tick mark, which drew three ascending ticks with
+   the tallest one filled in amber. That mark taught L1 rather than L2, and
+   the filled amber bar made the logo itself the loudest accent on the login
+   screen — a brand mark spending one of L3's two permitted appearances.
+   Monochrome now: it takes currentColor and nothing else.
+
+   Language-neutral, legible at 16px, and the same drawing as the favicon. */
 export const Mark = ({ size = 20, className = '', ...rest }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -157,9 +177,7 @@ export const Mark = ({ size = 20, className = '', ...rest }) => (
     {...rest}
   >
     <path d="M2 2 H14.5 L18 5.5 V18 H2 Z" />
-    <path d="M6 14 V11" />
-    <path d="M10 14 V8.5" />
-    <rect x="12.25" y="4.5" width="2.5" height="9.5" fill="currentColor" stroke="none" />
+    <path d="M2 13 H18" />
   </svg>
 )
 

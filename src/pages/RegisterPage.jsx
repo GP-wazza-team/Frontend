@@ -101,13 +101,13 @@ function RegisterPage() {
 
   return (
     <div className="flex min-h-shell safe-inset" style={{ backgroundColor: 'var(--paper)' }} dir={isAr ? 'rtl' : 'ltr'}>
-      <AuthPlate isAr={isAr} reading={0.34} headline={ui.plateHead} blurb={ui.plateBlurb}>
+      <AuthPlate isAr={isAr} headline={ui.plateHead} blurb={ui.plateBlurb}>
         {creditStrip}
       </AuthPlate>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-4 p-6">
-          <AuthLockup isAr={isAr} />
+          <AuthLockup />
           <div className="ms-auto">
             <AuthRocker isAr={isAr} setLanguage={setLanguage} />
           </div>
@@ -128,7 +128,7 @@ function RegisterPage() {
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="field field--underline"
-                style={{ fontSize: 15 }}
+                style={{ fontSize: 16 }}
                 placeholder={isAr ? 'محمد أحمد' : 'John Doe'}
               />
             </FieldRow>
@@ -142,7 +142,7 @@ function RegisterPage() {
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="field field--underline"
-                style={{ fontSize: 15 }}
+                style={{ fontSize: 16 }}
                 placeholder="you@example.com"
               />
             </FieldRow>
@@ -181,7 +181,7 @@ function RegisterPage() {
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="field field--underline"
-                  style={{ fontSize: 15, paddingInlineEnd: 32 }}
+                  style={{ fontSize: 16, paddingInlineEnd: 32 }}
                   placeholder="••••••••"
                 />
                 <button
@@ -205,7 +205,7 @@ function RegisterPage() {
           className="flex items-center justify-between gap-4 px-6 py-4"
           style={{ borderBlockStart: '1px solid var(--etch)' }}
         >
-          <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>{t.hasAccount}</span>
+          <span style={{ fontSize: 14, color: 'var(--ink-3)' }}>{t.hasAccount}</span>
           <Link to="/login" className="text-action">
             {t.login}
             <Caret direction="end" size={14} />

@@ -30,7 +30,7 @@ function ToastContainer() {
         return (
           <div
             key={toast.id}
-            className="pointer-events-auto settle cut cut-md overlay-cast flex items-start gap-3"
+            className="pointer-events-auto settle overlay-cast flex items-start gap-3"
             style={{
               minInlineSize: 260,
               maxInlineSize: 380,

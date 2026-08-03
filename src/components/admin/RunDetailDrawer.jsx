@@ -138,10 +138,18 @@ export default function RunDetailDrawer({ run, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label={`Run ${run.id}`}
-        className="relative h-full overflow-y-auto plate plate--flush overlay-cast settle-inline"
+        /* L2 — THE SEAL. This drawer is the run receipt: a finished run, its
+           cost already spent, its record no longer editable. It is one of the
+           three surfaces in the application permitted to carry the cut. The
+           inner plates below are NOT cut — they are sections of the receipt,
+           not receipts themselves. */
+        className="relative h-full overflow-y-auto plate plate--flush overlay-cast settle-inline cut cut-lg"
         style={{
           inlineSize: 520,
           maxInlineSize: '100%',
+          /* A clip-path eats a real border, so a cut surface draws its edge
+             inset. That workaround has three homes in this system now instead
+             of forty, and here it is justified rather than systemic. */
           boxShadow: 'inset 0 0 0 1px var(--etch-strong)',
         }}
       >
@@ -199,7 +207,7 @@ export default function RunDetailDrawer({ run, onClose }) {
 
           <Group index={++group} legend="User prompt">
             <p
-              className="plate--sunken cut cut-md"
+              className="plate--sunken"
               style={{
                 fontSize: 13,
                 color: 'var(--ink)',
@@ -219,7 +227,7 @@ export default function RunDetailDrawer({ run, onClose }) {
                   System prompt
                 </summary>
                 <pre
-                  className="mono plate--sunken cut cut-md"
+                  className="mono plate--sunken"
                   style={{
                     fontSize: 11,
                     color: 'var(--ink-2)',
@@ -372,7 +380,7 @@ export default function RunDetailDrawer({ run, onClose }) {
                 Raw run data
               </summary>
               <pre
-                className="mono plate--sunken cut cut-md"
+                className="mono plate--sunken"
                 style={{
                   fontSize: 10,
                   color: 'var(--ink-2)',

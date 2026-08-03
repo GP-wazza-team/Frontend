@@ -90,7 +90,7 @@ function PromptInput({ onSubmit, disabled = false }) {
           <span className="wz-gutter" style={{ fontSize: 10 }}>{tx('attach')}</span>
           <div className="min-w-0">
             <div
-              className="cut cut-md relative inline-block"
+              className="relative inline-block"
               style={{ backgroundColor: 'var(--recess)', boxShadow: 'inset 0 0 0 1px var(--etch-strong)', padding: 6 }}
             >
               <img src={previewUrl} alt={tx('attach')} style={{ display: 'block', blockSize: 56, inlineSize: 'auto' }} />
@@ -121,7 +121,7 @@ function PromptInput({ onSubmit, disabled = false }) {
 
         <div className="min-w-0">
           <div
-            className="cut cut-md flex items-end gap-2"
+            className="flex items-end gap-2"
             style={{
               backgroundColor: 'var(--sunk)',
               boxShadow: 'inset 0 0 0 1px var(--edge)',
@@ -182,7 +182,7 @@ function PromptInput({ onSubmit, disabled = false }) {
               disabled={!canSend}
               title={tx('costsCredits')}
               aria-label={t('send')}
-              className="cut cut-md shrink-0 flex items-center justify-center disabled:opacity-30"
+              className="shrink-0 flex items-center justify-center disabled:opacity-30"
               style={{
                 inlineSize: 32,
                 blockSize: 32,

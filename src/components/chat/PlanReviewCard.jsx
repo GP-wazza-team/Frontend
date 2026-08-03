@@ -482,7 +482,17 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
 
   return (
     <div
-      className="cut cut-lg"
+      /* L2 — THE SEAL, and this is where the whole system spends its one
+         signature. Before authorisation this is a plain plate: a work order
+         you are still reading. The moment it is authorised the corner is
+         CUT, permanently, and stays cut a hundred turns later. In registry
+         practice an issued instrument is clipped at one corner with shears —
+         the mark that says this was recorded and cannot be issued again.
+
+         That is why the class is conditional rather than constant. A cut on
+         an unresolved plan would be a lie about what has happened, and it is
+         the difference between a geometry that MEANS something and a bevel. */
+      className={resolved ? 'cut cut-lg' : ''}
       style={{
         /* RESOLVED: the docket freezes into the draft surface — it is a
            record now, not a control. It is NOT dimmed: --ink at 60% over
@@ -494,7 +504,10 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
         boxShadow: 'inset 0 0 0 1px var(--etch)',
         paddingBlock: 16,
         paddingInlineStart: 16,
-        paddingInlineEnd: 24,
+        /* Clear the cut: the trailing padding only has to budget the 8px
+           chamfer + 10px once the seal is actually there. Unsealed, the plate
+           takes the system's normal 16px and nothing is ever sliced. */
+        paddingInlineEnd: resolved ? 24 : 16,
       }}
     >
       <div className="flex items-center gap-3" style={{ marginBlockEnd: 8 }}>

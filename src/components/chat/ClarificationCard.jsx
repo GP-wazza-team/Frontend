@@ -57,15 +57,18 @@ function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, on
 
   return (
     <div
-      className="cut cut-lg"
       style={{
         /* Answered questions settle onto the draft surface. Not dimmed —
-           see the note in PlanReviewCard: container opacity fails AA. */
+           see the note in PlanReviewCard: container opacity fails AA.
+
+           L2: NOT CUT. A clarification is a question being asked, not a
+           committed record — answering it spends nothing and can be revised.
+           The cut belongs to the plan once it is authorised, and to the
+           receipt. Because there is no clip, the trailing padding drops from
+           24px to 16px: there is no longer a cut to clear. */
         backgroundColor: resolved ? 'var(--sunk)' : 'var(--panel)',
         boxShadow: 'inset 0 0 0 1px var(--etch)',
-        paddingBlock: 16,
-        paddingInlineStart: 16,
-        paddingInlineEnd: 24,
+        padding: 16,
       }}
     >
       <div className="flex items-center gap-2" style={{ marginBlockEnd: 4 }}>

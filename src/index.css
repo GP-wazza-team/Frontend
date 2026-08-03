@@ -1,98 +1,170 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WAZZA · MIQYAS — FOUNDATION
+   WAZZA · الصَّكّ — THE DEED
    The design system. Read this block before styling anything.
+
+   THE CLAIM: Wazza is not a console. It is a registry. Its subject is money
+   moving against an authorised plan, so its reference class is the صَكّ — the
+   Arabic deed, the word that entered English as "cheque". A deed has a fixed
+   head, a numbered body, a marginal apparatus and a validation foot. So does a
+   work order. So does a run receipt.
 
    THE FIVE LAWS
      L1  FILL IS MONEY. Nothing is filled unless pressing it spends credits.
          Exactly one filled element may be visible on a screen at a time.
-     L2  ONE CUT. Every container, control and icon carries the same 45 degree
-         chamfer on one corner (block-start / inline-end). Border radius is 0
-         everywhere, with no exceptions.
-     L3  RAISED IS BRIGHTER, in both themes. --panel is brighter than --paper
-         in light AND in dark.
+     L2  THE CUT IS A SEAL. The 45 degree chamfer marks a committed,
+         irreversible record: an authorised plan, a run receipt, an invoice.
+         In registry practice an issued instrument is clipped at one corner
+         with shears — the mark that says this was recorded and cannot be
+         issued again. Nothing else in this application is ever cut.
+         Border radius is 0 everywhere, with no exceptions.
+     L3  TWO INKS. The ink carries the text; the second ink carries exactly
+         two meanings, THIS IS RUNNING or THIS COSTS MONEY. It never
+         decorates, and it appears AT MOST TWICE in any one viewport. That
+         budget is structural, not aspirational: the Rocker's active cell is
+         ink, and <Meter> defaults to tone="ink".
      L4  STATE IS SHAPE FIRST, hue second. Read run state without colour.
      L5  CONTENT IS VISIBLE ON FIRST PAINT. No animation ever starts at
          opacity 0. Motion moves things that are already on screen.
+
+   ARABIC LAWS — these are bugs, not preferences.
+     A0  ARABIC IS THE DEFAULT, NOT THE MIRROR. Every default in this file is
+         authored for Arabic; Latin is the exception that narrows it. Line
+         height, optical size and the margin side are set for Arabic first,
+         then relaxed inside [dir=ltr]. This is a posture you can check in a
+         diff, not an implementation detail.
+     A1  Arabic never receives letter-spacing (it breaks glyph joining).
+         Enforced globally below. Author Latin tracking inside [dir=ltr].
+     A2  Arabic never receives text-transform: uppercase. It has no case.
+     A3  Latin numerals and currency inside an Arabic run must be isolated.
+         Use .mono or .figure. Without it "$0.0842" flips its currency mark.
+
+   INVARIANTS — not laws, but never negotiable.
+     Raised is brighter than the page in BOTH themes, and SMOOTHER: the
+       substrate grain belongs to the page, never to a plate.
+     One cast shadow, three call sites. Nothing else in Wazza casts.
+     <Meter> is the only progress indicator. <Money> is the only formatter.
+     There is no outlined button. There is no gradient. Nothing is lit.
 
    ───────────────────────────────────────────────────────────────────────────
    COLOUR TOKENS — every one is defined for BOTH :root and .dark.
    Ratios are computed WCAG 2.1, worst case across all surfaces.
 
      SURFACES        --paper         the page
+                     --margin        the hāshiya — the marginal column
                      --panel         raised: cards, plates, sticky headers
                      --panel-hover   hover on an already-raised surface
                      --sunk          hover on the page, wells, draft zones
                      --recess        media wells only (inside a Frame)
 
      EDGES           --etch          hairline: plate self-edge, row rules
-                     --etch-strong   structural: table header rule, recess
-                                     inset, the Meter's unlit track
+                     --etch-strong   structural: the jadwal, table header rule
                      --edge          CONTROL boundary, >= 3:1 both themes.
                                      Use for: field, select, rocker housing,
                                      anything whose outline is what tells you
-                                     the thing is interactive. The spec's
-                                     0.18/0.17 alpha computes to 1.45:1 and
-                                     fails that rule, so control edges moved
-                                     to this token at 0.50/0.42 (3.10 / 3.38).
+                                     the thing is interactive.
 
-     INK             --ink           primary text   (>= 12.7:1 everywhere)
-                     --ink-2         secondary      (>= 6.3:1 everywhere)
-                     --ink-3         tertiary, captions (>= 4.69:1 everywhere)
+     INK             --ink           primary text   (>= 10.2:1 everywhere)
+                     --ink-2         secondary      (>= 5.8:1 everywhere)
+                     --ink-3         tertiary, captions (>= 4.79:1 everywhere)
 
-     ACCENT          --signal        amber AS TEXT / as a live indicator
+     SECOND INK      --signal        madder AS TEXT / as a live indicator
                      --signal-deep   the fill under a filled action (slab)
                      --signal-edge   1px edge ON that fill (mandatory in dark)
-                     --signal-hot    the slab's hover corner
+                     --signal-hot    the slab's hover fill — one step DEEPER.
+                                     Matte: ink pressed harder into the page,
+                                     never lit up.
                      --signal-press  the slab's active fill
-                     The accent NEVER decorates. It means exactly two things:
-                     THIS IS RUNNING, or THIS COSTS MONEY.
+                     In the Arabic manuscript tradition a page is set in two
+                     inks and only two: the black حِبر carries the text, the
+                     red rubric carries structure and consequence. The scribe
+                     does not get a third. L3 is that rule.
 
      STATE           --state-done --state-fail --state-run --state-queued
+                     --state-fail is a rose-lean oxblood, --signal an
+                     orange-lean madder. The hue separation is real but not
+                     dramatic, which is why L4 exists: the GLYPH identifies
+                     the state and colour only confirms it. The failed marker
+                     is a STRUCK square — a scribal cancellation.
 
      CONTROL         --btn-label     #FFFFFF, the only literal hex permitted
                                      in a component, and only as a label on
                                      --signal-deep
                      --fraction-op   0.82 — the opacity of the fraction digits
                                      in <Money> when it sits on --signal-deep.
-                                     Computed: 5.17:1 light, 4.52:1 dark. Do
-                                     not lower it; 0.78 fails AA in dark.
-                     --focus         focus ring colour (>= 5.1:1 on every surface)
-                     --focus-halo    the soft outer ring, same hue at 30%
+                                     Computed: 6.18:1 light, 5.66:1 dark. It
+                                     is a FLOOR. Do not lower it.
+                     --focus         focus ring colour (>= 5.79:1 everywhere)
+                     --focus-halo    the hard 2px outer ring, same hue at 30%.
+                                     No blur. A blurred ring is a glow.
 
      CHART           --chart-1 .. --chart-5   five tonal steps, no rainbow.
-                     Every one clears 3:1 against --panel in both themes.
+                     Every one clears 3:1 against --paper AND --panel in both
+                     themes, because charts sit on both.
 
      DEPTH           --shadow-overlay   the ONLY box-shadow spec in the app.
                      Used on exactly three things: MediaLightbox,
                      RunDetailDrawer, ConfirmDialog. Nothing else casts.
 
-     GEOMETRY        --chamfer-lg 8px  containers >= 56px tall
-                     --chamfer-md 5px  controls 28-56px
-                     --chamfer-sm 3px  icons, chips, tile action bars
+     SUBSTRATE       --grain   a 2.8% monochrome tooth on the page ONLY, so it
+                     sits literally beneath everything and can never fight
+                     legibility. Panels paint over it, which is what gives the
+                     invariant its second, non-luminous cue: a raised surface
+                     is not just brighter, it is smoother. This one
+                     declaration is the whole "matte, printed, physical, never
+                     lit" mandate. Not applied in dark: a tooth on a near-black
+                     surface reads as sensor noise, the opposite of matte.
+
+     GEOMETRY        --chamfer-lg 8px  record surfaces >= 56px tall
+                     --chamfer-md 5px  the slab's hover cut, small records
+                     --chamfer-sm 3px  record marks only
                      --rail-spine 56px   --rail-panel 240px   --statusbar 36px
+
+   THE MODULUS. Ibn Muqla's al-khaṭṭ al-mansūb proportions every Arabic
+   letterform to the alif, measured in rhombic pen-dots. Set the nuqṭa at 4px
+   and the alif at 7 nuqṭa = 28px, and every number already in this file lands
+   on the grid: 4/8/12/16/24 spacing = 1n/2n/3n/4n/6n; the 56px gutter spine is
+   exactly 2 alif; the 240px rail panel is 60n; the base type size is half an
+   alif = 14px. If a new number is not a whole count of nuqṭa, it is wrong.
 
    ───────────────────────────────────────────────────────────────────────────
    COMPONENT CLASSES — use these, do not re-invent them.
 
      GEOMETRY   .cut + .cut-lg | .cut-md | .cut-sm
+                L2. THREE CALL SITES IN THE APPLICATION, and adding a fourth
+                requires the surface to be a committed record:
+                  PlanReviewCard   — the plan, once authorised
+                  RunDetailDrawer  — the run receipt
+                  MessageBubble    — the commit seam in the transcript
                 Applies the chamfer, mirrored automatically per direction.
                 CLEAR THE CUT: minimum inline padding on the chamfered side is
-                chamfer + 10px. The helper classes below already budget it.
-                A clip-path clips borders and outlines too, so a chamfered
-                element draws its edge with `box-shadow: inset 0 0 0 1px`,
-                never `border`. Focus rings on .cut elements are inset.
+                chamfer + 10px. A clip-path clips borders and outlines too, so
+                a chamfered element draws its edge with `box-shadow: inset`,
+                never `border`, and its focus ring inset. Because the cut is
+                now rare, that workaround has three homes instead of forty and
+                every other surface in the system recovers a real box model.
 
-     SURFACE    .plate                raised surface, inset etch, cut-lg, 16px pad
+     SURFACE    .plate                raised surface, real 1px border, 16px pad
                 .plate--sunken        the same on --sunk (draft / well)
                 .plate--recess        the same on --recess (media only)
                 .plate--flush         no padding (you supply your own)
 
      ACTION     .slab                 THE FILLED ACTION. 40px. L1: only use it
-                                      when pressing it spends credits.
+                                      when pressing it spends credits. At rest
+                                      it is a plain rectangle. On hover its
+                                      trailing corner CUTS — it previews
+                                      becoming the sealed record it is about
+                                      to create. That is the app's one
+                                      authored motion moment, and it means
+                                      nothing outside L2.
                 .slab--sm             32px variant
                 .text-action          every free action. Bare label + hollow
                                       mark. There is no outlined button.
-                .text-action--danger  destructive, still not a fill
+                .text-action--danger  destructive, still not a fill. Hover
+                                      STRIKES the label — native line-through,
+                                      so the engine centres it on the x-height
+                                      and it cannot drift off the glyphs.
+                                      Cancellation is the system's shared
+                                      vocabulary with the failed-run glyph.
                 .stow                 row / tile actions that rest invisible
                                       and arrive on hover or focus-within.
                                       Put it on the wrapper inside a .group.
@@ -107,20 +179,32 @@
                 .select               .field + room for the caret mark
                 .rocker / .rocker__cell / [data-on="true"]
                                       the segmented control. Active cell is
-                                      RAISED + signal text + a signal base
-                                      rule. Accent as text and edge only —
-                                      never an accent FILL, which means money.
+                                      RAISED + ink + bolder + an ink base
+                                      rule — four simultaneous signals. It
+                                      does NOT take the accent: selecting
+                                      "Night" neither runs nor costs money,
+                                      and L3's budget of two per viewport is
+                                      only reachable if controls stop
+                                      spending it.
 
-     TYPE       .legend    group legend (11px, uppercase+tracked in LTR only)
-                .mono      Commit Mono, tabular, LTR-isolated
+     TYPE       .legend    group legend (12px, uppercase+tracked in LTR only)
+                .mono      Commit Mono, tabular, LTR-isolated. Confined to
+                           content that is genuinely data: <Money>, <Duration>,
+                           <RunId>, gutter ordinals, the folio. Never a
+                           caption, never a label, never the house voice.
                 .figure    same isolation for a bare numeral in Arabic prose
-                .page-title  17px — the ONLY heading size on a working screen
-                .prose     15px transcript / plan body at 68ch
+                .page-title  20px — the ONLY heading size on a working screen
+                .prose     16px transcript / plan body at 68ch
+                .record    28px — 1 alif. THREE call sites, all documents:
+                           the work order, the run receipt, the auth wordmark.
+                           Never on a working screen.
 
      LAYOUT     .wz-page   the route mat: 24px gutter + the 56px leading
                            gutter grid. Every route uses it.
                 .wz-page--flush   same grid, no padding (chat does its own)
-                .wz-gutter        the 56px marker column cell
+                .wz-gutter        the 56px marker column — the HĀSHIYA. It is
+                                  tinted one half-step down from the page and
+                                  carries the jadwal on its trailing edge.
                 .wz-col           the content column cell
                 .wz-col--span     content that spans gutter + column
                 .wz-stack         24px vertical rhythm inside .wz-col
@@ -128,11 +212,9 @@
      OVERLAY    .overlay-cast   the ONE cast shadow, as a filter. A clip-path
                                 clips an outer box-shadow away, so chamfered
                                 overlay surfaces cast with this instead.
-                                Four call sites: MediaLightbox, RunDetailDrawer,
-                                ConfirmDialog, the account popup. Pair it with
-                                `inset 0 0 0 1px var(--etch-strong)` — a dark
-                                shadow on a dark ground carries no separation,
-                                the edge does.
+                                Pair it with `inset 0 0 0 1px var(--etch-strong)`
+                                — a dark shadow on a dark ground carries no
+                                separation, the edge does.
 
      STATE      .marker    a status marker row (shape glyph + word)
                 .skel      skeleton block. No pulse. True final height.
@@ -141,6 +223,13 @@
 
      ICONS      .wz-icon         set by <Icon>; do not style stroke directly
                 .wz-icon--flip   mirrors in RTL (directional marks only)
+
+   THE JADWAL. A set Arabic page is enclosed by a ruled frame — the jadwal —
+   and the column outside it, the hāshiya, carries the apparatus: ordinals,
+   corrections, the صحّ verification mark. Wazza's 56px gutter already IS a
+   hāshiya; it just did not know it. The jadwal is THE ONLY VERTICAL RULE
+   PERMITTED IN THIS SYSTEM. Stating it as a monopoly is what stops hairlines
+   being sprinkled elsewhere as fake structure.
 
    REACT PRIMITIVES already built and owned by the foundation — import these,
    do not write your own:
@@ -156,13 +245,6 @@
      1200ms linear                  meter fill / indeterminate sweep
    Forbidden: hover lift, scale on press, growing underlines, pulsing dots,
    glow rings, spinners. Every loading state is <Meter>.
-
-   ARABIC LAWS — these are bugs, not preferences.
-     A1  Arabic never receives letter-spacing (it breaks glyph joining).
-         Enforced globally below. Author Latin tracking inside [dir=ltr].
-     A2  Arabic never receives text-transform: uppercase. It has no case.
-     A3  Latin numerals and currency inside an Arabic run must be isolated.
-         Use .mono or .figure. Without it "$0.0842" flips its currency mark.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @tailwind base;
@@ -172,7 +254,25 @@
 /* ── FACES ─────────────────────────────────────────────────────────────────
    All self-hosted. No CDN, no remote @import. One stack resolves both
    scripts per glyph: Latin renders Supreme, Arabic falls through to Plex
-   Arabic inside the same string. Do not fork the stack on [dir=rtl]. */
+   Arabic inside the same string. Do not fork the stack on [dir=rtl].
+
+   THE STANDING TYPE DEBT, recorded so it cannot be forgotten. The right
+   answer for an Arabic-first product is ONE HAND: a single licensed
+   superfamily whose Arabic was drawn first and whose Latin was derived from
+   it, used at different sizes and weights, with no separate display face for
+   the Arabic wordmark to be demoted against. Verified candidates, all
+   self-hostable woff2 on a perpetual one-off licence:
+     Nassim          Rosetta Type / Titus Nemeth. Arabic AND Latin in the same
+                     files. ~EUR 257 family. In production at the BBC and Voice
+                     of America — the strongest institutional pedigree here.
+     29LT Zarid Text 29LT / Pascal Zoghbi. Arabic drawn first, Latin derived.
+                     ~USD 400. Per-domain, with a monthly pageview cap.
+     Greta Arabic    TPTQ Arabic / Kristyan Sarkis. ~EUR 700-1400. Note the
+                     face is "Greta Arabic"; there is no "Greta Sans Arabic".
+   Until one is licensed we ship the two faces already self-hosted here,
+   optically reconciled by size-adjust below. Bespoke Stencil is NOT part of
+   that bridge and has been deleted: a military stencil face cannot carry a
+   company's identity, and it was the cheapest high-leverage fix in the audit. */
 
 @font-face {
   font-family: 'Supreme';
@@ -192,9 +292,19 @@
 }
 
 /* size-adjust brings Plex Arabic's x-height up to Supreme's so a mixed
-   English/Arabic string does not step mid-line. Do NOT solve this by scaling
-   the root font-size under [dir=rtl] — that rescales Latin numerals and
-   breaks every tabular column in the app. */
+   English/Arabic string does not step mid-line.
+
+   DO NOT solve this by scaling the root font-size under [dir=rtl] — that
+   rescales Latin numerals and breaks every tabular column in the app.
+
+   RECALIBRATION PROCEDURE, so the number stays measured rather than guessed.
+   Render `Run 12 · تشغيل · $0.0842` at 14px in the browser. Measure the Latin
+   x-height against the height of a lone ه and the bowl of a medial ح, and the
+   Latin cap height against the alif. Adjust in 1% steps until the mixed string
+   shows no step at the baseline and none at the x-line. Record the measured
+   number and the date here. Once per face, never per breakpoint.
+   Measured 106% against Supreme at 13px; re-verify if the base moves again or
+   the face is replaced. */
 @font-face {
   font-family: 'IBM Plex Sans Arabic';
   src: url('./assets/fonts/IBMPlexSansArabic-Regular.woff2') format('woff2');
@@ -222,61 +332,78 @@
   font-weight: 500; font-style: normal; font-display: swap;
 }
 
-/* Identity face. Used in EXACTLY two places: the auth plate legend and the
-   Latin lockup beside the drawn mark. Never on a working screen, never on a
-   button, never on body copy. */
-@font-face {
-  font-family: 'Bespoke Stencil';
-  src: url('./assets/fonts/BespokeStencil-Medium.woff2') format('woff2');
-  font-weight: 500; font-style: normal; font-display: swap;
-}
+/* ── TOKENS · LIGHT ("the leaf") ───────────────────────────────────────────
+   The base #E3DCD3 is Najdi limestone and gypsum plaster in open shade — the
+   light every Riyadh office already sits in. Four things keep it off both
+   default neutrals at once:
 
-/* ── TOKENS · LIGHT ("the label sheet") ────────────────────────────────────
-   Warm olive-graphite. The base #E9EBE2 has its BLUE channel lowest — the
-   literal inverse of the #f3f4f6 UI-kit neutral family. Not cream, not bone. */
+   1. IT IS NOT NEAR-WHITE. Cream, bone and oat live at L* 94-97. This is
+      L* 88.1. That gap is load-bearing, not taste: at L* 88 there is room
+      ABOVE the page for --panel (L* 92.9) and --panel-hover (L* 96.3), which
+      is what lets tonal elevation work with ZERO shadows. Cream cannot do
+      this — at L* 95 there is nothing above it, which is exactly why cream
+      pages end up reaching for drop shadows, and why the cream default and
+      the floating-card default always travel together.
+   2. THE CHANNEL ORDER IS INVERTED FROM THE UI-KIT GREY. #f3f4f6 is
+      (243,244,246): blue highest. This is (227,220,211): blue LOWEST, by 16
+      points. No arrangement of this palette drifts toward gray-100.
+   3. IT IS A MINERAL WARM, NOT A DAIRY WARM. Cream's fingerprint is a small
+      R->G drop and a large G->B drop (#F5F0E4: 5 then 12) — that shape is
+      yellow. This is 7 then 9, a near-linear ramp, which is what limestone
+      and unglazed clay actually measure. Hue lands near 28 degrees, not 48.
+   4. Mid-value IS the source of "matte". A near-white surface reads as LIT,
+      because it implies a light source strong enough to blow it out. A
+      mid-value surface reads as a material with light falling on it. */
 :root {
-  --paper:          #E9EBE2;
-  --panel:          #F7F8F3;
-  --panel-hover:    #FFFFFF;
-  --sunk:           #DEE1D5;
-  --recess:         #DBDED1;
+  --paper:          #E3DCD3;
+  --margin:         #DFD8CE;
+  --panel:          #EFEAE3;
+  --panel-hover:    #F7F4EF;
+  --sunk:           #D8D0C5;
+  --recess:         #CEC5B8;
 
-  --etch:           rgba(25,26,20,0.10);
-  --etch-strong:    rgba(25,26,20,0.22);
-  --edge:           rgba(25,26,20,0.50);   /* 3.10:1 worst case */
+  --etch:           rgba(30,25,19,0.10);
+  --etch-strong:    rgba(30,25,19,0.22);
+  --edge:           rgba(30,25,19,0.54);   /* 3.22:1 worst case */
 
-  --ink:            #191A14;   /* 12.83 : 17.51 */
-  --ink-2:          #4B4C3E;   /*  6.40 :  8.74 */
-  --ink-3:          #565748;   /*  5.39 :  7.36 */
+  --ink:            #1E1913;   /* 10.22 : 15.90 */
+  --ink-2:          #4A4235;   /*  5.80 :  9.02 */
+  --ink-3:          #574E40;   /*  4.79 :  7.45 */
 
-  --signal:         #7E520F;   /* 4.96 : 6.77 as text */
-  --signal-deep:    #7E520F;   /* white label = 6.77 */
-  --signal-edge:    #7E520F;
-  --signal-hot:     #C08A25;
-  --signal-press:   #6E470C;
+  --signal:         #8A2F17;   /* 4.92 : 7.66 as text */
+  --signal-deep:    #8A2F17;   /* white label = 8.40 */
+  --signal-edge:    #631F0C;   /* a felt lip on the fill, not a drawn line */
+  --signal-hot:     #73260F;   /* hover: DEEPER, never brighter */
+  --signal-press:   #631F0C;
 
-  --state-done:     #3E6636;   /* 4.87 : 6.65 */
-  --state-fail:     #9C3520;   /* 5.23 : 7.13 */
-  --state-run:      #7E520F;
-  --state-queued:   #565748;
+  --state-done:     #3A5527;   /* 4.91 : 6.99 */
+  --state-fail:     #6E1B2E;   /* 6.62 : 9.44 */
+  --state-run:      #8A2F17;
+  --state-queued:   #574E40;
 
   --btn-label:      #FFFFFF;
   --fraction-op:    0.82;
-  --focus:          #7E520F;   /* 5.11 : 6.77 */
-  --focus-halo:     rgba(126,82,15,0.30);
+  --focus:          #7A2712;   /* 5.79 : 9.00 */
+  --focus-halo:     rgba(122,39,18,0.30);
 
-  --shadow-overlay: 0 2px 8px rgba(25,26,20,0.22);
-  --drop-overlay:   drop-shadow(0 2px 8px rgba(25,26,20,0.22));
-  --scrim:          rgba(20,21,15,0.55);
+  --shadow-overlay: 0 2px 8px rgba(30,25,19,0.22);
+  --drop-overlay:   drop-shadow(0 2px 8px rgba(30,25,19,0.22));
+  --scrim:          rgba(30,25,19,0.52);
 
-  --chart-1: #7E520F;  /* 6.35 vs panel */
+  --chart-1: #8A2F17;  /* 6.18 vs paper · 7.02 vs panel */
   /* A chart mark is a non-text boundary: it has to clear 3:1 on EVERY surface
-     it can be drawn on, not just --panel. #A8823C was 3.32 vs panel but only
-     2.95 vs paper, and charts sit on both. Darkened one step. */
-  --chart-2: #9A7634;  /* 3.92 vs panel · 3.48 vs paper */
-  --chart-3: #565748;  /* 6.90 */
-  --chart-4: #7C7C68;  /* 3.98 */
-  --chart-5: #3E6636;  /* 6.23 */
+     it can be drawn on, not just --panel. Charts sit on both. */
+  --chart-2: #82704F;  /* 3.53 vs paper · 4.01 vs panel */
+  --chart-3: #574E40;  /* 6.01 · 6.83 */
+  --chart-4: #6F6455;  /* 4.25 · 4.83 */
+  --chart-5: #3A5527;  /* 6.16 · 6.99 */
+
+  /* The substrate tooth. feTurbulence at 2.8% alpha, baked into the SVG so it
+     composites straight onto --paper with no extra layer, no blend mode and no
+     position:fixed sheet. It is a background-image on <body>, which means it
+     sits beneath every panel in the app — slop.md's "grain sitting on top of
+     the content" is structurally impossible here. */
+  --grain: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='128'%20height='128'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeColorMatrix%20type='saturate'%20values='0'/%3E%3C/filter%3E%3Crect%20width='128'%20height='128'%20filter='url(%23n)'%20opacity='0.028'/%3E%3C/svg%3E");
 
   --chamfer-lg: 8px;
   --chamfer-md: 5px;
@@ -286,55 +413,70 @@
   --rail-panel: 240px;
   --statusbar:  36px;
 
-  --lh-body: 1.45;
+  /* A0 — Arabic is the default. 1.65 is the normal case; Latin is the script
+     that gets compressed, not the script that sets the baseline. Same pixels
+     as before, opposite point of view, and it is checkable in a diff. */
+  --lh-body: 1.65;
   --ease:    cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* ── TOKENS · DARK ("the panel") ───────────────────────────────────────────
-   #14150F is a warm olive-black, not the cool blue-charcoal (#0c0e15) family. */
+/* ── TOKENS · DARK ("the same company at night") ───────────────────────────
+   #191411 is (25,20,17): strictly R > G > B, a charred brown-black. It is NOT
+   #0c0e15 (blue highest — the dark-slop default), and it is NOT the olive
+   #14150F this system replaces (green highest). No token in this block is
+   amber: --signal is a fired-clay terracotta at hue ~17 degrees, against
+   amber's ~40. Warm, matte, and nothing reads as emissive.
+
+   Dark is DERIVED, never authored in. Light is where the decisions are made. */
 .dark {
-  --paper:          #14150F;
-  --panel:          #1C1E16;
-  --panel-hover:    #24261C;
-  --sunk:           #181A12;
-  --recess:         #0E0F0A;
+  --paper:          #191411;
+  --margin:         #161210;
+  --panel:          #221C18;
+  --panel-hover:    #2A221D;
+  --sunk:           #1D1714;
+  --recess:         #120E0C;
 
-  --etch:           rgba(233,230,214,0.09);
-  --etch-strong:    rgba(233,230,214,0.20);
-  --edge:           rgba(233,230,214,0.42);   /* 3.38:1 worst case */
+  --etch:           rgba(240,233,222,0.09);
+  --etch-strong:    rgba(240,233,222,0.20);
+  --edge:           rgba(240,233,222,0.44);   /* 3.67:1 worst case */
 
-  --ink:            #EDEADB;   /* 12.70 : 15.94 */
-  --ink-2:          #A9A794;   /*  6.31 :  7.92 */
-  --ink-3:          #918F7C;   /*  4.69 :  5.89 */
+  --ink:            #F0E9DE;   /* 12.95 : 15.92 */
+  --ink-2:          #AFA391;   /*  6.30 :  7.74 */
+  --ink-3:          #9C9080;   /*  4.99 :  6.14 */
 
-  --signal:         #E3A32B;   /* 6.97 : 8.74 as text */
-  --signal-deep:    #8A5B12;   /* white label = 5.86 */
-  /* The fill alone is 2.88:1 against --panel, which fails the 3:1 non-text
-     boundary rule. The amber edge is 7.65:1 and resolves it. This is the hot
-     edge on a live control, not a patch. */
-  --signal-edge:    #E3A32B;
-  --signal-hot:     #E3A32B;
-  --signal-press:   #6E480E;
+  --signal:         #D07A57;   /* 4.91 : 6.04 as text */
+  --signal-deep:    #8E3A1D;   /* white label = 7.57 */
+  /* The fill alone is 2.22:1 against --panel, which fails the 3:1 non-text
+     boundary rule. The terracotta edge is 5.30:1 and resolves it. This is the
+     mechanism the previous system used and it is preserved as a FIX, not a
+     patch. */
+  --signal-edge:    #D07A57;
+  --signal-hot:     #7A2E14;   /* hover: DEEPER, never brighter */
+  --signal-press:   #66240F;
 
-  --state-done:     #93BE83;   /* 7.26 : 9.10 */
-  --state-fail:     #E58163;   /* 5.59 : 7.01 */
-  --state-run:      #E3A32B;
-  --state-queued:   #918F7C;
+  --state-done:     #8FB37A;   /* 6.61 : 7.74 */
+  --state-fail:     #CE7B80;   /* 5.03 : 5.89 */
+  --state-run:      #D07A57;
+  --state-queued:   #9C9080;
 
   --btn-label:      #FFFFFF;
   --fraction-op:    0.82;
-  --focus:          #E3A32B;   /* 6.97 : 8.74 */
-  --focus-halo:     rgba(227,163,43,0.30);
+  --focus:          #DE8C68;   /* 5.99 : 7.01 */
+  --focus-halo:     rgba(222,140,104,0.30);
 
-  --shadow-overlay: 0 2px 8px rgba(10,11,7,0.34);
-  --drop-overlay:   drop-shadow(0 2px 8px rgba(10,11,7,0.34));
-  --scrim:          rgba(10,11,7,0.62);
+  --shadow-overlay: 0 2px 8px rgba(8,6,5,0.40);
+  --drop-overlay:   drop-shadow(0 2px 8px rgba(8,6,5,0.40));
+  --scrim:          rgba(12,9,7,0.62);
 
-  --chart-1: #E3A32B;  /* 7.65 vs panel */
-  --chart-2: #B08228;  /* 4.87 */
-  --chart-3: #A9A794;  /* 6.93 */
-  --chart-4: #6E6C5B;  /* 3.18 */
-  --chart-5: #93BE83;  /* 7.97 */
+  --chart-1: #D07A57;  /* 5.75 vs paper · 5.30 vs panel */
+  --chart-2: #A5714E;  /* 4.41 · 4.07 */
+  --chart-3: #9C9080;  /* 5.84 · 5.38 */
+  --chart-4: #7E7263;  /* 3.85 · 3.55 */
+  --chart-5: #8FB37A;  /* 7.74 · 7.11 */
+
+  /* A substrate tooth on a near-black surface reads as sensor noise, which is
+     the opposite of matte. Dark gets its material from value alone. */
+  --grain: none;
 }
 
 /* ── BASE ──────────────────────────────────────────────────────────────────
@@ -354,18 +496,26 @@
     text-size-adjust: 100%;
   }
 
+  /* 14px, and the reason is mechanical rather than comfort. Arabic separates
+     ب ت ث ن ي and ج ح خ by DOTS, not by skeleton. At 13px on a 1x display a
+     single nuqṭa is roughly one device pixel and dot PAIRS merge into a smear
+     — at exactly the size where a table row is densest. 14px is the floor at
+     which Arabic dot pairs resolve. The old 13px base was a Latin-first
+     decision made by reading a Latin screen; in the primary script it was a
+     legibility bug. It is also half an alif. */
   body {
     background-color: var(--paper);
+    background-image: var(--grain);
     color: var(--ink);
-    font-size: 13px;
+    font-size: 14px;
     line-height: var(--lh-body);
     scrollbar-width: thin;
     scrollbar-color: var(--edge) transparent;
   }
 
-  /* Arabic ascenders and descenders need more room; 1.45 reads cramped. */
-  html[dir="rtl"] { --lh-body: 1.65; direction: rtl; text-align: start; }
-  html[dir="ltr"] { direction: ltr; text-align: start; }
+  /* A0 — the default above is Arabic's. Latin narrows it. */
+  html[dir="rtl"] { direction: rtl; text-align: start; }
+  html[dir="ltr"] { --lh-body: 1.45; direction: ltr; text-align: start; }
 
   /* A1 — Arabic never receives tracking. Author Latin tracking inside
      [dir="ltr"] rules or Tailwind's ltr: variant. */
@@ -376,11 +526,11 @@
   ::-webkit-scrollbar-thumb { background: var(--etch-strong); }
   ::-webkit-scrollbar-thumb:hover { background: var(--edge); }
 
-  /* --paper on --signal, not white: white on the dark theme's amber is 1.9:1. */
+  /* --paper on --signal, not white. Light 6.18:1, dark 5.75:1. */
   ::selection { background: var(--signal); color: var(--paper); }
 
-  /* Default focus for anything not chamfered. Chamfered elements clip their
-     outline, so .cut carries an inset ring instead (see below). */
+  /* Default focus. Chamfered elements clip their outline, so the three .cut
+     surfaces carry an inset ring instead (see below). */
   :focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
@@ -390,9 +540,11 @@
   textarea { resize: vertical; }
 }
 
-/* ── GEOMETRY · THE CHAMFER ────────────────────────────────────────────────
-   One 45 degree cut at the block-start / inline-end corner, mirrored per
-   direction. Nothing in this application is rounded. */
+/* ── GEOMETRY · THE SEAL ───────────────────────────────────────────────────
+   L2. One 45 degree cut at the block-start / inline-end corner, mirrored per
+   direction. It marks a committed, irreversible record and nothing else.
+   Three call sites; the definition is unchanged from when it was universal,
+   only the licence to wear it has narrowed. */
 .cut { clip-path: polygon(0 0, calc(100% - var(--c, 5px)) 0, 100% var(--c, 5px), 100% 100%, 0 100%); }
 [dir="rtl"] .cut { clip-path: polygon(var(--c, 5px) 0, 100% 0, 100% 100%, 0 100%, 0 var(--c, 5px)); }
 
@@ -406,33 +558,43 @@
 /* THE ONE CAST SHADOW, and how to apply it to a chamfered surface.
    clip-path clips an outer box-shadow away, so overlay surfaces cast with a
    filter instead — a filter runs AFTER the clip, so the shadow follows the
-   cut corner exactly. Three call sites in the whole application:
-   MediaLightbox, RunDetailDrawer, ConfirmDialog (plus the account popup).
+   cut corner exactly. Four call sites in the whole application:
+   MediaLightbox, RunDetailDrawer, ConfirmDialog, the account popup.
    Nothing else in Wazza casts a shadow. */
 .overlay-cast { filter: var(--drop-overlay); }
 
 /* ── SURFACES ──────────────────────────────────────────────────────────────
-   Depth is surface value + a 1px self-coloured etch + the cut. Never a shadow.
-   L3: raised is brighter than the page in BOTH themes. */
+   Depth is surface value + a 1px self-coloured edge. Never a shadow.
+   Raised is brighter than the page in BOTH themes — and smoother, because the
+   page carries the grain and a plate paints over it.
+
+   The plate is no longer cut, so it recovers a real border and a real box
+   model, and its trailing padding drops from 24px to 16px because there is no
+   longer a cut to clear. */
 .plate {
   background-color: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--etch);
-  clip-path: polygon(0 0, calc(100% - var(--chamfer-lg)) 0, 100% var(--chamfer-lg), 100% 100%, 0 100%);
-  padding-block: 16px;
-  padding-inline-start: 16px;
-  padding-inline-end: 24px;   /* clears the 8px cut + 10px minimum */
+  border: 1px solid var(--etch);
+  padding: 16px;
   color: var(--ink);
 }
-[dir="rtl"] .plate {
-  clip-path: polygon(var(--chamfer-lg) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-lg));
-}
 .plate--sunken { background-color: var(--sunk); }
-.plate--recess { background-color: var(--recess); box-shadow: inset 0 0 0 1px var(--etch-strong); }
+.plate--recess { background-color: var(--recess); border-color: var(--etch-strong); }
 .plate--flush  { padding: 0; }
 
 /* ── THE FILLED ACTION ─────────────────────────────────────────────────────
    L1. The only filled thing on any screen. If pressing it does not spend
-   credits, it is a .text-action instead. */
+   credits, it is a .text-action instead.
+
+   THE APP'S ONE AUTHORED MOTION MOMENT. At rest this is a plain rectangle.
+   On hover its trailing corner CUTS, previewing the sealed record it is about
+   to create. Five points to five points, so the clip interpolates smoothly
+   with stable caps. No lift, no scale, no glow, no colour flash, and the
+   label never moves. Under reduced motion it snaps, which is correct. The
+   trailing padding already budgets chamfer + 10px, so nothing is ever sliced.
+
+   This replaces the old amber hot-corner triangle, which was an arming
+   indicator on a money button. It cannot be pasted onto another product,
+   because outside L2 a cut corner means nothing. */
 .slab {
   position: relative;
   display: inline-flex;
@@ -442,39 +604,31 @@
   block-size: 40px;
   padding-inline-start: 16px;
   padding-inline-end: 22px;    /* clears the 5px cut + 10px, plus optical */
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1;
   color: var(--btn-label);
   background-color: var(--signal-deep);
   box-shadow: inset 0 0 0 1px var(--signal-edge);
-  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
-  transition: background-color 120ms var(--ease);
+  clip-path: polygon(0 0, 100% 0, 100% 0, 100% 100%, 0 100%);
+  transition: clip-path 120ms var(--ease), background-color 120ms var(--ease);
   cursor: pointer;
 }
 [dir="rtl"] .slab {
-  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0);
 }
 .slab--sm { block-size: 32px; padding-inline-start: 12px; padding-inline-end: 18px; }
 
-/* The app's one authored micro-interaction: the cut corner runs hot. The cap
-   geometry never moves — a fixed triangle fades in on the chamfer itself. */
-.slab::after {
-  content: '';
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-end: 0;
-  inline-size: 14px;
-  block-size: 14px;
-  background: var(--signal-hot);
-  clip-path: polygon(100% 0, 100% 100%, 0 0);
-  opacity: 0;
-  transition: opacity 120ms var(--ease);
-  pointer-events: none;
+.slab:hover:not(:disabled),
+.slab:active:not(:disabled) {
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
+  background-color: var(--signal-hot);
 }
-[dir="rtl"] .slab::after { clip-path: polygon(0 0, 0 100%, 100% 0); }
-.slab:hover:not(:disabled)::after { opacity: 1; }
-.slab:active:not(:disabled)       { background-color: var(--signal-press); transition-duration: 0ms; }
+[dir="rtl"] .slab:hover:not(:disabled),
+[dir="rtl"] .slab:active:not(:disabled) {
+  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
+}
+.slab:active:not(:disabled) { background-color: var(--signal-press); transition-duration: 0ms; }
 .slab:disabled { opacity: 0.45; cursor: not-allowed; }
 .slab:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--btn-label), inset 0 0 0 3px var(--signal-edge); }
 
@@ -486,7 +640,7 @@
   align-items: center;
   gap: 8px;
   padding-block: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.2;
   color: var(--ink-2);
@@ -498,7 +652,12 @@
 .text-action:hover:not(:disabled) { color: var(--ink); }
 .text-action:disabled { opacity: 0.45; cursor: not-allowed; }
 .text-action--danger { color: var(--state-fail); }
-.text-action--danger:hover:not(:disabled) { color: var(--state-fail); text-decoration: underline; text-underline-offset: 3px; }
+/* Cancellation is this system's shared vocabulary: the destructive action
+   strikes its own label, the same gesture as the struck square on a failed
+   run. Native line-through, so the engine centres the rule on the x-height
+   and it cannot drift off the glyphs the way a hand-drawn bar does. It
+   appears at full length as a state change, never wiping in. */
+.text-action--danger:hover:not(:disabled) { text-decoration: line-through; text-decoration-thickness: 1px; }
 
 /* ── STOWED ROW ACTIONS ────────────────────────────────────────────────────
    The pair of bare marks that rests invisible on a row or a tile — rename and
@@ -524,36 +683,36 @@
 
 /* ── INPUTS ────────────────────────────────────────────────────────────────
    The control edge is --edge, not --etch-strong: a boundary that identifies
-   an interactive control has to clear 3:1. */
+   an interactive control has to clear 3:1.
+
+   The field is not a record, so it is not cut. It recovers a real border, a
+   real box model and a real outline, and the inset double-ring hack is gone.
+   Focus is a hard 2px ring at 30% alpha — no blur, because a blurred ring is
+   a glow, and no layout shift, because a ring is not a border. */
 .field {
   inline-size: 100%;
   background-color: var(--sunk);
   color: var(--ink);
-  box-shadow: inset 0 0 0 1px var(--edge);
-  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
+  border: 1px solid var(--edge);
   padding-block: 10px;
-  padding-inline-start: 14px;
-  padding-inline-end: 19px;
-  font-size: 13px;
+  padding-inline: 14px;
+  font-size: 14px;
   outline: none;
-  transition: box-shadow 120ms var(--ease);
-}
-[dir="rtl"] .field {
-  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
+  transition: border-color 120ms var(--ease), box-shadow 120ms var(--ease);
 }
 .field::placeholder { color: var(--ink-3); opacity: 1; }
-/* The outer half of the ring is inset too — a clip-path would eat an outer one. */
 .field:focus, .field:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 1px var(--focus), inset 0 0 0 3px var(--focus-halo);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px var(--focus-halo);
 }
-.field--sm { padding-block: 6px; font-size: 12px; }
+.field--sm { padding-block: 6px; font-size: 13px; }
 
 /* Auth variant: no box at all, an etched underline. */
 .field--underline {
   background: transparent;
+  border: 0;
   box-shadow: none;
-  clip-path: none;
   border-block-end: 1px solid var(--edge);
   padding-inline: 0;
   transition: border-color 120ms var(--ease);
@@ -570,26 +729,23 @@
 
 .select {
   appearance: none;
-  padding-inline-end: 34px;   /* caret sits at inset-inline-end:12px, clear of the cut */
+  padding-inline-end: 34px;   /* caret sits at inset-inline-end:12px */
   cursor: pointer;
 }
 
 /* ── ROCKER — the segmented control ────────────────────────────────────────
-   Replaces every filled-pill filter row. The active cell is RAISED plus ink,
-   the same logic as the rail. Never an accent fill. Labels are always words. */
+   Replaces every filled-pill filter row. Labels are always words: there is no
+   sun-and-moon toggle in this system. Not a record, so not cut — it recovers
+   a real border. */
 .rocker {
   display: inline-flex;
   align-items: stretch;
   background-color: var(--sunk);
-  box-shadow: inset 0 0 0 1px var(--edge);
-  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
-}
-[dir="rtl"] .rocker {
-  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
+  border: 1px solid var(--edge);
 }
 .rocker__cell {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
   color: var(--ink-3);
@@ -600,76 +756,98 @@
 }
 .rocker__cell + .rocker__cell { border-inline-start: 1px solid var(--etch); }
 .rocker__cell:hover { color: var(--ink-2); }
-/* The active cell steps to --panel-hover, the brightest surface in the system,
-   NOT to --panel. A rocker is frequently mounted on a --panel surface (the
-   status bar, a plate), and a --panel active cell against a --panel ground has
-   zero contrast — which inverts the reading: the inactive cell shows the
-   darker housing and looks selected instead. --panel-hover is brighter than
-   every surface in both themes, so the raised cell reads anywhere.
+/* THE ACTIVE CELL DOES NOT TAKE THE ACCENT, and that is L3 being made
+   structural rather than aspirational. Selecting "Night" neither runs nor
+   costs money, so spending one of the viewport's two permitted accent
+   appearances on it is what made the budget unreachable.
 
-   RAISED WAS NOT ENOUGH. On the clarification card — five rockers stacked, the
-   densest use in the product — the step from --sunk to --panel-hover plus a
-   weight change was too quiet to find at a glance, and "which answer did I
-   pick" is the entire question that card asks. The active cell now also takes
-   the SIGNAL colour and a 2px signal rule along its base.
+   It still has to win decisively — the file's own earlier finding was that on
+   the clarification card, five rockers stacked, a raised cell plus a weight
+   change was too quiet to find at a glance, and "which answer did I pick" is
+   the entire question that card asks. So it takes FOUR simultaneous signals
+   instead: the brightest surface in the system, full-strength ink, 600 weight,
+   and a 2px ink rule along its base. Selection survives being read without
+   colour, which is L4 applied to a control.
 
-   This is not the accent FILL the system reserves for money: the cell keeps its
-   neutral raised ground, and the accent appears only as text and as an edge. A
-   filled orange cell would read as a spend affordance, which selecting "Night"
-   is not. Selection now survives being read without colour too — raised,
-   bolder, AND underscored. */
+   --panel-hover, not --panel: a rocker is frequently mounted ON a --panel
+   surface, where a --panel active cell has zero contrast and the reading
+   inverts — the inactive cell shows the darker housing and looks selected. */
 .rocker__cell[data-on="true"] {
   background-color: var(--panel-hover);
-  box-shadow: inset 0 0 0 1px var(--etch), inset 0 -2px 0 0 var(--signal);
-  color: var(--signal);
+  box-shadow: inset 0 0 0 1px var(--etch), inset 0 -2px 0 0 var(--ink);
+  color: var(--ink);
   font-weight: 600;
 }
 .rocker__cell:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--focus); }
-/* the last cell sits under the housing's cut; give it room */
-.rocker__cell:last-child { padding-inline-end: 16px; }
 
 /* ── TYPOGRAPHY ────────────────────────────────────────────────────────────
-   Working screens never exceed 20px. 17px is the only heading size. */
+   Seven working steps, nothing on a route above 20px, one document register
+   above that. */
 .mono, .figure {
   font-family: 'Commit Mono', ui-monospace, SFMono-Regular, monospace;
   font-variant-numeric: tabular-nums lining-nums;
-  /* A3 — isolate Latin numerals and currency inside an Arabic run. */
+  /* A3 — isolate Latin numerals and currency inside an Arabic run.
+     Numerals stay Latin (Western Arabic) rather than Arabic-Indic, and that
+     is an Arabic-FIRST decision, not a Latin default: Saudi and Gulf
+     commercial, banking and invoicing practice runs on Latin digits. */
   direction: ltr;
   unicode-bidi: isolate;
   text-align: end;
 }
-.mono { font-size: 12px; }
+.mono { font-size: 13px; }
 
 /* The group legend. Replaces the deleted tracked-caps costume everywhere.
    No icon, no rule beside it, no chip. A2: never uppercase in Arabic. */
 .legend {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--ink-3);
   margin-block-start: 16px;
   margin-block-end: 8px;
 }
 [dir="ltr"] .legend { text-transform: uppercase; letter-spacing: 0.08em; }
-[dir="rtl"] .legend { font-size: 12px; }   /* one step up to hold equal weight */
+[dir="rtl"] .legend { font-size: 13px; }   /* one step up to hold equal weight */
 .legend:first-child { margin-block-start: 0; }
 
-.page-title { font-size: 17px; font-weight: 600; line-height: 1.25; color: var(--ink); }
-.prose      { font-size: 15px; line-height: var(--lh-body); color: var(--ink); max-inline-size: 68ch; }
+.page-title { font-size: 20px; font-weight: 600; line-height: 1.25; color: var(--ink); }
+.prose      { font-size: 16px; line-height: var(--lh-body); color: var(--ink); max-inline-size: 68ch; }
 .caption    { font-size: 11px; line-height: 1.3; color: var(--ink-3); }
 
-.stencil {
-  font-family: 'Bespoke Stencil', 'Supreme', system-ui, sans-serif;
-  font-weight: 500;
+/* THE RECORD REGISTER — 28px, exactly one alif. Three call sites, all of them
+   documents: the work order, the run receipt, the auth wordmark. Never on a
+   working screen. No negative tracking: big type needs air, and Arabic is
+   never tracked at all (A1). */
+.record {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--ink);
 }
-[dir="ltr"] .stencil { letter-spacing: 0.14em; }
 
-/* ── THE GUTTER GRID — the app-wide compositional spine ────────────────────
+/* ── THE HĀSHIYA — the app-wide compositional spine ────────────────────────
+   A set Arabic page is enclosed by a ruled frame, the jadwal, and the column
+   outside it — the hāshiya — carries the apparatus: ordinals, corrections,
+   the صحّ verification mark, cross-references.
+
    The 56px leading gutter runs unbroken from under the status bar to the
    bottom of the page on EVERY route. It carries markers, row indices, scene
    numbers, status shapes and seam figures. This is what makes chat and the
-   dashboard read as one application. */
+   dashboard read as one application — and it is a hāshiya, which is why the
+   whole identity is built on it rather than on decoration laid over it.
+
+   In RTL the margin and the rail are both on the right, so an Arabic reader
+   reads outward-in from the margin, which is the correct direction. In LTR
+   the entire apparatus mirrors through logical properties. A Latin-first
+   template cannot produce this, because it would have put the margin on the
+   left and called the mirror an afterthought.
+
+   ATMOSPHERE, and it costs nothing: the page is never one flat field. It is a
+   MARGIN and a TEXT BLOCK at two values, on every route, full height. That is
+   how a set page has always created depth. The delta is about 1.5 L* points —
+   felt, not seen. It is a value decision, not an effect: no gradient, no glow,
+   no module grid, no dashed guides, nothing laid over the content. */
 .wz-page {
   display: grid;
   grid-template-columns: var(--rail-spine) minmax(0, 1fr);
@@ -685,7 +863,14 @@
   color: var(--ink-3);
   padding-inline-end: 12px;
   text-align: start;
+  /* The margin tone and THE JADWAL — the only vertical rule this system
+     permits. Declaring it a monopoly is what stops hairlines being sprinkled
+     elsewhere as fake structure. Drawn as a shadow rather than a border so it
+     does not enter the box model of a grid cell. */
+  background-color: var(--margin);
+  box-shadow: inset -1px 0 0 0 var(--etch-strong);
 }
+[dir="rtl"] .wz-gutter { box-shadow: inset 1px 0 0 0 var(--etch-strong); }
 .wz-col      { grid-column: 2; min-inline-size: 0; }
 .wz-col--span{ grid-column: 1 / -1; min-inline-size: 0; }
 .wz-stack > * + * { margin-block-start: 24px; }
@@ -705,7 +890,7 @@
    ══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
   :root {
-    /* The gutter still carries row indices, scene numbers and status shapes —
+    /* The hāshiya still carries row indices, scene numbers and status shapes —
        it just carries them in two digits instead of three. */
     --rail-spine: 32px;
     /* The panel is an overlay here (see .rail-panel below), so it may take the
@@ -736,9 +921,10 @@
 
 /* 1. THE ZOOM. Safari zooms the whole page when a focused input's text is
    under 16px, and it does not zoom back out. Every field in this system is
-   13px, so tapping any of them left the user at 1.2x with the layout pushed
+   14px, so tapping any of them left the user at 1.14x with the layout pushed
    off-screen. Only lifted where the pointer is coarse, so desktop keeps the
-   13px the type scale was drawn for. */
+   14px the type scale was drawn for. The jump is smaller than it used to be,
+   because the base moved 13 -> 14. */
 @media (pointer: coarse) {
   .field,
   .field--sm,
@@ -746,7 +932,7 @@
   input, textarea, select { font-size: 16px; }
 }
 
-/* 2. THE TARGETS. Text actions are 16px marks with 13px labels — comfortably
+/* 2. THE TARGETS. Text actions are 16px marks with 14px labels — comfortably
    clickable with a cursor, under Apple's 44pt minimum with a thumb. The hit
    area is grown without moving anything: the visual box is unchanged. */
 @media (pointer: coarse) {
@@ -904,16 +1090,23 @@
   .break-anywhere { overflow-wrap: anywhere; }
 }
 
-/* ── TABLE ─────────────────────────────────────────────────────────────────
-   36px rows, zebra by a rule not a fill, sticky header on --panel. */
-.dtable { inline-size: 100%; border-collapse: collapse; font-size: 12px; }
+/* ── TABLE — a ruled register ──────────────────────────────────────────────
+   36px rows, zebra by a rule not a fill, sticky header on --panel.
+   The jadwal rules the block-start and block-end edges, so the table reads as
+   a ruled block rather than a floating list. No vertical rules inside it. */
+.dtable {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  border-block: 1px solid var(--etch-strong);
+}
 .dtable thead th {
   position: sticky;
   inset-block-start: 0;
   z-index: 1;
   background-color: var(--panel);
   color: var(--ink-3);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-align: start;
   padding: 8px 12px;
@@ -928,17 +1121,21 @@
   border-block-end: 1px solid var(--etch);
   vertical-align: middle;
 }
+.dtable tbody tr:last-child td { border-block-end: 0; }
 .dtable tbody tr { transition: background-color 120ms var(--ease); }
 .dtable tbody tr:hover { background-color: var(--panel-hover); }
 .dtable .num { text-align: end; }
 
 /* ── STATUS MARKER — shape first, hue second (L4) ──────────────────────────
-   No background, no border, no pill, no glow, no pulse. */
+   No background, no border, no pill, no glow, no pulse. The glyph identifies
+   the state; colour only confirms it. That is what carries --state-fail and
+   --signal sitting in the same warm family: the failed mark is a STRUCK
+   square, a scribal cancellation, against the running state's open bracket. */
 .marker {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
@@ -950,14 +1147,11 @@
 .marker--cancelled { color: var(--ink-3); }
 
 /* ── SKELETON — no pulse. A pulsing skeleton is decorative motion. ─────────
-   Rows sit at the true final height so nothing reflows when data lands. */
+   Rows sit at the true final height so nothing reflows when data lands.
+   A skeleton is not a record, so it is not cut. */
 .skel {
   background-color: var(--sunk);
-  box-shadow: inset 0 0 0 1px var(--etch);
-  clip-path: polygon(0 0, calc(100% - var(--chamfer-md)) 0, 100% var(--chamfer-md), 100% 100%, 0 100%);
-}
-[dir="rtl"] .skel {
-  clip-path: polygon(var(--chamfer-md) 0, 100% 0, 100% 100%, 0 100%, 0 var(--chamfer-md));
+  border: 1px solid var(--etch);
 }
 
 /* ── MOTION ────────────────────────────────────────────────────────────────
@@ -974,7 +1168,8 @@
 /* ── METER ─────────────────────────────────────────────────────────────────
    The app's only progress indicator. The fill is a clip-path inset over a
    pre-drawn full tick row — never scaleX, never width, never a rounded cap.
-   The inset is authored logically so the fill runs in the reading direction. */
+   The inset is authored logically so the fill runs in the reading direction.
+   L3: its default tone is INK. tone="signal" is opt-in and means a live run. */
 .wz-meter {
   position: relative;
   display: inline-flex;
@@ -996,11 +1191,15 @@
    Every currency and time value in the application goes through <Money> /
    <Duration>. The fractional digits render one step down the ink ramp, so
    scanning a column of run costs lands magnitude first and precision second.
-   No component formats a cost inline. Ever. */
+   No component formats a cost inline. Ever.
+
+   This is also what makes acceptance test 2 pass: with the accent covered,
+   cost is still legible, because magnitude and precision differ by VALUE and
+   not by hue. */
 .ledger { display: inline-flex; align-items: baseline; }
 .ledger__fraction { color: var(--ink-2); }
 /* On a filled slab the fraction is the label colour at --fraction-op (0.82):
-   5.17:1 light, 4.52:1 dark. 0.78 fails AA in dark — do not lower it. */
+   6.18:1 light, 5.66:1 dark. It is a FLOOR — do not lower it. */
 .ledger--on-fill { color: var(--btn-label); }
 .ledger--on-fill .ledger__fraction { color: var(--btn-label); opacity: var(--fraction-op); }
 
@@ -1015,7 +1214,8 @@
 
 /* ── REDUCED MOTION ────────────────────────────────────────────────────────
    Nothing disappears. The meter resolves to its TRUE value, never half-lit —
-   a static half meter is a lie about the run's progress. */
+   a static half meter is a lie about the run's progress. The slab's hover cut
+   snaps instead of easing, which leaves the button fully legible either way. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

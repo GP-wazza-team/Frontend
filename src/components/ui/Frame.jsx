@@ -6,13 +6,20 @@
    is the whole reason the primitive exists, so there is exactly one of it.
 
    Construction:
-     · a --recess well carrying the 8px chamfer and an inset --etch-strong edge
-     · a 10px mat, budgeted against the 8px cut so the corner never slices media
+     · a --recess well with a real --etch-strong border. L2: a media well is
+       NOT a record — it is the work itself, not the instrument that says the
+       work was paid for — so it is not cut. That resolves what used to be an
+       incidental rule into a stateable one.
+     · a 10px mat
      · the media at its TRUE aspect ratio — object-fit is deliberately absent.
        A tool that sells 9:16 and 21:9 must never crop the thing the user paid
        for, which is what the old aspect-square grid did to every asset.
-     · THREE registration marks, not four: the chamfered corner IS the fourth.
-       A mark inset 4px there would sit inside the removed triangle.
+     · TWO registration marks on the diagonal, not three and not four. When the
+       well was chamfered the count was three because the cut corner was the
+       fourth — a number that existed by accident. Uncut, four marks read as a
+       decorative frame; two on the leading-top / trailing-bottom diagonal read
+       as registration, which is what they are. Quieter, and now the reason can
+       be stated.
      · a Commit Mono caption rail on --panel reading real data off the object:
            04 · 1080p 16:9 · 5.0s · seedance
 
@@ -36,7 +43,6 @@ function Registration() {
   return (
     <>
       {mark({ insetBlockStart: 4, insetInlineStart: 4 })}
-      {mark({ insetBlockEnd: 4, insetInlineStart: 4 })}
       {mark({ insetBlockEnd: 4, insetInlineEnd: 4 })}
     </>
   )
@@ -62,7 +68,7 @@ export function Frame({
       {...rest}
     >
       <div
-        className="plate--recess cut cut-lg"
+        className="plate--recess"
         style={{ position: 'relative', padding: 10, lineHeight: 0, ...wellStyle }}
       >
         {interactive ? (

@@ -65,10 +65,14 @@ export default function ModelCostBreakdown({ data = [], totalCost = 0 }) {
             {/* Natural width, deliberately: the Meter's fill layer is an
                 absolute overlay sized to the track, so stretching the host
                 box would decouple the clip from the cells it clips. */}
+            {/* L3: ink, not signal. This bar repeats on every row of the
+                ledger, so in signal a ten-model breakdown put ten accents on
+                one screen against a budget of two. A magnitude bar is not a
+                live run and it is not a spend control — it is a figure, and
+                figures are set in ink. */}
             <Meter
               cells={24}
               value={max > 0 ? cost / max : 0}
-              tone="signal"
               label={`${m.model}: ${pct.toFixed(1)}% of spend`}
             />
 
