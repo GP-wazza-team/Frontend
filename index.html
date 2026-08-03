@@ -2,7 +2,11 @@
 <html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover lets env(safe-area-inset-*) report real values, which
+         is what keeps the status bar clear of the notch and the composer clear
+         of the home indicator. Without it those insets are all 0 and the
+         .safe-inset classes in index.css do nothing. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <title>Wazza</title>
     <meta name="description" content="Wazza is a production console for AI-generated scripts, images and video. Plan a job, review the work order, authorise the spend, watch the run." />

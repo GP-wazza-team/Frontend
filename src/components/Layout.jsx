@@ -108,7 +108,17 @@ function StatusBar() {
         )}
       </div>
 
-      {/* inline-end cluster */}
+      {/* inline-end cluster.
+
+          Cost and the API marker were already width-gated. The two rockers
+          are gated here too: their word labels ("Light"/"Dark",
+          "English"/"العربية") are the whole point of the control and make the
+          pair ~220px of a 390pt bar, which leaves the run phase — the one
+          thing on this bar that changes minute to minute — about 60px to
+          report itself in.
+
+          Nothing is lost by moving them off a phone: Settings carries the same
+          two Rockers, bound to the same setters. */}
       <div className="flex items-center gap-4 shrink-0">
         {status.sessionCostUsd > 0 && (
           <span className="hidden sm:flex items-center gap-2">
@@ -125,32 +135,34 @@ function StatusBar() {
           <span>{apiConnected ? t('connected') : t('disconnected')}</span>
         </span>
 
-        <Rocker
-          ariaLabel={t('theme')}
-          value={darkMode}
-          onChange={setDarkMode}
-          options={[
-            { value: false, label: t('light') },
-            { value: true, label: t('dark') },
-          ]}
-        />
+        <span className="hidden sm:flex items-center gap-4">
+          <Rocker
+            ariaLabel={t('theme')}
+            value={darkMode}
+            onChange={setDarkMode}
+            options={[
+              { value: false, label: t('light') },
+              { value: true, label: t('dark') },
+            ]}
+          />
 
-        <Rocker
-          ariaLabel={t('language')}
-          value={language}
-          onChange={setLanguage}
-          options={[
-            { value: 'en', label: t('english') },
-            { value: 'ar', label: t('arabic') },
-          ]}
-        />
+          <Rocker
+            ariaLabel={t('language')}
+            value={language}
+            onChange={setLanguage}
+            options={[
+              { value: 'en', label: t('english') },
+              { value: 'ar', label: t('arabic') },
+            ]}
+          />
+        </span>
       </div>
     </header>
   )
 }
 
 function Layout() {
-  const { setApiConnected } = useUIStore()
+  const { setApiConnected, sidebarOpen, setSidebarOpen, language } = useUIStore()
   const { refreshToken, logout } = useAuthStore()
 
   useEffect(() => {
@@ -177,9 +189,25 @@ function Layout() {
 
   return (
     <RunStatusProvider>
-      <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--paper)' }}>
+      {/* h-shell, not h-screen: Safari's 100vh is the height WITHOUT the URL
+          bar, so a 100vh shell hides its own bottom row — here, the composer —
+          behind the browser chrome until you scroll. .h-shell resolves to
+          100dvh where it exists and falls back to 100vh where it does not. */}
+      <div className="flex h-shell overflow-hidden safe-inset" style={{ backgroundColor: 'var(--paper)' }}>
         <Sidebar onLogout={handleLogout} />
         <ToastContainer />
+
+        {/* Closes the rail panel when it is overlaying the page. Rendered only
+            below 640px (the class is display:none above it), because at
+            desktop widths the panel is in flow and nothing is covered. */}
+        {sidebarOpen && (
+          <button
+            type="button"
+            className="rail-scrim"
+            aria-label={language === 'ar' ? 'إغلاق اللوحة' : 'Close panel'}
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
 
         <div className="flex-1 flex flex-col min-w-0">
           <StatusBar />

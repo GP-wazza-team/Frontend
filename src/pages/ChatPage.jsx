@@ -32,8 +32,12 @@ function RunStrip({ phase, percent, sceneNumber, elapsedMs }) {
 
   return (
     <div
-      className="shrink-0 grid grid-cols-[56px_minmax(0,1fr)] items-center"
+      className="shrink-0 grid items-center chat-pad"
       style={{
+        // var(--rail-spine), not a literal 56px: the gutter narrows to 32px
+        // below 640px and a hardcoded track would leave the strip's legend
+        // misaligned against every other row in the app.
+        gridTemplateColumns: 'var(--rail-spine) minmax(0, 1fr)',
         backgroundColor: 'var(--panel)',
         borderBlockStart: '1px solid var(--etch)',
         paddingInline: 24,

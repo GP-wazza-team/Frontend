@@ -387,9 +387,17 @@ function Sidebar({ onLogout }) {
           </div>
         </nav>
 
-        {/* ── TIER 2 · THE PANEL ─────────────────────────────────────────── */}
+        {/* ── TIER 2 · THE PANEL ─────────────────────────────────────────────
+            In flow on a desktop, an OVERLAY on a handheld.
+
+            The spine (32px there) plus this panel would otherwise claim most
+            of a 390pt screen and squeeze the route into a column too narrow to
+            read. Overlaying keeps the panel at a usable width and leaves the
+            page beneath it intact, which is also what a phone user expects a
+            drawer to do. `.rail-panel--overlay` is applied by width only, so
+            the desktop composition is untouched. */}
         <div
-          className="h-full overflow-hidden flex flex-col"
+          className={`h-full overflow-hidden flex flex-col rail-panel${sidebarOpen ? ' rail-panel--open' : ''}`}
           style={{
             inlineSize: sidebarOpen ? 'var(--rail-panel)' : 0,
             borderInlineEnd: sidebarOpen ? '1px solid var(--etch)' : 'none',

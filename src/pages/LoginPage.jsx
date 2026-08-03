@@ -442,7 +442,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--paper)' }} dir={isAr ? 'rtl' : 'ltr'}>
+    <div className="flex min-h-shell safe-inset" style={{ backgroundColor: 'var(--paper)' }} dir={isAr ? 'rtl' : 'ltr'}>
       <AuthPlate isAr={isAr} reading={0.71} headline={ui.plateHead} blurb={ui.plateBlurb} />
 
       <div className="flex min-w-0 flex-1 flex-col">

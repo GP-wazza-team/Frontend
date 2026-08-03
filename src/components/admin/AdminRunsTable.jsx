@@ -160,7 +160,10 @@ export default function AdminRunsTable({
           header scrolled away with the rows. A bounded block size gives the
           header something to stick to, keeps horizontal scroll, and leaves the
           pager on screen. */}
-      <div style={{ overflow: 'auto', maxBlockSize: 'calc(100vh - 260px)' }}>
+      {/* dvh, not vh: Safari's 100vh excludes the URL bar, so a vh-derived
+          max height is taller than the visible page and the pager below is
+          pushed off-screen. */}
+      <div className="scroll-x" style={{ overflowY: 'auto', maxBlockSize: 'min(calc(100vh - 260px), calc(100dvh - 260px))' }}>
         <table className="dtable">
           <thead>
             <tr>

@@ -690,6 +690,220 @@
 .wz-col--span{ grid-column: 1 / -1; min-inline-size: 0; }
 .wz-stack > * + * { margin-block-start: 24px; }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   HANDHELD — one breakpoint, retuned tokens, no second design.
+
+   The whole system is built on four numbers: the 56px gutter, the 240px rail
+   panel, 24px page padding and a 36px status bar. On a 390pt iPhone the first
+   three alone claim 320px of a 390px screen, so the compositional spine has
+   to shrink rather than the content. Everything below is that retune — the
+   grid, the rhythm and the vocabulary are unchanged, so a phone renders the
+   same application rather than a stripped-down cousin of it.
+
+   640px, not a device width. It is the point where the 56px gutter stops
+   paying for itself.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  :root {
+    /* The gutter still carries row indices, scene numbers and status shapes —
+       it just carries them in two digits instead of three. */
+    --rail-spine: 32px;
+    /* The panel is an overlay here (see .rail-panel below), so it may take the
+       full width it needs without displacing the page. */
+    --rail-panel: min(84vw, 300px);
+  }
+
+  .wz-page { padding: 12px; }
+  .wz-gutter { padding-inline-end: 8px; font-size: 10px; }
+  /* 24px of vertical rhythm reads as dead space on a short screen. */
+  .wz-stack > * + * { margin-block-start: 16px; }
+
+  /* The chat route sets its own padding (it is --flush and owns its
+     scrolling), so its 24px inline padding has to be retuned here rather than
+     through .wz-page. 48px of the 390pt width was going to margins. */
+  .chat-pad { padding-inline: 12px !important; }
+}
+
+/* The composer is the bottom-most row of the shell, so it is the thing the
+   home indicator overlaps. Added to its existing padding rather than
+   replacing it, and resolves to 0 anywhere without a notch. */
+.composer-safe { padding-block-end: calc(12px + env(safe-area-inset-bottom)); }
+
+/* ── iOS ───────────────────────────────────────────────────────────────────
+   Four Safari-specific defects, none of which show up on a desktop browser at
+   a narrow width — which is why a resized window is not a substitute for a
+   phone. */
+
+/* 1. THE ZOOM. Safari zooms the whole page when a focused input's text is
+   under 16px, and it does not zoom back out. Every field in this system is
+   13px, so tapping any of them left the user at 1.2x with the layout pushed
+   off-screen. Only lifted where the pointer is coarse, so desktop keeps the
+   13px the type scale was drawn for. */
+@media (pointer: coarse) {
+  .field,
+  .field--sm,
+  .select,
+  input, textarea, select { font-size: 16px; }
+}
+
+/* 2. THE TARGETS. Text actions are 16px marks with 13px labels — comfortably
+   clickable with a cursor, under Apple's 44pt minimum with a thumb. The hit
+   area is grown without moving anything: the visual box is unchanged. */
+@media (pointer: coarse) {
+  .text-action, .rocker__cell, button, [role="button"] { min-block-size: 40px; }
+  .text-action { padding-block: 6px; }
+}
+
+/* 3. THE NOTCH AND THE HOME INDICATOR. Needs viewport-fit=cover on the meta
+   tag to have any effect — see index.html. Applied to the shell rather than
+   to body so the status bar and the composer are the things that clear the
+   hardware, not the scroll container. */
+.safe-inset {
+  padding-inline-start: env(safe-area-inset-left);
+  padding-inline-end: env(safe-area-inset-right);
+}
+.safe-inset-bottom { padding-block-end: env(safe-area-inset-bottom); }
+.safe-inset-top { padding-block-start: env(safe-area-inset-top); }
+
+/* 4. THE HEIGHT. Safari's 100vh is the height WITHOUT the URL bar, so a
+   100vh shell is taller than the visible page and the bottom row — which in
+   this app is the composer — sits under the browser chrome until you scroll.
+   100dvh tracks the bar as it collapses. The vh fallback stays for the few
+   engines without dvh. */
+.h-shell { block-size: 100vh; block-size: 100dvh; }
+.min-h-shell { min-block-size: 100vh; min-block-size: 100dvh; }
+
+/* Tapping anything in this system flashed a grey box on iOS. The focus ring
+   and the raised cell already say what is being touched. */
+@media (pointer: coarse) {
+  * { -webkit-tap-highlight-color: transparent; }
+}
+
+/* ── THE RAIL PANEL ON A HANDHELD ──────────────────────────────────────────
+   In flow at desktop widths; an overlay below 640px.
+
+   The spine and the panel together would claim most of a 390pt screen, and a
+   chat transcript in the ~60px that remains is not a product. Overlaying
+   keeps the panel usably wide and leaves the route intact underneath, which
+   is what a drawer is expected to do on a phone.
+
+   The scrim is a sibling rendered by Layout, not a ::before here, so that
+   tapping it can close the panel. */
+@media (max-width: 640px) {
+  .rail-panel {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: var(--rail-spine);
+    z-index: 40;
+    background-color: var(--panel);
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0);   /* no scrim when closed */
+    transition: inline-size 180ms var(--ease), box-shadow 180ms var(--ease);
+  }
+  .rail-panel--open {
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.28);
+  }
+}
+
+/* The scrim exists only where the panel overlays something. Above the
+   breakpoint the panel is in flow, nothing is covered, and a full-screen
+   button over the app would be a bug. */
+.rail-scrim { display: none; }
+@media (max-width: 640px) {
+  .rail-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background-color: rgba(0, 0, 0, 0.45);
+    border: 0;
+    cursor: pointer;
+  }
+}
+
+/* ── LEDGER ROWS ───────────────────────────────────────────────────────────
+   The ranked rows on the dashboard and the admin route: a label that flexes,
+   then two to four fixed measure columns. Their fixed columns add up to more
+   than a phone is wide (the model ledger alone is 284px of fixed track plus
+   48px of gaps, against ~366px of usable width), so at desktop widths they
+   are one line and below the breakpoint they become two — label above,
+   measures beneath.
+
+   Reflowed rather than truncated: every cell is a figure someone came to
+   read, and dropping the magnitude bar or the share would leave a row that
+   no longer answers the question it exists to answer. */
+.ledger-4 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px 96px 56px;
+  align-items: center;
+  gap: 16px;
+  block-size: 40px;
+}
+.ledger-5 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 108px 116px 92px 64px;
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .ledger-4 {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "name  name name"
+      "meter cost pct";
+    block-size: auto;
+    padding-block: 10px;
+    gap: 6px 12px;
+  }
+  .ledger-4 > :nth-child(1) { grid-area: name; }
+  .ledger-4 > :nth-child(2) { grid-area: meter; }
+  .ledger-4 > :nth-child(3) { grid-area: cost; }
+  .ledger-4 > :nth-child(4) { grid-area: pct; }
+
+  .ledger-5 {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "name   name  status"
+      "remain spend calls";
+    padding-block: 10px;
+    gap: 6px 12px;
+  }
+  .ledger-5 > :nth-child(1) { grid-area: name; }
+  .ledger-5 > :nth-child(2) { grid-area: status; }
+  .ledger-5 > :nth-child(3) { grid-area: remain; text-align: start; }
+  .ledger-5 > :nth-child(4) { grid-area: spend; }
+  .ledger-5 > :nth-child(5) { grid-area: calls; }
+  /* The header row's labels no longer sit above their columns once the row
+     has two lines, and a mislabelled figure is worse than an unlabelled one. */
+  .ledger-5--head { display: none; }
+}
+
+/* ── INSTRUMENT GRIDS ──────────────────────────────────────────────────────
+   The rubric strip is four cells wide by design. On a phone that is ~90px per
+   cell, which fits but reads as four columns of clipped figures — so it
+   halves to two. The sparkmeter tile drops its 132px floor for the same
+   reason: on a 366px content column that floor is what turns a three-up row
+   into a horizontal scroll. */
+@media (max-width: 640px) {
+  .rubric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .instrument-tile { min-inline-size: 0 !important; }
+}
+
+/* ── OVERFLOW GUARDS ───────────────────────────────────────────────────────
+   Anything with a fixed minimum width — a table, a ledger row, a chart —
+   scrolls inside its own box rather than pushing the page sideways. A page
+   that scrolls horizontally on a phone is the single loudest "this was not
+   built for me" signal there is. */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.dtable { min-inline-size: 640px; }
+@media (max-width: 640px) {
+  /* Media and long words must never be the thing that widens the page. */
+  img, video, canvas, svg { max-inline-size: 100%; }
+  .break-anywhere { overflow-wrap: anywhere; }
+}
+
 /* ── TABLE ─────────────────────────────────────────────────────────────────
    36px rows, zebra by a rule not a fill, sticky header on --panel. */
 .dtable { inline-size: 100%; border-collapse: collapse; font-size: 12px; }

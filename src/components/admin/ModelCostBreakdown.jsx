@@ -47,14 +47,11 @@ export default function ModelCostBreakdown({ data = [], totalCost = 0 }) {
         return (
           <div
             key={m.model ?? idx}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) 132px 96px 56px',
-              alignItems: 'center',
-              gap: 16,
-              blockSize: 40,
-              borderBlockEnd: '1px solid var(--etch)',
-            }}
+            // .ledger-4 carries the track sizes and the handheld reflow — one
+            // line with four measure columns on a desktop, label-over-measures
+            // below 640px, where 284px of fixed track plus gaps does not fit.
+            className="ledger-4"
+            style={{ borderBlockEnd: '1px solid var(--etch)' }}
           >
             <span className="flex items-baseline gap-3 min-w-0">
               <span className="mono flex-none" style={{ fontSize: 10, color: 'var(--ink-3)', inlineSize: 18, textAlign: 'start' }}>

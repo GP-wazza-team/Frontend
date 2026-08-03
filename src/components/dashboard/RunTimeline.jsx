@@ -148,7 +148,7 @@ function RunTimeline({ runId, onClose }) {
              still centres on its auto block margins; at the bound it stops
              growing and its BODY scrolls, which is what gives the step table's
              sticky header a real scrollport to stick to. */
-          maxBlockSize: 'calc(100vh - 48px)',
+          maxBlockSize: 'min(calc(100vh - 48px), calc(100dvh - 48px))',
           marginBlock: 'auto',
           display: 'flex',
           flexDirection: 'column',

@@ -50,7 +50,9 @@ function RecentRuns({ runs = [] }) {
           scroll container — but it has auto height and never scrolls, so the
           header scrolled away with the rows. A bounded block size gives the
           header something to stick to and keeps horizontal scroll intact. */}
-      <div style={{ overflow: 'auto', maxBlockSize: 'calc(100vh - 260px)' }}>
+      {/* See AdminRunsTable: dvh keeps the bound inside the visible page on
+          Safari, and .scroll-x keeps a wide table off the page's own axis. */}
+      <div className="scroll-x" style={{ overflowY: 'auto', maxBlockSize: 'min(calc(100vh - 260px), calc(100dvh - 260px))' }}>
         <table className="dtable">
           <thead>
             <tr>

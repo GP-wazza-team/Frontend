@@ -38,7 +38,8 @@ const STATUS_META = {
   error: { icon: Strike, en: 'Failed', ar: 'فشل' },
 }
 
-const COLUMNS = 'minmax(0, 1fr) 108px 116px 92px 64px'
+// Track sizes and the handheld reflow both live in .ledger-5 (index.css), so
+// the row shape is defined once and the breakpoint rule can reach it.
 
 export default function ProviderBalances({ data = [], days = 30, loading = false, onRefresh }) {
   const { language } = useUIStore()
@@ -84,8 +85,11 @@ export default function ProviderBalances({ data = [], days = 30, loading = false
 
       <div style={{ borderBlockStart: '1px solid var(--etch-strong)' }}>
         <div
-          className="legend"
-          style={{ display: 'grid', gridTemplateColumns: COLUMNS, gap: 16, blockSize: 28, alignItems: 'center', marginBlock: 0 }}
+          // ledger-5--head is hidden below 640px: once each row wraps to two
+          // lines the header labels no longer sit above the figures they name,
+          // and a mislabelled number is worse than an unlabelled one.
+          className="legend ledger-5 ledger-5--head"
+          style={{ blockSize: 28, alignItems: 'center', marginBlock: 0 }}
         >
           <span>{ar ? 'المزود' : 'Provider'}</span>
           <span>{ar ? 'الحالة' : 'Status'}</span>
@@ -104,10 +108,8 @@ export default function ProviderBalances({ data = [], days = 30, loading = false
           return (
             <div
               key={row.provider}
+              className="ledger-5"
               style={{
-                display: 'grid',
-                gridTemplateColumns: COLUMNS,
-                gap: 16,
                 alignItems: 'baseline',
                 minBlockSize: 40,
                 paddingBlock: 8,

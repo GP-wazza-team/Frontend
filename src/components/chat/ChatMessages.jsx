@@ -86,7 +86,7 @@ function ChatMessages({ messages, loading, handlers, onSubmit, phase }) {
       {messages.length === 0 && !loading ? (
         <TranscriptEmpty t={t} onSubmit={onSubmit} disabled={loading} />
       ) : (
-        <div className="flex flex-col gap-6" style={{ paddingBlock: 24, paddingInline: 24 }}>
+        <div className="flex flex-col gap-6 chat-pad" style={{ paddingBlock: 24, paddingInline: 24 }}>
           {messages.map((message, index) => (
             message && (
               <ErrorBoundary key={index}>

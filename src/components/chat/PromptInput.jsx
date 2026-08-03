@@ -73,7 +73,7 @@ function PromptInput({ onSubmit, disabled = false }) {
 
   return (
     <div
-      className="shrink-0"
+      className="shrink-0 chat-pad composer-safe"
       style={{
         backgroundColor: 'var(--paper)',
         borderBlockStart: '1px solid var(--etch)',

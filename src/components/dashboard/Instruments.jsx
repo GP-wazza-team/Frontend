@@ -187,6 +187,7 @@ export function Sparkmeter({ series = [], cells = 14, height = 16, label }) {
 export function Rubric({ cells = [], columns = 4 }) {
   return (
     <div
+      className="rubric-grid"
       style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
@@ -231,6 +232,7 @@ export function RubricSkeleton({ columns = 4, count = 4 }) {
   return (
     <div
       aria-busy="true"
+      className="rubric-grid"
       style={{
         display: 'grid',
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
@@ -306,7 +308,7 @@ export function ChartTooltip({ active, payload, label, rows }) {
   if (!active || !payload || payload.length === 0) return null
   return (
     <div
-      className="cut cut-md"
+      className="cut cut-md instrument-tile"
       style={{
         backgroundColor: 'var(--panel)',
         boxShadow: 'inset 0 0 0 1px var(--etch-strong)',

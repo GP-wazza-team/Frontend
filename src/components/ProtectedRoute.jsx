@@ -41,7 +41,7 @@ function ProtectedRoute({ children }) {
   if (!hasHydrated || checking) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
+        className="min-h-shell flex items-center justify-center"
         style={{ backgroundColor: 'var(--paper)' }}
       >
         <Meter cells={5} mode="indeterminate" tone="ink" label={t('loading')} />
