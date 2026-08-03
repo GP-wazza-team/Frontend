@@ -1,44 +1,39 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   THE COMMIT GATE
+   THE COMMIT GATE — the signature moment of the product
 
-   This card is the product. Everything before it is instrumentation for one
-   decision, and everything after it costs money. So it is composed as a WORK
-   ORDER, not a chat bubble:
+   Everything before this card is instrumentation for one decision, and
+   everything after it costs money. So it is composed as a DOCUMENT YOU
+   APPROVE, not a panel you arm:
 
-     LEADING COLUMN   the editable prose as ruled entries — legend, prose, a 1px
-                      rule between, and the amend mark parked at --ink-3 on the
-                      trailing edge of each row. The spec asks for it on hover
-                      only; it stays visible because a hover-only control is
-                      unreachable on a touch device, and this is the one place
-                      a user rewrites the brief.
-     TRAILING COLUMN  the SPEC BLOCK, 236px, Commit Mono, on a shared baseline
-                      grid so MODEL / QUALITY / ASPECT / SCENES / SECONDS / EST.
-                      stack in a rigid aligned column. The three that are
-                      changeable are selects sitting on that same grid — the
-                      block is both the readout and the control surface, which
-                      is what an instrument panel is.
-     THE COMMIT STRIP free actions with HOLLOW marks (Revise, Cancel), costing
-                      actions with FILLED marks (the two previews), and then the
-                      single filled thing on the entire screen: a slab whose
-                      LABEL IS THE PRICE. You press the number.
+     NUMBERED CLAUSES   01 summary · 02 characters · 03 environment ·
+                        04 scenario · 05 script · 06 output. Each clause is
+                        amendable in place, and the amend control is a .stow —
+                        stowed on a fine pointer, always present on a coarse
+                        one, and reachable by keyboard through :focus-within.
+     THE TOTAL          stated in full, in the document, BEFORE the press.
+     THE PRESS          is not here. It is mounted into the top bar by
+                        ChatPage through <TopBarAction>, which is where every
+                        reference product in this register puts the action
+                        that spends money or produces the deliverable, and it
+                        is the reason there is exactly ONE filled button on
+                        this screen. A long work order can be scrolled past;
+                        the bar cannot.
 
-   `resolved` freezes the card and the footer is replaced by the seam.
-   `outcome` is how it was resolved ('cancelled' | 'confirmed'). It used to be
-   called `resolution`, which now belongs to the video's output quality — two
-   different meanings for one word on the same component.
+   WHAT WAS REMOVED. The arming vocabulary: the cut-corner "seal", the filled
+   slab whose label was the price, the amber meters, the instrument-panel spec
+   column. None of them said anything the words and the number do not, and all
+   of them read as a game rather than as a company's paperwork.
 
-   Every handler, prop name, guard and network call is exactly as it was.
+   `resolved` freezes the card into a record. `outcome` is how it was resolved
+   ('cancelled' | 'confirmed'). Every handler, prop name, guard and network
+   call is exactly as it was, minus onConfirm — which moved to the top bar.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState } from 'react'
-import {
-  Commit, Void, Amend, Environment, Character, Revise, Script, Caret, Check,
-} from '../Icon'
-import Meter from '../ui/Meter'
+import { Amend, Environment, Character, Revise, Caret, Check, Void } from '../Icon'
 import { Money } from '../ui/Money'
 import { useLightbox } from '../MediaLightbox'
-import { useChatText } from './chatKit'
-import Frame from '../ui/Frame'
+import { useChatText, MediaWell } from './chatKit'
 
 // Fields the backend accepts for the free, no-LLM /edit call.
 const EDITABLE_FIELDS = [
@@ -55,36 +50,78 @@ const FALLBACK_RESOLUTIONS = ['480p', '720p', '1080p']
 const FALLBACK_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '21:9']
 const FALLBACK_DURATIONS = [5, 10, 15, 20]
 
-/* ── THE SPEC BLOCK ───────────────────────────────────────────────────────── */
+/* ── A CLAUSE ─────────────────────────────────────────────────────────────
+   The number is a step in a sequence, so it sits in the leading column and
+   mirrors with the document (A4). It is .mono because it is a Latin numeral
+   inside what may be an Arabic run (A3). */
 
-/** One row of the spec block: a label in the leading column, the value or the
- *  control in the trailing one, both on the same baseline grid. */
+function Clause({ n, title, action, children }) {
+  return (
+    <li
+      className="group grid items-start"
+      style={{
+        gridTemplateColumns: '32px minmax(0, 1fr) auto',
+        columnGap: 12,
+        paddingBlock: 14,
+        // The header already draws the rule above clause 01.
+        borderBlockStart: n === 1 ? 'none' : '1px solid var(--line)',
+      }}
+    >
+      <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', paddingBlockStart: 2 }}>
+        {String(n).padStart(2, '0')}
+      </span>
+      <div className="min-w-0">
+        <div className="label" style={{ marginBlockEnd: 4 }}>{title}</div>
+        {children}
+      </div>
+      <span className="stow">{action}</span>
+    </li>
+  )
+}
+
+/* ── THE OUTPUT CLAUSE ────────────────────────────────────────────────────── */
+
 function SpecRow({ label, children, title }) {
   return (
-    <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-x-2" title={title}>
-      <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-3)', textAlign: 'start' }}>
-        {label}
-      </span>
+    <div
+      className="grid items-center"
+      style={{ gridTemplateColumns: 'minmax(88px, auto) minmax(0, 1fr)', columnGap: 12, paddingBlock: 3 }}
+      title={title}
+    >
+      <span className="caption">{label}</span>
       <span className="min-w-0">{children}</span>
     </div>
   )
 }
 
 /**
- * A spec-block dropdown. Changes commit immediately — each is a free
+ * A dropdown in the output clause. Changes commit immediately — each is a free
  * server-side field update, and making the user press an extra Save button to
  * change a dropdown they can see the result of is friction for nothing.
  */
 function SpecSelect({ value, options, disabled, onChange, label }) {
+  const current = options.find((o) => String(o.value) === String(value ?? ''))
   return (
-    <span className="relative block min-w-0">
+    /* dir="ltr" ON THE WRAPPER, not just on the select.
+       The select forces `direction: ltr` because a model id is a Latin token,
+       so its `padding-inline-end` resolves to the PHYSICAL RIGHT. The caret
+       was positioned by this wrapper, which inherited RTL from the page, so
+       `inset-inline-end` put it on the PHYSICAL LEFT — the caret landed on top
+       of the first characters of the model name while the reserved space sat
+       unused at the other edge. Both now resolve against the same direction.
+
+       Widened from 280px too: "Runway Gen 4.5 (max 720p, max 5s)" was being
+       cut mid-word, and a control that hides the limits it exists to state is
+       worse than no control. `title` carries the full string regardless. */
+    <span dir="ltr" className="relative block min-w-0" style={{ maxInlineSize: 360 }}>
       <select
         value={value ?? ''}
         disabled={disabled}
         aria-label={label}
+        title={current?.label || undefined}
         onChange={(e) => onChange(e.target.value)}
         className="field field--sm select mono disabled:opacity-50"
-        style={{ fontSize: 11, textAlign: 'start', direction: 'ltr' }}
+        style={{ textAlign: 'start', textOverflow: 'ellipsis' }}
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -93,7 +130,7 @@ function SpecSelect({ value, options, disabled, onChange, label }) {
       <span
         aria-hidden="true"
         className="absolute pointer-events-none"
-        style={{ insetInlineEnd: 12, insetBlockStart: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }}
+        style={{ insetInlineEnd: 10, insetBlockStart: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }}
       >
         <Caret size={12} direction="down" />
       </span>
@@ -101,26 +138,20 @@ function SpecSelect({ value, options, disabled, onChange, label }) {
   )
 }
 
-/** A static spec value — never editable, always a ledger line. */
 function SpecValue({ children }) {
-  return (
-    <span className="mono block" style={{ fontSize: 12, color: 'var(--ink)', textAlign: 'end' }}>
-      {children}
-    </span>
-  )
+  return <span className="mono" style={{ fontSize: 13, color: 'var(--ink)' }}>{children}</span>
 }
 
 /**
- * Quality, aspect ratio and model — settable here, before anything is paid for.
+ * Quality, aspect ratio, model and duration — settable here, before anything is
+ * paid for.
  *
- * The model list is whatever the backend says is usable, and `notes` carries
- * the consequences of the current combination (for example that Runway has no
- * 1080p tier, so 1080p would come back as 720p). Showing that here is the
- * point: the user can switch model and watch the warning clear, instead of
- * discovering it in the finished video. The warning is amber TEXT — the colour
- * already carries it, so the alert triangle is gone.
+ * `render_notes` carries the consequences of the current combination (for
+ * example that a model has no 1080p tier, so 1080p would come back as 720p).
+ * Showing it here is the point: the user can switch model and watch the note
+ * clear, instead of discovering it in the finished video.
  */
-function SpecBlock({ plan, catalog, disabled, onChange, tx }) {
+function OutputClause({ plan, catalog, disabled, onChange, tx }) {
   const resolutions = catalog?.resolutions?.length ? catalog.resolutions : FALLBACK_RESOLUTIONS
   const aspectRatios = catalog?.aspect_ratios?.length ? catalog.aspect_ratios : FALLBACK_ASPECT_RATIOS
   const durations = catalog?.durations?.length ? catalog.durations : FALLBACK_DURATIONS
@@ -156,103 +187,93 @@ function SpecBlock({ plan, catalog, disabled, onChange, tx }) {
   const imageOptions = modelOptions(catalog?.image, plan.image_model)
 
   return (
-    <div className="flex flex-col gap-3">
-      <span className="legend" style={{ margin: 0 }}>{tx('spec')}</span>
-
-      <div className="flex flex-col gap-2">
-        {/* Both pickers are shown on a video run: the reference image and the
-            video are produced by different models, and the image model is what
-            decides whether an uploaded photo's likeness can be kept. */}
-        {isVideo && videoOptions.length > 0 && onChange && (
-          <SpecRow
+    <div className="flex flex-col" style={{ maxInlineSize: 520 }}>
+      {/* Both pickers are shown on a video run: the reference image and the
+          video are produced by different models, and the image model is what
+          decides whether an uploaded photo's likeness can be kept. */}
+      {isVideo && videoOptions.length > 0 && onChange && (
+        <SpecRow
+          label={tx('model')}
+          title="Runs on this model. If its account is out of credit, another provider takes over automatically."
+        >
+          <SpecSelect
             label={tx('model')}
-            title="Runs on this model. If its account is out of credit, another provider takes over automatically."
-          >
-            <SpecSelect
-              label={tx('model')}
-              value={plan.video_model}
-              options={videoOptions}
-              disabled={disabled}
-              onChange={(value) => onChange({ video_model: value })}
-            />
-          </SpecRow>
-        )}
+            value={plan.video_model}
+            options={videoOptions}
+            disabled={disabled}
+            onChange={(value) => onChange({ video_model: value })}
+          />
+        </SpecRow>
+      )}
 
-        {plan.needs_images && imageOptions.length > 0 && onChange && (
-          <SpecRow
+      {plan.needs_images && imageOptions.length > 0 && onChange && (
+        <SpecRow
+          label={tx('imageModel')}
+          title="Draws the reference image. Only GPT Image 2 can read an uploaded photo and keep the person's likeness."
+        >
+          <SpecSelect
             label={tx('imageModel')}
-            title="Draws the reference image. Only GPT Image 2 can read an uploaded photo and keep the person's likeness."
-          >
-            <SpecSelect
-              label={tx('imageModel')}
-              value={plan.image_model}
-              options={imageOptions}
-              disabled={disabled}
-              onChange={(value) => onChange({ image_model: value })}
-            />
-          </SpecRow>
-        )}
+            value={plan.image_model}
+            options={imageOptions}
+            disabled={disabled}
+            onChange={(value) => onChange({ image_model: value })}
+          />
+        </SpecRow>
+      )}
 
-        {onChange ? (
-          <SpecRow label={tx('quality')}>
-            <SpecSelect
-              label={tx('quality')}
-              value={plan.resolution}
-              options={resolutions.map((r) => ({ value: r, label: r }))}
-              disabled={disabled}
-              onChange={(value) => onChange({ resolution: value })}
-            />
-          </SpecRow>
-        ) : plan.resolution && (
-          <SpecRow label={tx('quality')}><SpecValue>{plan.resolution}</SpecValue></SpecRow>
-        )}
+      {onChange ? (
+        <SpecRow label={tx('quality')}>
+          <SpecSelect
+            label={tx('quality')}
+            value={plan.resolution}
+            options={resolutions.map((r) => ({ value: r, label: r }))}
+            disabled={disabled}
+            onChange={(value) => onChange({ resolution: value })}
+          />
+        </SpecRow>
+      ) : plan.resolution && (
+        <SpecRow label={tx('quality')}><SpecValue>{plan.resolution}</SpecValue></SpecRow>
+      )}
 
-        {onChange ? (
-          <SpecRow label={tx('aspect')}>
-            <SpecSelect
-              label={tx('aspect')}
-              value={plan.aspect_ratio}
-              options={aspectRatios.map((r) => ({ value: r, label: r }))}
-              disabled={disabled}
-              onChange={(value) => onChange({ aspect_ratio: value })}
-            />
-          </SpecRow>
-        ) : plan.aspect_ratio && (
-          <SpecRow label={tx('aspect')}><SpecValue>{plan.aspect_ratio}</SpecValue></SpecRow>
-        )}
+      {onChange ? (
+        <SpecRow label={tx('aspect')}>
+          <SpecSelect
+            label={tx('aspect')}
+            value={plan.aspect_ratio}
+            options={aspectRatios.map((r) => ({ value: r, label: r }))}
+            disabled={disabled}
+            onChange={(value) => onChange({ aspect_ratio: value })}
+          />
+        </SpecRow>
+      ) : plan.aspect_ratio && (
+        <SpecRow label={tx('aspect')}><SpecValue>{plan.aspect_ratio}</SpecValue></SpecRow>
+      )}
 
-        {isVideo && (onChange ? (
-          <SpecRow
+      {isVideo && (onChange ? (
+        <SpecRow
+          label={tx('seconds')}
+          title="Length of each scene. Longer than a model supports is capped — the note below says by how much."
+        >
+          <SpecSelect
             label={tx('seconds')}
-            title="Length of each scene. Longer than a model supports is capped — the warning below says by how much."
-          >
-            <SpecSelect
-              label={tx('seconds')}
-              value={plan.duration_seconds}
-              options={durations.map((d) => ({ value: d, label: `${d}s` }))}
-              disabled={disabled}
-              onChange={(value) => onChange({ duration_seconds: Number(value) })}
-            />
-          </SpecRow>
-        ) : (
-          <SpecRow label={tx('seconds')}><SpecValue>{plan.duration_seconds}s</SpecValue></SpecRow>
-        ))}
+            value={plan.duration_seconds}
+            options={durations.map((d) => ({ value: d, label: `${d}s` }))}
+            disabled={disabled}
+            onChange={(value) => onChange({ duration_seconds: Number(value) })}
+          />
+        </SpecRow>
+      ) : (
+        <SpecRow label={tx('seconds')}><SpecValue>{plan.duration_seconds}s</SpecValue></SpecRow>
+      ))}
 
-        {sceneCount > 0 && (
-          <SpecRow label={tx('sceneCount')}><SpecValue>{sceneCount}</SpecValue></SpecRow>
-        )}
-
-        {plan.total_cost_usd > 0 && (
-          <SpecRow label={tx('estimate')}>
-            <Money usd={plan.total_cost_usd} style={{ fontSize: 12, color: 'var(--ink)', display: 'block' }} />
-          </SpecRow>
-        )}
-      </div>
+      {sceneCount > 0 && (
+        <SpecRow label={tx('sceneCount')}><SpecValue>{sceneCount}</SpecValue></SpecRow>
+      )}
 
       {notes.length > 0 && (
-        <div className="flex flex-col gap-1" style={{ borderBlockStart: '1px solid var(--etch)', paddingBlockStart: 8 }}>
+        <div className="flex flex-col gap-1" style={{ marginBlockStart: 10 }}>
           {notes.map((note) => (
-            <span key={note} style={{ fontSize: 11, lineHeight: 1.4, color: 'var(--signal)' }}>
+            <span key={note} style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--warn)' }}>
               {note}
             </span>
           ))}
@@ -262,10 +283,357 @@ function SpecBlock({ plan, catalog, disabled, onChange, tx }) {
   )
 }
 
-/* ── THE PROSE ENTRIES ────────────────────────────────────────────────────── */
+/* ── AMENDABLE PROSE ──────────────────────────────────────────────────────── */
 
-function EditableField({ label, value, disabled, onSave, tx }) {
+/** Exposes its own editing state to the clause so the amend control can sit in
+ *  the clause's trailing .stow slot rather than inside the prose. */
+function useAmend() {
   const [editing, setEditing] = useState(false)
+  return { editing, setEditing }
+}
+
+/**
+ * The scene list. Scene numbers are the run's own identity for a shot and they
+ * carry all the way through to the player in the transcript.
+ */
+function SceneLines({ scenes, editing, setEditing, disabled, onSave, tx }) {
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // Seeded when editing OPENS, never re-seeded while it is open: the plan can
+  // be replaced underneath this component by a free settings change, and
+  // depending on `scenes` here would wipe out whatever the user had typed.
+  const scenesRef = React.useRef(scenes)
+  scenesRef.current = scenes
+  React.useEffect(() => {
+    if (editing) setDraft((scenesRef.current || []).map((s) => s.scene_prompt).join('\n'))
+  }, [editing])
+
+  const commit = async () => {
+    // One scene per non-empty line — scene numbers are reassigned server-side.
+    const lines = draft.split('\n').map((l) => l.trim()).filter(Boolean)
+    if (lines.length === 0) return
+    setSaving(true)
+    try {
+      await onSave(lines.map((line, i) => ({ scene_number: i + 1, scene_prompt: line, summary: '' })))
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="flex flex-col gap-2">
+        {/* Mono is honest here — the user is looking at one prompt per line,
+            not at prose. */}
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={Math.max(4, (scenes?.length || 0) + 1)}
+          autoFocus
+          className="field mono"
+          style={{ direction: 'ltr', textAlign: 'start', lineHeight: 1.6 }}
+          aria-label={tx('script')}
+        />
+        <span className="caption">{tx('onePerLine')}</span>
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={commit} disabled={saving} className="btn-q btn-q--sm">
+            <Check size={15} />
+            {saving ? tx('saving') : tx('saveScript')}
+          </button>
+          <button type="button" onClick={() => setEditing(false)} disabled={saving} className="btn-t">
+            {tx('cancel')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <ol>
+      {(scenes || []).map((scene) => (
+        <li
+          key={scene.scene_number}
+          className="grid items-baseline"
+          style={{ gridTemplateColumns: '34px minmax(0, 1fr)', paddingBlock: 5 }}
+        >
+          <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+            {String(scene.scene_number).padStart(2, '0')}
+          </span>
+          <span className="break-anywhere" style={{ fontSize: 14, lineHeight: 'var(--lh)', color: 'var(--ink)' }}>
+            {scene.summary || scene.scene_prompt}
+          </span>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+const AmendMark = ({ onClick, label }) => (
+  <button type="button" onClick={onClick} className="btn-i" title={label} aria-label={label}>
+    <Amend size={15} />
+  </button>
+)
+
+/* ── THE DOCUMENT ─────────────────────────────────────────────────────────── */
+
+function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEdit, onEditScript, onPreview, onRevise, onCancel, onSettings }) {
+  const openMedia = useLightbox()
+  const { tx } = useChatText()
+  const [feedback, setFeedback] = useState('')
+  const [showRevise, setShowRevise] = useState(false)
+  const characterNames = plan.character_names || []
+  const [selectedCharacter, setSelectedCharacter] = useState(characterNames[0] || '')
+  const script = useAmend()
+  const disabled = resolved || busy
+
+  // The plan can be replaced entirely (revise, clarify, edit) — keep the
+  // selection valid, and pick a default the first time names show up.
+  React.useEffect(() => {
+    if (characterNames.length === 0) return
+    if (!characterNames.includes(selectedCharacter)) setSelectedCharacter(characterNames[0])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.character_names])
+
+  const submitRevise = async () => {
+    const trimmed = feedback.trim()
+    if (!trimmed) return
+    setShowRevise(false)
+    setFeedback('')
+    await onRevise(trimmed)
+  }
+
+  const cost = Number(plan.total_cost_usd)
+  const hasCost = Number.isFinite(cost) && cost > 0
+
+  /* STATUS IS A FIELD. A word and a dot in a row, never an arming indicator. */
+  const state = resolved
+    ? (outcome === 'cancelled'
+        ? { cls: 'st--idle', word: tx('cancelled') }
+        : { cls: 'st--ok', word: tx('approved') })
+    : busy
+      ? { cls: 'st--run', word: tx('saving') }
+      : { cls: 'st--run', word: tx('reviewBefore') }
+
+  let n = 0
+
+  return (
+    <section className="card" aria-label={tx('workOrder')}>
+      <header
+        className="card-pad flex flex-wrap items-center gap-x-4 gap-y-2"
+        style={{ borderBlockEnd: '1px solid var(--line)' }}
+      >
+        <h2 className="sec-title">{tx('workOrder')}</h2>
+        <span className={`st ${state.cls}`}>{state.word}</span>
+      </header>
+
+      <ol className="card-pad" style={{ paddingBlock: 0 }}>
+        {EDITABLE_FIELDS.map(({ key, label }) => (
+          <ProseClause
+            key={key}
+            n={(n += 1)}
+            title={tx(label)}
+            value={plan[key]}
+            disabled={disabled}
+            onSave={(text) => onEdit(key, text)}
+            tx={tx}
+          />
+        ))}
+
+        {plan.scenes?.length > 0 && (
+          <Clause
+            n={(n += 1)}
+            title={`${tx('script')} — ${plan.scenes.length} ${tx('scenes')}`}
+            action={!disabled && !script.editing && (
+              <AmendMark onClick={() => script.setEditing(true)} label={`${tx('edit')} — ${tx('script')}`} />
+            )}
+          >
+            <SceneLines
+              scenes={plan.scenes}
+              editing={script.editing}
+              setEditing={script.setEditing}
+              disabled={disabled}
+              onSave={onEditScript}
+              tx={tx}
+            />
+          </Clause>
+        )}
+
+        <Clause n={(n += 1)} title={tx('output')}>
+          <OutputClause plan={plan} catalog={catalog} disabled={disabled} onChange={onSettings} tx={tx} />
+        </Clause>
+      </ol>
+
+      {/* Reference images the user has already paid for. They are media, so
+          they sit in the same dark well every other frame in the app uses. */}
+      {previews && previews.length > 0 && (
+        <div className="card-pad" style={{ borderBlockStart: '1px solid var(--line)' }}>
+          <div className="label" style={{ marginBlockEnd: 10 }}>{tx('previews')}</div>
+          <div className="grid-media">
+            {/* Keyed by type AND character: a plan with three characters holds
+                three 'character' previews at once, and keying on type alone
+                would collapse them into one React child. */}
+            {previews.map((p) => (
+              <MediaWell
+                key={`${p.preview_type}:${p.character_name || ''}`}
+                type="image"
+                url={p.image_url}
+                maxHeight={280}
+                caption={[p.character_name || p.preview_type, plan.aspect_ratio]}
+                onOpen={() => openMedia(p.image_url, 'image')}
+                openLabel={tx('openOriginal')}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── THE TOTAL, AND THE FREE ACTIONS ─────────────────────────────────
+          The figure is stated in the document before anything is pressed. The
+          press itself is in the top bar — see <TopBarAction> in ChatPage. */}
+      {!resolved && (
+        <footer className="card-pad card-2" style={{ borderBlockStart: '1px solid var(--line)' }}>
+          {showRevise ? (
+            <div className="flex flex-col gap-3" style={{ maxInlineSize: '68ch' }}>
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={2}
+                autoFocus
+                placeholder={tx('whatShouldChange')}
+                className="field"
+                aria-label={tx('whatShouldChange')}
+              />
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={submitRevise}
+                  disabled={busy || !feedback.trim()}
+                  className="btn-q btn-q--sm"
+                >
+                  <Revise size={15} />
+                  {tx('sendFeedback')}
+                </button>
+                <button type="button" onClick={() => setShowRevise(false)} className="btn-t">
+                  <Caret size={15} direction="start" />
+                  {tx('back')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1" style={{ marginBlockEnd: 4 }}>
+                <span style={{ fontSize: 14, color: 'var(--ink-2)' }}>{tx('total')}</span>
+                <span style={{ fontSize: 22, fontWeight: 600 }}>
+                  {hasCost ? <Money usd={cost} /> : <span className="mono">{tx('empty')}</span>}
+                </span>
+              </div>
+              <p className="caption" style={{ marginBlockEnd: 14 }}>{tx('authoriseHint')}</p>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+                <button type="button" onClick={() => setShowRevise(true)} disabled={disabled} className="btn-q btn-q--sm">
+                  <Revise size={15} />
+                  {tx('revise')}
+                </button>
+
+                {/* Both previews spend credits, so both say so in their title
+                    and neither is filled — the authorisation above is the
+                    decision, these are rehearsals for it. */}
+                {characterNames.length > 1 && (
+                  <select
+                    value={selectedCharacter}
+                    disabled={disabled}
+                    onChange={(e) => setSelectedCharacter(e.target.value)}
+                    className="field field--sm"
+                    style={{ inlineSize: 'auto', maxInlineSize: '18ch' }}
+                    aria-label={tx('whichCharacter')}
+                    title={tx('whichCharacter')}
+                  >
+                    {characterNames.map((name, i) => (
+                      <option key={`${name}-${i}`} value={name}>{name}</option>
+                    ))}
+                  </select>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => onPreview('character', selectedCharacter)}
+                  disabled={disabled || characterNames.length === 0}
+                  className="btn-q btn-q--sm"
+                  title={characterNames.length === 0 ? tx('noCharacters') : tx('previewCosts')}
+                >
+                  <Character size={15} />
+                  {tx('previewCharacter')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onPreview('environment')}
+                  disabled={disabled}
+                  className="btn-q btn-q--sm"
+                  title={tx('previewCosts')}
+                >
+                  <Environment size={15} />
+                  {tx('previewEnvironment')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  disabled={disabled}
+                  className="btn-t btn-t--danger"
+                  style={{ marginInlineStart: 'auto' }}
+                >
+                  <Void size={15} />
+                  {tx('cancel')}
+                </button>
+              </div>
+            </>
+          )}
+        </footer>
+      )}
+
+      {/* A resolved document keeps its total on the record. */}
+      {resolved && hasCost && (
+        <footer
+          className="card-pad card-2 flex flex-wrap items-baseline gap-x-4 gap-y-1"
+          style={{ borderBlockStart: '1px solid var(--line)' }}
+        >
+          <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{tx('total')}</span>
+          <Money usd={cost} style={{ fontSize: 15, color: 'var(--ink)' }} />
+        </footer>
+      )}
+    </section>
+  )
+}
+
+/** A prose clause owns its own editing flag so the amend mark can live in the
+ *  clause's trailing .stow slot while the textarea lives in the body. */
+function ProseClause({ n, title, value, disabled, onSave, tx }) {
+  const amend = useAmend()
+  return (
+    <Clause
+      n={n}
+      title={title}
+      action={!disabled && !amend.editing && (
+        <AmendMark onClick={() => amend.setEditing(true)} label={`${tx('edit')} — ${title}`} />
+      )}
+    >
+      <EditableFieldBody
+        editing={amend.editing}
+        setEditing={amend.setEditing}
+        value={value}
+        onSave={onSave}
+        tx={tx}
+        label={title}
+      />
+    </Clause>
+  )
+}
+
+/** The prose body of a clause, driven by the clause's editing flag. */
+function EditableFieldBody({ editing, setEditing, value, onSave, tx, label }) {
   const [draft, setDraft] = useState(value || '')
   const [saving, setSaving] = useState(false)
 
@@ -290,404 +658,38 @@ function EditableField({ label, value, disabled, onSave, tx }) {
     }
   }
 
+  if (!editing) {
+    return (
+      <p className="prose break-anywhere" style={{ whiteSpace: 'pre-wrap' }}>
+        {value || <span style={{ color: 'var(--ink-3)' }}>{tx('empty')}</span>}
+      </p>
+    )
+  }
+
   return (
-    <div
-      className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3"
-      style={{ paddingBlock: 12, borderBlockEnd: '1px solid var(--etch)' }}
-    >
-      <div className="min-w-0">
-        <span className="legend" style={{ margin: 0, marginBlockEnd: 4 }}>{tx(label)}</span>
-
-        {editing ? (
-          <div className="flex flex-col gap-2" style={{ marginBlockStart: 4 }}>
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={3}
-              autoFocus
-              className="field"
-              style={{ fontSize: 13, lineHeight: 'var(--lh-body)' }}
-            />
-            <div className="flex items-center gap-6">
-              <button type="button" onClick={commit} disabled={saving} className="text-action">
-                {saving ? <Meter cells={3} mode="indeterminate" tone="signal" /> : <Check size={16} />}
-                {saving ? tx('saving') : tx('save')}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEditing(false); setDraft(value || '') }}
-                disabled={saving}
-                className="text-action"
-              >
-                <Void size={16} />
-                {tx('cancel')}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p
-            className="whitespace-pre-wrap break-words"
-            style={{ fontSize: 15, lineHeight: 'var(--lh-body)', color: 'var(--ink)', maxInlineSize: '68ch' }}
-          >
-            {value || <span style={{ color: 'var(--ink-3)' }}>{tx('empty')}</span>}
-          </p>
-        )}
-      </div>
-
-      {/* The amend mark rests invisible and arrives on hover or keyboard focus.
-          It is never hidden from the keyboard — focus-within brings it back. */}
-      {!disabled && !editing && (
+    <div className="flex flex-col gap-2">
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={3}
+        autoFocus
+        className="field"
+        aria-label={label}
+      />
+      <div className="flex items-center gap-4">
+        <button type="button" onClick={commit} disabled={saving} className="btn-q btn-q--sm">
+          <Check size={15} />
+          {saving ? tx('saving') : tx('save')}
+        </button>
         <button
           type="button"
-          onClick={() => setEditing(true)}
-          title={`${tx('edit')} — ${tx(label)}`}
-          aria-label={`${tx('edit')} — ${tx(label)}`}
-          className="text-action"
-          style={{ padding: 2, color: 'var(--ink-3)' }}
+          onClick={() => { setEditing(false); setDraft(value || '') }}
+          disabled={saving}
+          className="btn-t"
         >
-          <Amend size={16} />
+          {tx('cancel')}
         </button>
-      )}
-    </div>
-  )
-}
-
-/**
- * The scene list. Scene indices sit in the SAME leading gutter the transcript's
- * turn indices use, so a scene number and a turn number land on one axis.
- */
-function SceneList({ scenes, disabled, onSave, tx }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  if (!scenes || scenes.length === 0) return null
-
-  const startEditing = () => {
-    setDraft(scenes.map((s) => s.scene_prompt).join('\n'))
-    setEditing(true)
-  }
-
-  const commit = async () => {
-    // One scene per non-empty line — scene numbers are reassigned server-side.
-    const lines = draft.split('\n').map((l) => l.trim()).filter(Boolean)
-    if (lines.length === 0) return
-    setSaving(true)
-    try {
-      await onSave(lines.map((line, i) => ({ scene_number: i + 1, scene_prompt: line, summary: '' })))
-      setEditing(false)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div style={{ paddingBlock: 12 }}>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3">
-        <span className="legend" style={{ margin: 0 }}>
-          {tx('script')} — {scenes.length} {tx('scenes')}
-        </span>
-        {!disabled && !editing && (
-          <button
-            type="button"
-            onClick={startEditing}
-            title={`${tx('edit')} — ${tx('script')}`}
-            aria-label={`${tx('edit')} — ${tx('script')}`}
-            className="text-action"
-            style={{ padding: 2, color: 'var(--ink-3)' }}
-          >
-            <Amend size={16} />
-          </button>
-        )}
       </div>
-
-      {editing ? (
-        <div className="flex flex-col gap-2" style={{ marginBlockStart: 4 }}>
-          {/* Raw editing field: mono is honest here — the user is looking at one
-              prompt per line, not at prose. */}
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={Math.max(4, scenes.length + 1)}
-            autoFocus
-            className="field mono"
-            style={{ fontSize: 12, lineHeight: 1.6, textAlign: 'start', direction: 'ltr' }}
-          />
-          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{tx('onePerLine')}</span>
-          <div className="flex items-center gap-6">
-            <button type="button" onClick={commit} disabled={saving} className="text-action">
-              {saving ? <Meter cells={3} mode="indeterminate" tone="signal" /> : <Check size={16} />}
-              {saving ? tx('saving') : tx('saveScript')}
-            </button>
-            <button type="button" onClick={() => setEditing(false)} disabled={saving} className="text-action">
-              <Void size={16} />
-              {tx('cancel')}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <ol style={{ marginBlockStart: 4 }}>
-          {scenes.map((scene) => (
-            <li
-              key={scene.scene_number}
-              className="grid grid-cols-[36px_minmax(0,1fr)] items-baseline"
-              style={{ paddingBlock: 6, borderBlockStart: '1px solid var(--etch)' }}
-            >
-              <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start' }}>
-                {String(scene.scene_number).padStart(2, '0')}
-              </span>
-              <span
-                className="break-words"
-                style={{ fontSize: 15, lineHeight: 'var(--lh-body)', color: 'var(--ink)', maxInlineSize: '68ch' }}
-              >
-                {scene.summary || scene.scene_prompt}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
-  )
-}
-
-/* ── THE CARD ─────────────────────────────────────────────────────────────── */
-
-function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEdit, onEditScript, onPreview, onRevise, onConfirm, onCancel, onSettings }) {
-  const openMedia = useLightbox()
-  const { tx } = useChatText()
-  const [feedback, setFeedback] = useState('')
-  const [showRevise, setShowRevise] = useState(false)
-  const characterNames = plan.character_names || []
-  const [selectedCharacter, setSelectedCharacter] = useState(characterNames[0] || '')
-  const disabled = resolved || busy
-
-  // The plan can be replaced entirely (revise, clarify, edit) — keep the
-  // selection valid, and pick a default the first time names show up.
-  React.useEffect(() => {
-    if (characterNames.length === 0) return
-    if (!characterNames.includes(selectedCharacter)) setSelectedCharacter(characterNames[0])
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan.character_names])
-
-  const submitRevise = async () => {
-    const trimmed = feedback.trim()
-    if (!trimmed) return
-    setShowRevise(false)
-    setFeedback('')
-    await onRevise(trimmed)
-  }
-
-  const cost = Number(plan.total_cost_usd)
-  const hasCost = Number.isFinite(cost) && cost > 0
-
-  return (
-    <div
-      className="cut cut-lg"
-      style={{
-        /* RESOLVED: the docket freezes into the draft surface — it is a
-           record now, not a control. It is NOT dimmed: --ink at 60% over
-           --sunk computes to 4.16:1 in the light theme and fails AA, and
-           dimming the whole container drags --ink-3 down to 3.32:1. A
-           settled work order still has to be readable a hundred turns
-           later, so the surface changes and the ink does not. */
-        backgroundColor: resolved ? 'var(--sunk)' : 'var(--panel)',
-        boxShadow: 'inset 0 0 0 1px var(--etch)',
-        paddingBlock: 16,
-        paddingInlineStart: 16,
-        paddingInlineEnd: 24,
-      }}
-    >
-      <div className="flex items-center gap-3" style={{ marginBlockEnd: 8 }}>
-        <Script size={16} style={{ color: 'var(--ink-3)' }} />
-        <span className="legend" style={{ margin: 0 }}>{tx('workOrder')}</span>
-        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{tx('reviewBefore')}</span>
-        {/* The docket's own busy state. It lives here rather than inside the
-            commit slab: an amber meter on an amber fill is unreadable in the
-            light theme, and the header is where the eye already is. */}
-        {busy && (
-          <span className="ms-auto">
-            <Meter cells={5} mode="indeterminate" tone="signal" label={tx('workOrder')} />
-          </span>
-        )}
-      </div>
-
-      {/* The asymmetry is the point: prose runs to the measure, the spec block
-          is a fixed 236px column of numerals that never reflows. */}
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_236px] gap-x-6">
-        <div className="min-w-0">
-          {EDITABLE_FIELDS.map(({ key, label }) => (
-            <EditableField
-              key={key}
-              label={label}
-              value={plan[key]}
-              disabled={disabled}
-              onSave={(text) => onEdit(key, text)}
-              tx={tx}
-            />
-          ))}
-
-          <SceneList scenes={plan.scenes} disabled={disabled} onSave={onEditScript} tx={tx} />
-
-          {previews && previews.length > 0 && (
-            <div style={{ paddingBlockStart: 8 }}>
-              <span className="legend">{tx('previews')}</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Keyed by type AND character: a plan with three characters
-                    holds three 'character' previews at once, and keying on
-                    type alone would collapse them into one React child. */}
-                {previews.map((p) => (
-                  <Frame
-                    key={`${p.preview_type}:${p.character_name || ''}`}
-                    maxWidth={320}
-                    caption={[p.character_name || p.preview_type, plan.aspect_ratio]}
-                  >
-                    <img
-                      src={p.image_url}
-                      alt={`${p.character_name || p.preview_type} preview`}
-                      className="cursor-zoom-in"
-                      style={{ display: 'block', inlineSize: '100%', blockSize: 'auto' }}
-                      onClick={() => openMedia(p.image_url, 'image')}
-                    />
-                  </Frame>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div
-          className="min-w-0"
-          style={{ paddingBlockStart: 12 }}
-        >
-          <SpecBlock plan={plan} catalog={catalog} disabled={disabled} onChange={onSettings} tx={tx} />
-        </div>
-      </div>
-
-      {/* ── THE COMMIT STRIP ────────────────────────────────────────────────
-          Free above, costing below, and exactly one filled element. */}
-      {!resolved && (
-        <div style={{ borderBlockStart: '1px solid var(--etch)', marginBlockStart: 12, paddingBlockStart: 12 }}>
-          {showRevise ? (
-            <div className="flex flex-col gap-2" style={{ maxInlineSize: '68ch' }}>
-              <textarea
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                rows={2}
-                autoFocus
-                placeholder={tx('whatShouldChange')}
-                className="field"
-                style={{ fontSize: 13, lineHeight: 'var(--lh-body)' }}
-              />
-              <div className="flex items-center gap-6">
-                <button
-                  type="button"
-                  onClick={submitRevise}
-                  disabled={busy || !feedback.trim()}
-                  className="text-action"
-                >
-                  <Revise size={16} />
-                  {tx('sendFeedback')}
-                </button>
-                <button type="button" onClick={() => setShowRevise(false)} className="text-action">
-                  <Caret size={16} direction="start" />
-                  {tx('back')}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-              <button type="button" onClick={() => setShowRevise(true)} disabled={disabled} className="text-action">
-                <Revise size={16} />
-                {tx('revise')}
-              </button>
-
-              <button type="button" onClick={onCancel} disabled={disabled} className="text-action">
-                <Void size={16} />
-                {tx('cancel')}
-              </button>
-
-              {/* FILLED MARKS: these two spend credits. Still text actions —
-                  they are secondary spends, and the gate below is the decision.
-
-                  The character preview needs to know WHICH character, so the
-                  picker sits directly against its button — one control, read
-                  as one phrase. It only appears when there is a choice to
-                  make: a single-character plan has nothing to pick. */}
-              <span className="flex items-center gap-2">
-                {characterNames.length > 1 && (
-                  <select
-                    value={selectedCharacter}
-                    disabled={disabled}
-                    onChange={(e) => setSelectedCharacter(e.target.value)}
-                    className="field field--sm"
-                    style={{ inlineSize: 'auto', maxInlineSize: '18ch' }}
-                    aria-label={tx('whichCharacter')}
-                    title={tx('whichCharacter')}
-                  >
-                    {characterNames.map((name, i) => (
-                      <option key={`${name}-${i}`} value={name}>{name}</option>
-                    ))}
-                  </select>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => onPreview('character', selectedCharacter)}
-                  disabled={disabled || characterNames.length === 0}
-                  className="text-action"
-                  title={characterNames.length === 0 ? tx('noCharacters') : tx('previewCosts')}
-                >
-                  <Character size={16} />
-                  {tx('previewCharacter')}
-                </button>
-              </span>
-
-              <button
-                type="button"
-                onClick={() => onPreview('environment')}
-                disabled={disabled}
-                className="text-action"
-                title={tx('previewCosts')}
-              >
-                <Environment size={16} />
-                {tx('previewEnvironment')}
-              </button>
-
-              {/* YOU PRESS THE NUMBER. */}
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={disabled}
-                className="slab slab--sm ms-auto"
-                title={tx('commitCosts')}
-              >
-                <Commit size={16} />
-                <span>{tx('commit')}</span>
-                {hasCost && (
-                  <>
-                    <span aria-hidden="true" style={{ opacity: 'var(--fraction-op)' }}>·</span>
-                    <Money usd={cost} onFill style={{ fontSize: 13 }} />
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {resolved && outcome === 'cancelled' && (
-        <div
-          className="flex items-center gap-2"
-          style={{ borderBlockStart: '1px solid var(--etch)', marginBlockStart: 12, paddingBlockStart: 12, fontSize: 12, color: 'var(--ink-3)' }}
-        >
-          <Void size={14} />
-          {tx('cancelled')}
-        </div>
-      )}
-      {/* A confirmed card gets no footer caption at all: the SEAM below it in
-          the transcript is the record of what was authorised, and repeating
-          "Confirmed — generating." underneath it says nothing the seam and the
-          status bar are not already saying. */}
     </div>
   )
 }

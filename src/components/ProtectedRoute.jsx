@@ -56,4 +56,25 @@ function ProtectedRoute({ children }) {
   return children
 }
 
+/* ── ADMIN ONLY ────────────────────────────────────────────────────────────
+   /admin had no role guard at all, and the consequence was worse than an
+   unhelpful page: a signed-in NON-admin who reached that URL was SIGNED OUT.
+   The route mounted, called the admin endpoints, the server refused with 401,
+   and the response interceptor in services/api.js reads any 401 as an expired
+   session — it attempts a refresh and then logs the user out. So a mistyped
+   URL or a stale bookmark ended the session.
+
+   The rail already hides the Admin destination for non-admins, which is why
+   this stayed hidden: it was only reachable by typing it. Hiding a door is not
+   the same as locking it.
+
+   Sends them to the dashboard rather than to /login, because they ARE
+   authenticated — they simply are not an admin. */
+export function AdminRoute({ children }) {
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.is_admin === true || user?.role === 'admin'
+  if (!isAdmin) return <Navigate to="/dashboard" replace />
+  return children
+}
+
 export default ProtectedRoute

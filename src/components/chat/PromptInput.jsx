@@ -1,11 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    THE COMPOSER
 
-   A sunken well on the gutter grid, not a floating pill. The attach mark is
-   bare and inline-start; the send control is a 32x32 chamfered square carrying
-   the FILLED arrow, because pressing it starts a run and a run costs money
-   (L1). The hint line sits in the leading gutter at 10px rather than centred
-   under the box, where it used to fight the spine.
+   A field, on the card surface, pinned under the transcript. Not a floating
+   pill and no longer hung off a 56px numbered gutter — that spine is gone from
+   this whole scope.
+
+   SEND IS NOT FILLED. Sending a prompt PLANS a run; it does not spend. The one
+   filled control on this screen is the authorisation, and it lives in the top
+   bar. Send is therefore an icon control that takes the accent when it can
+   actually fire — colour marks the primary action, which is exactly what it is
+   doing here — and the hint line says the keyboard route out loud.
 
    Behaviour is untouched: the same submit guard, the same Enter / Shift+Enter
    handling, the same object-URL lifecycle, the same file accept list.
@@ -13,9 +17,8 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Send, Attach, Close } from '../Icon'
-import Meter from '../ui/Meter'
 import { useUIStore } from '../../store/uiStore'
-import { useChatText, TURN_GRID } from './chatKit'
+import { useChatText } from './chatKit'
 
 function PromptInput({ onSubmit, disabled = false }) {
   const [prompt, setPrompt] = useState('')
@@ -73,61 +76,55 @@ function PromptInput({ onSubmit, disabled = false }) {
 
   return (
     <div
-      className="shrink-0 chat-pad composer-safe"
+      className="shrink-0 composer-safe px-4 sm:px-6"
+      /* THE BAND IS NOT WHITE. It was --card across the full width of the
+         window while the field inside it is capped at 900px, so the white read
+         as a slab of chrome rather than as the thing you type into. The band
+         now carries the page tone and the ONLY white on this row is the field
+         itself, which is where the eye should land. */
       style={{
-        backgroundColor: 'var(--paper)',
-        borderBlockStart: '1px solid var(--etch)',
+        background: 'var(--page)',
+        borderBlockStart: '1px solid var(--line-2)',
         paddingBlock: 12,
-        paddingInline: 24,
       }}
     >
-      {/* The attachment sits in the gutter column's row above the well, so it
-          reads as belonging to the message being composed rather than floating
-          over it. The remove control is a bare mark in --state-fail — there is
-          no coloured disc anywhere in this application. */}
-      {previewUrl && (
-        <div className={`${TURN_GRID} mb-3`}>
-          <span className="wz-gutter" style={{ fontSize: 10 }}>{tx('attach')}</span>
-          <div className="min-w-0">
-            <div
-              className="cut cut-md relative inline-block"
-              style={{ backgroundColor: 'var(--recess)', boxShadow: 'inset 0 0 0 1px var(--etch-strong)', padding: 6 }}
-            >
-              <img src={previewUrl} alt={tx('attach')} style={{ display: 'block', blockSize: 56, inlineSize: 'auto' }} />
-              <button
-                type="button"
-                onClick={removeAttachment}
-                title={tx('removeAttachment')}
-                aria-label={tx('removeAttachment')}
-                className="absolute flex items-center justify-center"
-                style={{
-                  insetBlockStart: 0,
-                  insetInlineEnd: 0,
-                  inlineSize: 20,
-                  blockSize: 20,
-                  color: 'var(--state-fail)',
-                  backgroundColor: 'var(--recess)',
-                }}
-              >
-                <Close size={12} />
+      <div style={{ maxInlineSize: 900, marginInline: 'auto' }}>
+        {/* The attachment sits above the field, on the media surface every
+            other frame in the app uses. The remove control is a bare mark. */}
+        {previewUrl && (
+          <div className="flex items-center gap-3" style={{ marginBlockEnd: 10 }}>
+            <div className="well relative" style={{ inlineSize: 84 }}>
+              <img
+                src={previewUrl}
+                alt={tx('attach')}
+                style={{ display: 'block', inlineSize: '100%', blockSize: 'auto', maxBlockSize: 64, objectFit: 'contain' }}
+              />
+            </div>
+            <div className="min-w-0">
+              <div className="label">{tx('attach')}</div>
+              <button type="button" onClick={removeAttachment} className="btn-t btn-t--danger">
+                <Close size={14} />
+                {tx('removeAttachment')}
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <form onSubmit={handleSubmit} className={TURN_GRID}>
-        <span className="wz-gutter" style={{ paddingBlockStart: 12 }} aria-hidden="true" />
-
-        <div className="min-w-0">
+        <form onSubmit={handleSubmit}>
+          {/* The field is the one white surface here, and it carries a real
+              edge rather than the faintest hairline in the palette — on a warm
+              band a 1px --line was almost invisible and the input had no
+              boundary. --ink-3 clears 4:1 against both the band and the fill,
+              so the box is unmistakably a box. The radius steps up to --r to
+              match the cards in the transcript above it. */}
           <div
-            className="cut cut-md flex items-end gap-2"
+            className="flex items-end gap-2"
             style={{
-              backgroundColor: 'var(--sunk)',
-              boxShadow: 'inset 0 0 0 1px var(--edge)',
-              paddingBlock: 6,
-              paddingInlineStart: 8,
-              paddingInlineEnd: 8,
+              background: 'var(--card)',
+              border: '1px solid var(--ink-3)',
+              borderRadius: 'var(--r)',
+              paddingBlock: 5,
+              paddingInline: 6,
             }}
           >
             <input
@@ -144,13 +141,8 @@ function PromptInput({ onSubmit, disabled = false }) {
               disabled={disabled}
               title={tx('attach')}
               aria-label={tx('attach')}
-              className="shrink-0 flex items-center justify-center disabled:opacity-40"
-              style={{
-                inlineSize: 32,
-                blockSize: 32,
-                color: attachedFile ? 'var(--ink)' : 'var(--ink-3)',
-                transition: 'color 120ms var(--ease)',
-              }}
+              className="btn-i shrink-0"
+              style={attachedFile ? { color: 'var(--ink)' } : undefined}
             >
               <Attach size={16} />
             </button>
@@ -163,52 +155,32 @@ function PromptInput({ onSubmit, disabled = false }) {
               placeholder={t('enterPrompt')}
               disabled={disabled}
               rows={1}
+              aria-label={t('enterPrompt')}
               className="flex-1 bg-transparent resize-none outline-none disabled:opacity-50 max-h-[160px] overflow-y-auto scrollbar-hide"
               style={{
                 color: 'var(--ink)',
                 fontSize: 15,
-                lineHeight: 'var(--lh-body)',
-                paddingBlock: 7,
+                lineHeight: 'var(--lh)',
+                paddingBlock: 6,
                 textAlign: 'start',
               }}
             />
 
-            {/* FILL IS MONEY. The mark is drawn filled and inked in --signal
-                because sending a prompt opens a paid run; the square itself is
-                not a slab, so the commit gate stays the only filled surface on
-                the screen. */}
             <button
               type="submit"
               disabled={!canSend}
               title={tx('costsCredits')}
               aria-label={t('send')}
-              className="cut cut-md shrink-0 flex items-center justify-center disabled:opacity-30"
-              style={{
-                inlineSize: 32,
-                blockSize: 32,
-                color: canSend ? 'var(--signal)' : 'var(--ink-3)',
-                backgroundColor: canSend ? 'var(--panel)' : 'transparent',
-                boxShadow: canSend ? 'inset 0 0 0 1px var(--signal-edge)' : 'inset 0 0 0 1px var(--etch)',
-                transition: 'color 120ms var(--ease), background-color 120ms var(--ease)',
-              }}
+              className="btn-i shrink-0"
+              style={canSend ? { color: 'var(--accent)' } : undefined}
             >
-              {disabled
-                ? <Meter cells={3} mode="indeterminate" tone="signal" label={t('generating')} />
-                : <Send size={16} />}
+              <Send size={16} />
             </button>
           </div>
-        </div>
-      </form>
+        </form>
 
-      <p
-        className={`${TURN_GRID} mt-2`}
-        style={{ fontSize: 10, color: 'var(--ink-3)', textAlign: 'start' }}
-      >
-        {/* The hint annotates the composer, so it belongs in the composer's
-            column. Spanning the grid started it 56px ahead of the thing it
-            describes and broke the spine. */}
-        <span className="wz-col">{tx('sendHint')}</span>
-      </p>
+        <p className="caption" style={{ marginBlockStart: 6 }}>{tx('sendHint')}</p>
+      </div>
     </div>
   )
 }

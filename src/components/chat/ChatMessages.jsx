@@ -1,73 +1,64 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    THE TRANSCRIPT
 
-   One scroll surface, laid on the app-wide 56px gutter grid — the same spine
-   the ledger, the library and the admin table sit on. The old centred
-   `max-w-3xl mx-auto` island shared a grid with nothing else in the product.
+   One scroll surface, one measure, no gutter. What was here before was laid on
+   a 56px numbered spine that printed a zero-padded turn ordinal beside every
+   message; that whole apparatus is gone, along with `.wz-page` and
+   `.wz-gutter`.
 
-   THE EMPTY STATE. No 3xl wordmark, no atmosphere, and no dead controls: the
-   four `cursor-default` example chips did nothing on click and are replaced by
-   three REAL bilingual starter rows that submit the prompt they name.
+   THE WORKING STATE. No bouncing dots and no filling gauge. While the machine
+   is thinking, the turn that is about to exist is drawn as a real row carrying
+   a STATUS FIELD — a word and the one dot in this system permitted to move
+   (.st--run breathes). The scroll anchor is unchanged, so the view still
+   follows the run.
 
-   THE WORKING STATE. The three bouncing dots are gone. While the machine is
-   thinking, the turn that is about to exist is drawn as a real row on the grid,
-   with the Meter — the application's only progress indicator — where the prose
-   will land. The scroll anchor is unchanged, so the view still follows the run.
+   THE EMPTY STATE of an open-but-unused project keeps three REAL starter rows
+   that submit the prompt they name. Nothing here is a dead control, and the
+   route's "no project selected" case is not this component's business any
+   more — that is the workspace grid, in ChatPage.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useEffect, useRef } from 'react'
 import MessageBubble from './MessageBubble'
-import Meter from '../ui/Meter'
-import EmptyState from '../ui/EmptyState'
 import { Caret } from '../Icon'
 import ErrorBoundary from '../ErrorBoundary'
 import { useUIStore } from '../../store/uiStore'
-import { useChatText, TurnRow } from './chatKit'
+import { useChatText } from './chatKit'
 
-function WorkingRow({ phase, t, tx }) {
+function WorkingRow({ phase, tx }) {
   return (
-    <TurnRow gutter={<span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start' }}>··</span>}>
-      <span className="flex items-center gap-3" style={{ paddingBlock: 4 }}>
-        <Meter cells={5} mode="indeterminate" tone="signal" label={t('generating')} />
-        <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{phase || tx('working')}</span>
-      </span>
-    </TurnRow>
+    <div className="settle">
+      <div className="label" style={{ marginBlockEnd: 6 }}>{tx('wazza')}</div>
+      <span className="st st--run">{phase || tx('working')}</span>
+    </div>
   )
 }
 
-/* The transcript's empty state is the app-wide <EmptyState> — a legend, one
-   sentence, and real controls — laid on the gutter grid. Each starter row
-   submits the prompt it names; the four dead `cursor-default` chips are gone. */
-function TranscriptEmpty({ t, onSubmit, disabled }) {
-  const { tx } = useChatText()
+function TranscriptEmpty({ t, tx, onSubmit, disabled }) {
   const starters = [tx('starter1'), tx('starter2'), tx('starter3')]
 
   return (
-    <div className="wz-page" style={{ alignContent: 'start' }}>
-      <span className="wz-gutter mono" style={{ fontSize: 11, paddingBlockStart: 2 }}>00</span>
+    <div className="card card-pad">
+      <h2 className="sec-title">{tx('emptyLegend')}</h2>
+      <p style={{ color: 'var(--ink-2)', fontSize: 14, marginBlockStart: 2 }}>{t('enterPrompt')}</p>
 
-      <div className="wz-col">
-        <EmptyState legend={tx('emptyLegend')} line={t('enterPrompt')} measure="68ch">
-          <span className="legend" style={{ marginBlockStart: 24 }}>{tx('starterLegend')}</span>
-
-          <ul>
-            {starters.map((text) => (
-              <li key={text} style={{ borderBlockEnd: '1px solid var(--etch)' }}>
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onSubmit?.(text)}
-                  className="text-action w-full"
-                  style={{ paddingBlock: 12, alignItems: 'start' }}
-                >
-                  <Caret size={16} style={{ marginBlockStart: 1 }} />
-                  <span style={{ fontSize: 13, lineHeight: 'var(--lh-body)' }}>{text}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </EmptyState>
-      </div>
+      <div className="label" style={{ marginBlockStart: 20, marginBlockEnd: 4 }}>{tx('starterLegend')}</div>
+      <ul>
+        {starters.map((text) => (
+          <li key={text} style={{ borderBlockStart: '1px solid var(--line)' }}>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onSubmit?.(text)}
+              className="btn-t"
+              style={{ paddingBlock: 11, alignItems: 'start', textAlign: 'start', inlineSize: '100%' }}
+            >
+              <Caret size={15} style={{ marginBlockStart: 3, flex: 'none' }} />
+              <span style={{ fontSize: 14, lineHeight: 'var(--lh)' }}>{text}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -82,22 +73,28 @@ function ChatMessages({ messages, loading, handlers, onSubmit, phase }) {
   }, [messages, loading])
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-      {messages.length === 0 && !loading ? (
-        <TranscriptEmpty t={t} onSubmit={onSubmit} disabled={loading} />
-      ) : (
-        <div className="flex flex-col gap-6 chat-pad" style={{ paddingBlock: 24, paddingInline: 24 }}>
-          {messages.map((message, index) => (
-            message && (
-              <ErrorBoundary key={index}>
-                <MessageBubble index={index} message={message} handlers={handlers} />
-              </ErrorBoundary>
-            )
-          ))}
-          {loading && <WorkingRow phase={phase} t={t} tx={tx} />}
-          <div ref={messagesEndRef} />
-        </div>
-      )}
+    <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6" style={{ paddingBlock: 20 }}>
+      <div className="flex flex-col gap-7" style={{ maxInlineSize: 900, marginInline: 'auto' }}>
+        {messages.length === 0 && !loading ? (
+          <TranscriptEmpty t={t} tx={tx} onSubmit={onSubmit} disabled={loading} />
+        ) : (
+          <>
+            {messages.map((message, index) => (
+              message && (
+                /* Keyed by index, deliberately. Messages are addressed BY
+                   ARRAY INDEX everywhere in this flow — the plan card, the
+                   progress target and the retry handler all hold one — so the
+                   render key is the same identity the rest of the page uses. */
+                <ErrorBoundary key={index}>
+                  <MessageBubble index={index} message={message} handlers={handlers} />
+                </ErrorBoundary>
+              )
+            ))}
+            {loading && <WorkingRow phase={phase} tx={tx} />}
+          </>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
     </div>
   )
 }

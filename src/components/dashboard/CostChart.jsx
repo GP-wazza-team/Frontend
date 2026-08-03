@@ -37,6 +37,28 @@ function CostChart({ data = [] }) {
     )
   }
 
+  /* ONE POINT IS NOT A TREND, so it is not drawn as one.
+     With a single day of history the line chart rendered a lone dot floating
+     in 220px of empty grid with a full y-axis beside it — a chart shaped like
+     an error. A single value's job is to be READ, so it is stated as a figure
+     and the chart returns once there is a second day to compare it against. */
+  if (data.length === 1) {
+    const only = data[0]
+    return (
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1" style={{ paddingBlock: 8 }}>
+        <span style={{ fontSize: 26, fontWeight: 600, color: 'var(--ink)' }}>
+          <Money usd={Number(only?.total_cost_usd) || 0} />
+        </span>
+        <span className="mono caption">{only?.date}</span>
+        <span className="caption" style={{ marginInlineStart: 'auto' }}>
+          {ar
+            ? 'يوم واحد من السجل — سيُرسم المنحنى عند توفّر يوم ثانٍ.'
+            : 'One day of history — the trend line appears once there is a second.'}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <ChartFrame height={220}>
       <ResponsiveContainer width="100%" height="100%">

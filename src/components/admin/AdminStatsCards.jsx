@@ -1,118 +1,180 @@
-/* THE ADMIN RUBRIC — eight readings on one instrument.
+/* ── THE SUMMARY FIGURES ───────────────────────────────────────────────────
+   Principle 2, the half of it this page keeps getting wrong: dense where you
+   SCAN, generous where you JUDGE. The runs table below is a scanning surface
+   and stays at 13px / 40px rows. THIS is a judging surface — eight figures a
+   finance reader stops on — so it gets real cards, real padding and a 26px
+   value. It used to be an eight-cell hairline strip at rubric density, which
+   made the platform's total spend the same visual weight as a table cell.
 
-   This was eight bordered cards in a 4×2 grid, each led by the same amber
-   glyph, four of them using a DIFFERENT glyph to mean "a thing happened".
-   Amber on a heading icon is decoration, and in this system the accent means
-   exactly two things: THIS IS RUNNING, or THIS COSTS MONEY.
+   No icons, no accent on a heading, no card that is also a button. A value, a
+   name, and one line of context under it. The two series that have fourteen
+   days behind them carry a sparkmeter, because a spend figure with a shape is
+   worth more to an auditor than one without — and it is data, not decoration.
 
-   So: one strip, ruled into eight cells, on a shared baseline grid, sitting
-   directly on the page. No icons at all. The trend is a signed figure on the
-   ledger line in its state tone — a number, not an arrow, because the number
-   is the information and it reads at a glance in a dense row.
+   NAMING TRAP, on purpose: the admin stats block calls the platform total
+   `total_cost_usd` while the admin DAILY series calls the same quantity
+   `total_cost`. Both are correct against Backend/app/api/routes_admin.py. Do
+   not "fix" either one into the other.
 
-   The two cells with a daily series behind them carry a 14-day sparkmeter, so
-   RUNS and SPEND have a shape as well as a magnitude. */
+   Props are unchanged: { stats, costSeries, runSeries }. */
 
 import React from 'react'
 import { Money, Duration } from '../ui/Money'
-import { Rubric, Figure, En } from '../dashboard/Instruments'
+import { Sparkmeter } from '../dashboard/Instruments'
+import { useUIStore } from '../../store/uiStore'
 
+const N = (v) => Number(v ?? 0).toLocaleString('en-US')
+
+/* Four columns at most, however wide the window is. auto-fit alone packed
+   seven of the eight figures onto one line and orphaned the eighth; the max()
+   floor is a quarter of the row minus its share of the gaps, so the track can
+   never subdivide past four, while the 196px floor still collapses it to
+   three, two and one as the window narrows. */
+const GRID = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(max(196px, calc(25% - 11px)), 1fr))',
+  gap: 14,
+}
+
+/* Every repeating figure is tabular (principle 8), including the ones sitting
+   inside a sentence of context. */
+const Num = ({ children }) => <span className="mono">{children}</span>
+
+/* The backend currently hardcodes both trends to 0.0. "+0.0%" on every card
+   on every load is not a reading, it is furniture — so a zero delta says
+   nothing and the context line closes up around it. */
 function Trend({ value }) {
-  if (value === undefined || value === null || !Number.isFinite(Number(value))) return null
   const n = Number(value)
-  const tone = n >= 0 ? 'var(--state-done)' : 'var(--state-fail)'
+  if (!Number.isFinite(n) || n === 0) return null
   return (
-    <span className="mono" style={{ fontSize: 11, color: tone, textAlign: 'start' }}>
+    <span className="mono" style={{ color: n >= 0 ? 'var(--ok)' : 'var(--bad)' }}>
       {n >= 0 ? '+' : '−'}{Math.abs(n).toFixed(1)}%
     </span>
   )
 }
 
+function Cell({ legend, value, series, seriesLabel, note }) {
+  return (
+    <div className="card card-pad" style={{ minInlineSize: 0 }}>
+      <div className="label">{legend}</div>
+      <div style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.2, marginBlockStart: 4, color: 'var(--ink)' }}>
+        {value}
+      </div>
+      <div
+        className="caption"
+        style={{ display: 'flex', alignItems: 'center', gap: 9, marginBlockStart: 6, minBlockSize: 17 }}
+      >
+        {series && <Sparkmeter series={series} label={seriesLabel} />}
+        {note && <span style={{ minInlineSize: 0 }}>{note}</span>}
+      </div>
+    </div>
+  )
+}
+
+/* Same geometry as the loaded strip, so nothing moves when the data lands. */
+export function AdminStatsSkeleton({ count = 8 }) {
+  return (
+    <div aria-busy="true" style={GRID}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="card card-pad">
+          <div className="skel" style={{ blockSize: 10, inlineSize: 72 }} />
+          <div className="skel" style={{ blockSize: 26, inlineSize: 104, marginBlockStart: 8 }} />
+          <div className="skel" style={{ blockSize: 11, inlineSize: 88, marginBlockStart: 9 }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function AdminStatsCards({ stats = {}, costSeries = [], runSeries = [] }) {
-  const successRate = stats.total_runs > 0
-    ? ((stats.successful_runs || 0) / stats.total_runs * 100).toFixed(1)
-    : 0
+  const ar = useUIStore((s) => s.language) === 'ar'
 
-  const errorRate = stats.total_runs > 0
-    ? (((stats.failed_runs || 0) / stats.total_runs) * 100).toFixed(1)
-    : 0
+  const totalRuns = Number(stats.total_runs) || 0
+  const ok = Number(stats.successful_runs) || 0
+  const bad = Number(stats.failed_runs) || 0
+  const successRate = totalRuns > 0 ? ((ok / totalRuns) * 100).toFixed(1) : '0.0'
+  const errorRate = totalRuns > 0 ? ((bad / totalRuns) * 100).toFixed(1) : '0.0'
 
-  const avgDuration = stats.avg_duration_seconds ?? 0
-  const num = (v) => (v ?? 0).toLocaleString('en-US')
+  const hasRuns = runSeries.some((v) => Number(v) > 0)
+  const hasCost = costSeries.some((v) => Number(v) > 0)
+  const window14 = ar ? 'آخر ١٤ يوماً' : 'last 14 days'
 
-  const cells = [
-    {
-      key: 'runs',
-      legend: 'Total runs',
-      value: <Figure value={num(stats.total_runs)} />,
-      series: runSeries.some((v) => v > 0) ? runSeries : undefined,
-      seriesLabel: 'Runs, last 14 days',
-      note: <En>{`${stats.successful_runs || 0} ok · ${stats.failed_runs || 0} failed`}</En>,
-    },
-    {
-      key: 'cost',
-      legend: 'Total cost',
-      value: <Money usd={stats.total_cost_usd} style={{ fontSize: 20, lineHeight: 1.15 }} />,
-      series: costSeries.some((v) => v > 0) ? costSeries : undefined,
-      seriesLabel: 'Spend, last 14 days',
-      note: <span className="flex items-baseline gap-2"><span>avg</span><Money usd={stats.avg_cost_per_run} /></span>,
-    },
-    {
-      key: 'success',
-      legend: 'Success rate',
-      value: <Figure value={successRate} suffix="%" />,
-      note: <En>{`${stats.failed_runs || 0} failures`}</En>,
-    },
-    {
-      key: 'duration',
-      legend: 'Avg duration',
-      value: <Duration seconds={avgDuration} style={{ fontSize: 20, lineHeight: 1.15 }} />,
-      note: 'per run',
-    },
-    {
-      key: 'assets',
-      legend: 'Total assets',
-      value: <Figure value={num(stats.total_assets)} />,
-      note: <En>{`${stats.assets_today || 0} today`}</En>,
-    },
-    {
-      key: 'users',
-      legend: 'Active users',
-      value: <Figure value={num(stats.active_users)} />,
-      note: <En>{`${stats.new_users_today || 0} new today`}</En>,
-    },
-    {
-      key: 'errors',
-      legend: 'Error rate',
-      value: <Figure value={errorRate} suffix="%" tone={Number(errorRate) > 0 ? 'var(--state-fail)' : 'var(--ink)'} />,
-      note: <En>{`${stats.failed_runs || 0} total failures`}</En>,
-    },
-    {
-      key: 'models',
-      legend: 'Models used',
-      value: <Figure value={num(stats.models_used)} />,
-      note: 'unique model calls',
-    },
-  ]
+  return (
+    <div style={GRID}>
+      {/* The names are inlined rather than taken from t(): the store holds
+          'Total Runs' and 'Total Assets' in title case and everything else on
+          this strip is sentence case, so eight labels drawn from two sources
+          did not agree with each other. */}
+      <Cell
+        legend={ar ? 'إجمالي التشغيلات' : 'Total runs'}
+        value={<span className="mono">{N(stats.total_runs)}</span>}
+        series={hasRuns ? runSeries : undefined}
+        seriesLabel={`${ar ? 'التشغيلات' : 'Runs'} — ${window14}`}
+        note={
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+            <Trend value={stats.runs_trend} />
+            <span>
+              <Num>{N(ok)}</Num> {ar ? 'ناجح' : 'ok'} · <Num>{N(bad)}</Num> {ar ? 'فاشل' : 'failed'}
+            </span>
+          </span>
+        }
+      />
 
-  /* The two trend readings ride on their own cells rather than becoming two
-     more boxes: the delta belongs next to the value it is a delta of. */
-  if (Number.isFinite(Number(stats.runs_trend))) {
-    cells[0].note = (
-      <span className="flex items-baseline gap-2">
-        <Trend value={stats.runs_trend} />
-        <En>{`${stats.successful_runs || 0} ok · ${stats.failed_runs || 0} failed`}</En>
-      </span>
-    )
-  }
-  if (Number.isFinite(Number(stats.cost_trend))) {
-    cells[1].note = (
-      <span className="flex items-baseline gap-2">
-        <Trend value={stats.cost_trend} />
-        <span className="flex items-baseline gap-1"><span>avg</span><Money usd={stats.avg_cost_per_run} /></span>
-      </span>
-    )
-  }
+      <Cell
+        legend={ar ? 'إجمالي التكلفة' : 'Total cost'}
+        value={<Money usd={stats.total_cost_usd} />}
+        series={hasCost ? costSeries : undefined}
+        seriesLabel={`${ar ? 'التكلفة' : 'Cost'} — ${window14}`}
+        note={
+          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8 }}>
+            <Trend value={stats.cost_trend} />
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
+              {ar ? 'متوسط' : 'avg'}
+              <Money usd={stats.avg_cost_per_run} />
+            </span>
+          </span>
+        }
+      />
 
-  return <Rubric cells={cells} columns={4} />
+      <Cell
+        legend={ar ? 'نسبة النجاح' : 'Success rate'}
+        value={<span className="mono">{successRate}%</span>}
+        note={<><Num>{N(ok)}</Num> {ar ? 'من' : 'of'} <Num>{N(totalRuns)}</Num></>}
+      />
+
+      <Cell
+        legend={ar ? 'متوسط المدة' : 'Avg duration'}
+        value={<Duration seconds={Number(stats.avg_duration_seconds) || 0} />}
+        note={ar ? 'لكل تشغيل ناجح' : 'per successful run'}
+      />
+
+      <Cell
+        legend={ar ? 'إجمالي الأصول' : 'Total assets'}
+        value={<span className="mono">{N(stats.total_assets)}</span>}
+        note={<><Num>{N(stats.assets_today)}</Num> {ar ? 'اليوم' : 'today'}</>}
+      />
+
+      <Cell
+        legend={ar ? 'المستخدمون النشطون' : 'Active users'}
+        value={<span className="mono">{N(stats.active_users)}</span>}
+        note={<><Num>{N(stats.new_users_today)}</Num> {ar ? 'جديد اليوم' : 'new today'}</>}
+      />
+
+      <Cell
+        legend={ar ? 'نسبة الأخطاء' : 'Error rate'}
+        value={
+          <span className="mono" style={{ color: Number(errorRate) > 0 ? 'var(--bad)' : 'var(--ink)' }}>
+            {errorRate}%
+          </span>
+        }
+        note={<><Num>{N(bad)}</Num> {ar ? 'حالة فشل' : 'failures'}</>}
+      />
+
+      <Cell
+        legend={ar ? 'النماذج المستخدمة' : 'Models used'}
+        value={<span className="mono">{N(stats.models_used)}</span>}
+        note={ar ? 'نماذج مميّزة في النافذة' : 'distinct models in window'}
+      />
+    </div>
+  )
 }

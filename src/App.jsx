@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { LightboxProvider } from './components/MediaLightbox'
 import { useUIStore } from './store/uiStore'
 import Layout from './components/Layout'
-import ProtectedRoute from './components/ProtectedRoute'
+import ProtectedRoute, { AdminRoute } from './components/ProtectedRoute'
 import ChatPage from './pages/ChatPage'
 import DashboardPage from './pages/DashboardPage'
 import AssetsPage from './pages/AssetsPage'
@@ -41,7 +41,10 @@ function App() {
         >
           <Route path="/" element={<ChatPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/admin" element={<AdminDashboardPage />} />
+          {/* Role-guarded: without this a non-admin who reaches this URL is
+              signed out, because the admin API's 401 is indistinguishable from
+              an expired token to the interceptor. */}
+          <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
           <Route path="/assets" element={<AssetsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

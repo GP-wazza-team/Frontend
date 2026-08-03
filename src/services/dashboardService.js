@@ -25,6 +25,17 @@ export const dashboardService = {
     return response.data
   },
 
+  /* Spend per project. This endpoint has existed in the backend the whole time
+     and no frontend code ever called it — the dashboard could tell you what you
+     spent in total but not which project spent it, which is the first question
+     anyone asks. Returns [{ chat_id, title, run_count, total_cost_usd }]. */
+  getTopConversations: async (limit = 5) => {
+    const response = await api.get('/dashboard/top-conversations', {
+      params: { limit },
+    })
+    return response.data
+  },
+
   // Full beginning-to-end story of one run: plan, script, every model call with
   // its own and cumulative cost, and the assets produced.
   getRunTimeline: async (runId) => {

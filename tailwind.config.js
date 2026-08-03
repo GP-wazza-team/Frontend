@@ -1,9 +1,11 @@
-/** Wazza · Miqyas — Tailwind is a delivery mechanism for the tokens in
- *  src/index.css, never a second source of truth. Every colour below is a
- *  var() reference, so a token edit lands everywhere at once.
+/** Wazza — Tailwind is a delivery mechanism for the tokens in src/index.css,
+ *  never a second source of truth. Every colour below is a var() reference, so
+ *  a token edit lands everywhere at once.
  *
- *  Border radius is 0 across the whole scale on purpose (L2): a stray legacy
- *  `rounded-full` cannot reintroduce a curve. The chamfer is the only cut.
+ *  Corner radius is real now. The previous config mapped every rounded-*
+ *  utility to 0 to enforce a chamfer system. Per the reference research,
+ *  corner radius is the ONLY decoration this register permits itself, and it
+ *  is one of the things that separates a professional tool from a cockpit.
  */
 export default {
   content: [
@@ -12,77 +14,81 @@ export default {
   ],
   darkMode: 'class',
   theme: {
-    // Every rounded-* utility resolves to 0. Do not add values here.
     borderRadius: {
-      none: '0', sm: '0', DEFAULT: '0', md: '0', lg: '0',
-      xl: '0', '2xl': '0', '3xl': '0', full: '0',
+      none: '0',
+      xs: 'var(--r-xs)',
+      sm: 'var(--r-sm)',
+      DEFAULT: 'var(--r-sm)',
+      md: 'var(--r-sm)',
+      lg: 'var(--r)',
+      xl: 'var(--r)',
+      '2xl': '14px',
+      '3xl': '18px',
+      full: '9999px',
     },
     extend: {
       fontFamily: {
-        sans: ['Supreme', 'IBM Plex Sans Arabic', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        sans: ['IBM Plex Sans Arabic', 'Supreme', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         mono: ['Commit Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
-        // Two call sites in the entire app: the auth plate legend and the
-        // Latin lockup beside the mark. Never on a working screen.
-        stencil: ['Bespoke Stencil', 'Supreme', 'system-ui', 'sans-serif'],
       },
       colors: {
-        paper: 'var(--paper)',
-        panel: { DEFAULT: 'var(--panel)', hover: 'var(--panel-hover)' },
-        sunk: 'var(--sunk)',
-        recess: 'var(--recess)',
-        ink: { DEFAULT: 'var(--ink)', 2: 'var(--ink-2)', 3: 'var(--ink-3)' },
-        signal: {
-          DEFAULT: 'var(--signal)',
-          deep: 'var(--signal-deep)',
-          edge: 'var(--signal-edge)',
-          hot: 'var(--signal-hot)',
-          press: 'var(--signal-press)',
-        },
-        state: {
-          done: 'var(--state-done)',
-          fail: 'var(--state-fail)',
-          run: 'var(--state-run)',
-          queued: 'var(--state-queued)',
-        },
-        etch: { DEFAULT: 'var(--etch)', strong: 'var(--etch-strong)' },
-        edge: 'var(--edge)',
-        focusring: 'var(--focus)',
-        label: 'var(--btn-label)',
+        page:   'var(--page)',
+        card:   { DEFAULT: 'var(--card)', 2: 'var(--card-2)', 3: 'var(--card-3)' },
+        line:   { DEFAULT: 'var(--line)', 2: 'var(--line-2)' },
+        ink:    { DEFAULT: 'var(--ink)', 2: 'var(--ink-2)', 3: 'var(--ink-3)' },
+        accent: { DEFAULT: 'var(--accent)', hi: 'var(--accent-hi)', soft: 'var(--accent-soft)' },
+        ok: 'var(--ok)', warn: 'var(--warn)', bad: 'var(--bad)', idle: 'var(--idle)',
+        well:   { DEFAULT: 'var(--well)', 2: 'var(--well-2)' },
+        onwell: { DEFAULT: 'var(--on-well)', 2: 'var(--on-well-2)' },
         chart: {
           1: 'var(--chart-1)', 2: 'var(--chart-2)', 3: 'var(--chart-3)',
           4: 'var(--chart-4)', 5: 'var(--chart-5)',
         },
+        /* legacy aliases — deleted as each consuming file is rebuilt */
+        paper: 'var(--page)',
+        panel: { DEFAULT: 'var(--card)', hover: 'var(--card-2)' },
+        sunk: 'var(--card-2)',
+        recess: 'var(--card-3)',
+        signal: {
+          DEFAULT: 'var(--accent)', deep: 'var(--accent)', edge: 'var(--accent)',
+          hot: 'var(--accent-hi)', press: 'var(--accent-hi)',
+        },
+        state: { done: 'var(--ok)', fail: 'var(--bad)', run: 'var(--warn)', queued: 'var(--idle)' },
+        etch: { DEFAULT: 'var(--line)', strong: 'var(--line-2)' },
+        edge: 'var(--line-2)',
+        focusring: 'var(--focus)',
+        label: '#FFFFFF',
       },
-      // The only box-shadow specs in the application. `overlay` is used on
-      // exactly three components: MediaLightbox, RunDetailDrawer, ConfirmDialog.
-      // `etch` / `edge` are the 1px container and control outlines — a
-      // chamfered element cannot carry a real border, so it draws one inset.
       boxShadow: {
         overlay: 'var(--shadow-overlay)',
-        etch: 'inset 0 0 0 1px var(--etch)',
-        'etch-strong': 'inset 0 0 0 1px var(--etch-strong)',
-        edge: 'inset 0 0 0 1px var(--edge)',
-        signal: 'inset 0 0 0 1px var(--signal-edge)',
+        raise: '0 1px 2px rgba(25,21,18,0.06)',
+        etch: 'inset 0 0 0 1px var(--line)',
+        'etch-strong': 'inset 0 0 0 1px var(--line-2)',
+        edge: 'inset 0 0 0 1px var(--line-2)',
+        signal: 'inset 0 0 0 1px var(--accent)',
         none: 'none',
       },
       spacing: {
-        spine: 'var(--rail-spine)',      // 56px — the leading gutter, everywhere
-        panelw: 'var(--rail-panel)',     // 240px
-        statusbar: 'var(--statusbar)',   // 36px
+        topbar: 'var(--topbar)',
+        rail: 'var(--rail)',
+        /* legacy */
+        spine: 'var(--rail)',
+        panelw: '0px',
+        statusbar: '0px',
       },
       fontSize: {
-        // The working scale. Nothing on a working screen exceeds 20px.
-        tick: ['10px', { lineHeight: '1' }],
-        legend: ['11px', { lineHeight: '1.2' }],
-        dense: ['12px', { lineHeight: '1.35' }],
-        ui: ['13px', { lineHeight: '1.4' }],
-        body: ['15px', { lineHeight: 'var(--lh-body)' }],
-        title: ['17px', { lineHeight: '1.25' }],
-        rubric: ['20px', { lineHeight: '1.15' }],
+        tick:   ['11px', { lineHeight: '1.2' }],
+        legend: ['11px', { lineHeight: '1.25' }],
+        dense:  ['12px', { lineHeight: '1.4' }],
+        ui:     ['14px', { lineHeight: '1.5' }],
+        body:   ['15px', { lineHeight: 'var(--lh)' }],
+        title:  ['16px', { lineHeight: '1.3' }],
+        rubric: ['20px', { lineHeight: '1.25' }],
+        page:   ['26px', { lineHeight: '1.25' }],
       },
       transitionTimingFunction: { ease: 'var(--ease)' },
-      transitionDuration: { state: '120ms', surface: '180ms', meter: '1200ms' },
-      zIndex: { rail: '40', statusbar: '30', drawer: '80', overlay: '100' },
+      transitionDuration: { state: '120ms', surface: '180ms', meter: '600ms' },
+      zIndex: { rail: '80', statusbar: '30', topbar: '30', drawer: '95', overlay: '100' },
     },
   },
   plugins: [],

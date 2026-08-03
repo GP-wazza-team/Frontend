@@ -16,6 +16,13 @@
      value   0..1     determinate fill fraction
      mode    'determinate' | 'indeterminate'
      tone    'signal' | 'done' | 'fail' | 'ink'
+                       DEFAULTS TO 'ink'. L3 caps the second ink at two
+                       appearances per viewport, and this component is the
+                       easiest place in the app to blow that budget — a
+                       magnitude bar on every row of a ten-row ledger is ten
+                       accents. tone="signal" is OPT-IN and means one thing:
+                       this is a LIVE RUN. That is what turns the budget from
+                       a guideline into a default.
      variant 'dense' (3px cells) | 'stage' (wide cells, the 5-stage pipeline)
      label   string   accessible name
 
@@ -52,7 +59,7 @@ export default function Meter({
   cells = 5,
   value = 0,
   mode = 'determinate',
-  tone = 'signal',
+  tone = 'ink',
   variant = 'dense',
   label,
   className = '',

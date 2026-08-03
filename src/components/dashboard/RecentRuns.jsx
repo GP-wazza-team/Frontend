@@ -56,7 +56,9 @@ function RecentRuns({ runs = [] }) {
         <table className="dtable">
           <thead>
             <tr>
-              <th style={{ inlineSize: 'var(--rail-spine)', paddingInlineStart: 0 }} aria-label={t('status')} />
+              {/* 44px, not var(--rail-spine): that alias now resolves to the 216px RAIL
+                  width, so this marker column was reserving a third of the table. */}
+              <th style={{ inlineSize: 44, paddingInlineStart: 0 }} aria-label={t('status')} />
               <th>{ar ? 'التشغيل' : 'Run'}</th>
               <th>{t('date')}</th>
               <th style={{ inlineSize: '38%' }}>{t('prompt')}</th>

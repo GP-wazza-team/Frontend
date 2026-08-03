@@ -1,32 +1,31 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    AUTH — /register.
 
-   Same housing as /login (§11.6), one deliberate difference: the plate's gauge
-   reads low — a console that has not been asked to do anything yet — and it
-   carries a second engraved instrument, the credit strip, showing the 20 free
-   credits the subtitle already promises. Two plates, one machine.
+   The same housing as /login, with one difference on the warm panel: the free
+   credits the subtitle already promises, stated as a sentence. They used to be
+   a 20-cell Meter — an instrument drawn to measure an offer that is not a
+   quantity you watch. The 8-cell Meter under the password went the same way:
+   the rule the submit handler enforces is now written as the caption it always
+   should have been, and the caption is what aria-describedby points at.
 
-   The form is the same gutter grid: index in the gutter, label and underlined
-   field in the content column, the live meter in the gutter while the request
-   is in flight. The password rule is no longer a grey sentence under the box —
-   it is an 8-cell Meter that fills as you type and turns --state-done when the
-   requirement the submit handler actually enforces is met. Same rule, same
-   handler, now visible before you press.
+   The numbered gutter (01 · 02 · 03) is gone with the rest of it. Three
+   labelled fields on a titled form need no index.
 
    BEHAVIOUR IS FROZEN: form state, the 8-character guard, the submit handler,
-   the password toggle, the language switcher, every string and the link back
-   to /login are unchanged.
+   the password reveal toggle, the language switcher, every Arabic and English
+   string and the link back to /login are unchanged.
 
-   The shared chrome is imported from LoginPage.jsx — the rebuild scope for
-   this work is exactly these two files, so the common parts live in the first
-   of them rather than being duplicated here.
+   The shared chrome is imported from LoginPage.jsx — the rebuild scope is
+   exactly these two files, so the common parts live in the first of them
+   rather than being duplicated here.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Reveal, RevealOff, Caret } from '../components/Icon'
-import Meter from '../components/ui/Meter'
-import { AuthPlate, AuthRocker, AuthNotice, AuthLockup, AuthBlock, FieldRow, SubmitRow } from './LoginPage'
+import { Caret } from '../components/Icon'
+import {
+  AuthPlate, AuthRocker, AuthNotice, AuthLockup, AuthBlock, FieldRow, SubmitRow, RevealToggle,
+} from './LoginPage'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
@@ -85,41 +84,35 @@ function RegisterPage() {
     }
   }
 
-  const pwLen = form.password.length
-  const pwMet = pwLen >= 8
-
-  /* The plate's second instrument: the offer, read as a meter. */
-  const creditStrip = (
-    <div style={{ maxInlineSize: 360 }}>
-      <span className="legend" style={{ margin: 0 }}>{ui.credits}</span>
-      <div className="flex items-center gap-3" style={{ marginBlockStart: 8 }}>
-        <Meter cells={20} value={1} tone="signal" label={ui.credits} />
-        <span className="mono" style={{ fontSize: 12, color: 'var(--ink)' }}>20</span>
-      </div>
-    </div>
+  /* The offer, stated. A3: the numeral is isolated with .mono so the bidi
+     algorithm cannot reverse it or strand it inside the Arabic run. */
+  const creditLine = (
+    <p style={{ fontSize: 14, color: 'var(--ink-2)', marginBlockStart: 22 }}>
+      <span className="mono" style={{ fontSize: 15, fontWeight: 500, color: 'var(--ink)' }}>20</span>
+      {' '}
+      {ui.credits}
+    </p>
   )
 
   return (
-    <div className="flex min-h-shell safe-inset" style={{ backgroundColor: 'var(--paper)' }} dir={isAr ? 'rtl' : 'ltr'}>
-      <AuthPlate isAr={isAr} reading={0.34} headline={ui.plateHead} blurb={ui.plateBlurb}>
-        {creditStrip}
+    <div className="flex min-h-shell safe-inset" style={{ background: 'var(--page)' }} dir={isAr ? 'rtl' : 'ltr'}>
+      <AuthPlate headline={ui.plateHead} blurb={ui.plateBlurb}>
+        {creditLine}
       </AuthPlate>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-center gap-4 p-6">
-          <AuthLockup isAr={isAr} />
+      <div className="flex min-w-0 flex-1 flex-col" style={{ background: 'var(--card)' }}>
+        <div className="flex items-center gap-4" style={{ padding: '18px 24px' }}>
+          <AuthLockup />
           <div className="ms-auto">
             <AuthRocker isAr={isAr} setLanguage={setLanguage} />
           </div>
         </div>
 
-        <div className="flex flex-1 items-center justify-center overflow-y-auto px-6 py-4">
-          <AuthBlock isAr={isAr} title={t.title} subtitle={t.subtitle} onSubmit={handleSubmit}>
-            {error && (
-              <AuthNotice isAr={isAr} kind="credentials" legend={ui.failed} message={error} />
-            )}
+        <div className="flex flex-1 items-center justify-center overflow-y-auto" style={{ padding: '16px 24px 32px' }}>
+          <AuthBlock title={t.title} subtitle={t.subtitle} onSubmit={handleSubmit}>
+            {error && <AuthNotice kind="credentials" legend={ui.failed} message={error} />}
 
-            <FieldRow index="01" id="register-name" label={t.name}>
+            <FieldRow id="register-name" label={t.name}>
               <input
                 id="register-name"
                 type="text"
@@ -127,13 +120,12 @@ function RegisterPage() {
                 autoComplete="name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="field field--underline"
-                style={{ fontSize: 15 }}
+                className="field"
                 placeholder={isAr ? 'محمد أحمد' : 'John Doe'}
               />
             </FieldRow>
 
-            <FieldRow index="02" id="register-email" label={t.email}>
+            <FieldRow id="register-email" label={t.email}>
               <input
                 id="register-email"
                 type="email"
@@ -141,36 +133,14 @@ function RegisterPage() {
                 autoComplete="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="field field--underline"
-                style={{ fontSize: 15 }}
+                className="field"
                 placeholder="you@example.com"
               />
             </FieldRow>
 
-            <FieldRow
-              index="03"
-              id="register-password"
-              label={t.password}
-              below={
-                /* The rule the submit handler actually enforces, made visible
-                   before you press it. Determinate, so reduced motion still
-                   shows the true value. */
-                <div className="flex items-center gap-3" style={{ marginBlockStart: 10 }}>
-                  <Meter
-                    cells={8}
-                    value={Math.min(1, pwLen / 8)}
-                    tone={pwMet ? 'done' : 'ink'}
-                    label={t.passwordHint}
-                  />
-                  <span
-                    id="register-password-hint"
-                    style={{ fontSize: 11, color: pwMet ? 'var(--state-done)' : 'var(--ink-3)' }}
-                  >
-                    {t.passwordHint}
-                  </span>
-                </div>
-              }
-            >
+            {/* The hint renders as #register-password-hint, which is exactly
+                what the input below points aria-describedby at. */}
+            <FieldRow id="register-password" label={t.password} hint={t.passwordHint}>
               <div className="relative">
                 <input
                   id="register-password"
@@ -180,20 +150,15 @@ function RegisterPage() {
                   aria-describedby="register-password-hint"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="field field--underline"
-                  style={{ fontSize: 15, paddingInlineEnd: 32 }}
+                  className="field"
+                  style={{ paddingInlineEnd: 44 }}
                   placeholder="••••••••"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? ui.conceal : ui.reveal}
-                  aria-pressed={showPassword}
-                  className="text-action absolute inset-y-0 end-0 items-center"
-                  style={{ paddingBlock: 0, color: 'var(--ink-3)' }}
-                >
-                  {showPassword ? <RevealOff size={16} /> : <Reveal size={16} />}
-                </button>
+                <RevealToggle
+                  shown={showPassword}
+                  onToggle={() => setShowPassword(!showPassword)}
+                  label={showPassword ? ui.conceal : ui.reveal}
+                />
               </div>
             </FieldRow>
 
@@ -202,11 +167,11 @@ function RegisterPage() {
         </div>
 
         <div
-          className="flex items-center justify-between gap-4 px-6 py-4"
-          style={{ borderBlockStart: '1px solid var(--etch)' }}
+          className="flex items-center justify-between gap-4"
+          style={{ padding: '14px 24px', borderBlockStart: '1px solid var(--line)' }}
         >
           <span style={{ fontSize: 13, color: 'var(--ink-3)' }}>{t.hasAccount}</span>
-          <Link to="/login" className="text-action">
+          <Link to="/login" className="btn-t">
             {t.login}
             <Caret direction="end" size={14} />
           </Link>

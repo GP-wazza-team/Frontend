@@ -72,7 +72,7 @@ function ConfirmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="wz-confirm-title"
-        className="relative settle cut cut-lg overlay-cast"
+        className="relative settle overlay-cast"
         style={{
           inlineSize: '100%',
           maxInlineSize: 420,

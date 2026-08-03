@@ -1,93 +1,107 @@
-/* MODEL COST BREAKDOWN — a ranked ledger, not a donut and a bar chart.
+/* ── MODEL COST — a ranked ledger ─────────────────────────────────────────
+   What the data is: one row per model, ranked by spend. So it is a table.
+   Rank, model, calls, cost, share of total, and a total line that ties out.
+   That is what a person reconciling a bill reads, and a table is where you
+   scan — 13px, 40px rows, tabular figures in every numeric column.
 
-   THE RECOMPOSITION, and it is the biggest one on this route.
+   No donut, no bar chart, no 24-cell meter. The meter that used to sit in
+   each row repeated a magnitude the share column already states exactly, and
+   ten of them put ten accent-adjacent bars on a screen whose whole budget is
+   one accent.
 
-   This was a horizontal bar chart AND a 3px-padded donut AND a dot legend —
-   three encodings of one eight-row dataset, side by side, in a component
-   under 110 lines. A donut asks you to compare arc lengths you cannot
-   compare; the legend then re-states every value the donut just failed to
-   communicate; and the coloured dot beside each row is the icon-in-a-tinted-
-   context tell.
-
-   Replaced by the thing the data actually is: a RANKED LEDGER. One row per
-   model, sorted by spend, with a rank ordinal on the gutter axis, a 24-cell
-   magnitude Meter scaled to the top spender, the cost on the ledger line and
-   the share of total. You can read the ordering, the magnitude, the exact
-   figure and the proportion in one pass, and it stays readable without colour
-   — which the donut never was.
-
-   The Meter is the app's own object, so this row is built from the same
-   vocabulary as the run strip and the plan card. Props are unchanged:
-   { data, totalCost }. */
+   Props are unchanged: { data, totalCost }. `cost_usd` and `call_count` are
+   the keys /admin/overview emits for model_costs. */
 
 import React from 'react'
-import Meter from '../ui/Meter'
 import { Money } from '../ui/Money'
 import EmptyState from '../ui/EmptyState'
+import { useUIStore } from '../../store/uiStore'
+
+const TOP = 8
+
+/* .dtable styles tbody cells only, so the tie-out line carries its own
+   geometry: same 40px rhythm, ruled off above in the heavier hairline. */
+const FOOT = {
+  blockSize: 40,
+  padding: '8px 12px',
+  borderBlockStart: '1px solid var(--line-2)',
+  color: 'var(--ink)',
+  verticalAlign: 'middle',
+}
 
 export default function ModelCostBreakdown({ data = [], totalCost = 0 }) {
+  const ar = useUIStore((s) => s.language) === 'ar'
+
   if (data.length === 0) {
     return (
       <EmptyState
-        legend="No model calls"
-        line="Nothing has been billed in this window."
+        legend={ar ? 'لا توجد استدعاءات' : 'No model calls'}
+        line={ar ? 'لم تُسجَّل أي تكلفة في هذه النافذة.' : 'Nothing has been billed in this window.'}
       />
     )
   }
 
-  const sorted = [...data].sort((a, b) => (b.cost_usd || 0) - (a.cost_usd || 0))
-  const topModels = sorted.slice(0, 8)
-  const max = Math.max(...topModels.map((m) => Number(m.cost_usd) || 0), 0)
+  const sorted = [...data].sort((a, b) => (Number(b.cost_usd) || 0) - (Number(a.cost_usd) || 0))
+  const shown = sorted.slice(0, TOP)
 
   return (
-    <div style={{ borderBlockStart: '1px solid var(--etch-strong)' }}>
-      {topModels.map((m, idx) => {
-        const cost = Number(m.cost_usd) || 0
-        const pct = totalCost > 0 ? (cost / totalCost) * 100 : 0
-        return (
-          <div
-            key={m.model ?? idx}
-            // .ledger-4 carries the track sizes and the handheld reflow — one
-            // line with four measure columns on a desktop, label-over-measures
-            // below 640px, where 284px of fixed track plus gaps does not fit.
-            className="ledger-4"
-            style={{ borderBlockEnd: '1px solid var(--etch)' }}
-          >
-            <span className="flex items-baseline gap-3 min-w-0">
-              <span className="mono flex-none" style={{ fontSize: 10, color: 'var(--ink-3)', inlineSize: 18, textAlign: 'start' }}>
-                {String(idx + 1).padStart(2, '0')}
-              </span>
-              <span className="truncate" style={{ fontSize: 12, color: 'var(--ink)' }} title={m.model}>
-                {m.model || '—'}
-              </span>
-            </span>
-
-            {/* Natural width, deliberately: the Meter's fill layer is an
-                absolute overlay sized to the track, so stretching the host
-                box would decouple the clip from the cells it clips. */}
-            <Meter
-              cells={24}
-              value={max > 0 ? cost / max : 0}
-              tone="signal"
-              label={`${m.model}: ${pct.toFixed(1)}% of spend`}
-            />
-
-            <span style={{ textAlign: 'end' }}><Money usd={cost} /></span>
-
-            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-2)', textAlign: 'end', display: 'block' }}>
-              {pct.toFixed(1)}%
-            </span>
-          </div>
-        )
-      })}
-
-      <div
-        className="flex items-baseline justify-between"
-        style={{ blockSize: 36, borderBlockEnd: '1px solid var(--etch-strong)' }}
-      >
-        <span className="legend" style={{ marginBlock: 0 }}>Total</span>
-        <Money usd={totalCost} style={{ fontSize: 13 }} />
+    <>
+      <div className="scroll-x">
+        <table className="dtable">
+          <thead>
+            <tr>
+              <th style={{ inlineSize: 40 }} className="num">#</th>
+              <th>{ar ? 'النموذج' : 'Model'}</th>
+              <th className="num">{ar ? 'الاستدعاءات' : 'Calls'}</th>
+              <th className="num">{ar ? 'التكلفة' : 'Cost'}</th>
+              <th className="num" style={{ inlineSize: 88 }}>{ar ? 'الحصة' : 'Share'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((m, idx) => {
+              const cost = Number(m.cost_usd) || 0
+              const pct = totalCost > 0 ? (cost / totalCost) * 100 : 0
+              return (
+                <tr key={m.model ?? idx}>
+                  {/* .mono is display:inline-block — on a <td> it would pull
+                      the cell out of the table box, so it wraps the value. */}
+                  <td className="num" style={{ color: 'var(--ink-3)' }}>
+                    <span className="mono">{idx + 1}</span>
+                  </td>
+                  <td style={{ color: 'var(--ink)' }}>
+                    {/* A3 — a model name is a Latin token inside an Arabic
+                        page, so it is isolated rather than left to the bidi
+                        algorithm. */}
+                    <span className="mono truncate" style={{ maxInlineSize: 320 }} title={m.model}>
+                      {m.model || '—'}
+                    </span>
+                  </td>
+                  <td className="num">
+                    <span className="mono">{(Number(m.call_count) || 0).toLocaleString('en-US')}</span>
+                  </td>
+                  <td className="num"><Money usd={cost} /></td>
+                  <td className="num"><span className="mono">{pct.toFixed(1)}%</span></td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={3} style={{ ...FOOT, fontWeight: 500 }}>{ar ? 'الإجمالي' : 'Total'}</td>
+              <td className="num" style={FOOT}><Money usd={totalCost} /></td>
+              <td className="num" style={FOOT}><span className="mono">100.0%</span></td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
-    </div>
+
+      {sorted.length > TOP && (
+        <p className="caption" style={{ marginBlockStart: 10 }}>
+          {ar
+            ? <>أعلى <span className="mono">{TOP}</span> من <span className="mono">{sorted.length}</span> نموذجاً؛ الإجمالي يشمل جميع النماذج.</>
+            : <>Top <span className="mono">{TOP}</span> of <span className="mono">{sorted.length}</span> models; the total covers all of them.</>}
+        </p>
+      )}
+    </>
   )
 }

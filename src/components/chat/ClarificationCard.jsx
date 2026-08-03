@@ -2,22 +2,25 @@
    THE CLARIFICATION CARD
 
    Shown when the prompt enhancer flagged details it would otherwise have to
-   guess (hair colour, clothing, setting, time of day). Each question offers two
-   suggested answers, but free text always wins — the backend merges whatever
-   string it receives straight into the spec.
+   guess (hair colour, clothing, setting, time of day). Each question offers a
+   couple of suggested answers, but free text always wins — the backend merges
+   whatever string it receives straight into the spec.
 
-   RECOMPOSED: the suggestion chips were a filled-pill row, the one costume the
-   system deletes everywhere. They are now a ROCKER — one etched housing, the
-   selected cell raised and inked, never an accent fill. Clicking the selected
-   cell again still clears it, so a mis-click is still not permanent.
+   The suggestions are a SEGMENTED CONTROL (.seg). The selected cell is raised
+   and inked, never filled with the accent: answering a question neither runs
+   anything nor costs anything, and principle 4 only survives if controls stop
+   spending the accent. Clicking the selected cell again clears it, so a
+   mis-click is not permanent.
 
-   NOTHING HERE IS FILLED. Answering questions does not spend credits, so
-   Continue is a text action (L1). The card carries no filled element at all.
+   NOTHING HERE IS FILLED. This card asks questions; it does not spend money.
+   The one filled control on the screen belongs to the authorisation, and there
+   is no authorisation to make yet.
+
+   Status is a field: a word and a dot, once the card is resolved.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState } from 'react'
-import { Help, Caret, Void } from '../Icon'
-import Meter from '../ui/Meter'
+import { Caret, Void } from '../Icon'
 import { useChatText } from './chatKit'
 
 function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, onCancel }) {
@@ -55,57 +58,73 @@ function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, on
     onSubmit(answered.map(({ q, i }) => ({ key: q.key, answer: answers[i].trim() })))
   }
 
-  return (
-    <div
-      className="cut cut-lg"
-      style={{
-        /* Answered questions settle onto the draft surface. Not dimmed —
-           see the note in PlanReviewCard: container opacity fails AA. */
-        backgroundColor: resolved ? 'var(--sunk)' : 'var(--panel)',
-        boxShadow: 'inset 0 0 0 1px var(--etch)',
-        paddingBlock: 16,
-        paddingInlineStart: 16,
-        paddingInlineEnd: 24,
-      }}
-    >
-      <div className="flex items-center gap-2" style={{ marginBlockEnd: 4 }}>
-        <Help size={16} style={{ color: 'var(--ink-3)' }} />
-        <span className="legend" style={{ margin: 0 }}>{tx('detailsFirst')}</span>
-      </div>
+  const state = resolved
+    ? (resolution === 'cancelled'
+        ? { cls: 'st--idle', word: tx('cancelled') }
+        : { cls: 'st--ok', word: tx('answered') })
+    : { cls: 'st--run', word: tx('stWaiting') }
 
-      <div>
+  return (
+    <section className="card" aria-label={tx('detailsFirst')}>
+      <header
+        className="card-pad flex flex-wrap items-center gap-x-4 gap-y-2"
+        style={{ borderBlockEnd: '1px solid var(--line)' }}
+      >
+        <div className="min-w-0">
+          <h2 className="sec-title">{tx('detailsFirst')}</h2>
+          <p className="caption">{tx('detailsSub')}</p>
+        </div>
+        <span className={`st ${state.cls}`} style={{ marginInlineStart: 'auto' }}>{state.word}</span>
+      </header>
+
+      <ol className="card-pad" style={{ paddingBlock: 0 }}>
         {questions.map((q, i) => (
-          <div
+          <li
             // Position, for the same reason the answers are: duplicate q.key
             // values would collide as React keys and make the list re-order
             // unpredictably as answers come in.
             key={`${q.key || 'q'}-${i}`}
-            className="grid grid-cols-[28px_minmax(0,1fr)] items-start"
+            className="grid items-start"
             style={{
-              paddingBlock: 12,
-              borderBlockStart: i === 0 ? 'none' : '1px solid var(--etch)',
+              gridTemplateColumns: '32px minmax(0, 1fr)',
+              columnGap: 12,
+              paddingBlock: 14,
+              borderBlockStart: i === 0 ? 'none' : '1px solid var(--line)',
             }}
           >
-            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start', paddingBlockStart: 2 }}>
+            {/* A step sequence: the numeral leads, and it mirrors with the
+                document. .mono keeps the Latin numeral upright inside an
+                Arabic run (A3). */}
+            <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)', paddingBlockStart: 2 }}>
               {String(i + 1).padStart(2, '0')}
             </span>
 
             <div className="min-w-0 flex flex-col gap-2">
-              <span style={{ fontSize: 13, color: 'var(--ink)' }}>{q.question}</span>
+              {/* The enhancer writes its questions in the language of the
+                  PROMPT, so an English question can land inside this Arabic
+                  card. Without isolation the bidi algorithm drags the trailing
+                  "?" to the front — "?What hair color should the courier have"
+                  — because a neutral character at the edge of an LTR run
+                  resolves against the RTL paragraph. <bdi> scopes it. */}
+              <bdi style={{ fontSize: 14, color: 'var(--ink)' }}>{q.question}</bdi>
 
+              {/* CHIPS, not a segmented control. These are answers to a
+                  question — each is its own choice, they are often full
+                  sentences, and before one is picked a segmented housing shows
+                  no selection at all and reads as a single dead slab. */}
               {(q.options || []).length > 0 && (
-                <div className="rocker self-start" role="group" aria-label={q.question}>
+                <div className="chip-row" role="group" aria-label={q.question}>
                   {(q.options || []).map((option, oi) => (
                     <button
                       key={`${option}-${oi}`}
                       type="button"
-                      className="rocker__cell disabled:opacity-50"
+                      className="chip"
                       data-on={answers[i] === option ? 'true' : 'false'}
                       aria-pressed={answers[i] === option}
                       onClick={() => toggleAnswer(i, option)}
                       disabled={disabled}
                     >
-                      {option}
+                      <bdi>{option}</bdi>
                     </button>
                   ))}
                 </div>
@@ -117,39 +136,39 @@ function ClarificationCard({ questions, resolved, resolution, busy, onSubmit, on
                 onChange={(e) => setAnswer(i, e.target.value)}
                 disabled={disabled}
                 placeholder={tx('typeYourOwn')}
+                aria-label={q.question}
                 className="field field--sm disabled:opacity-50"
                 style={{ maxInlineSize: 420 }}
               />
             </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
 
-      <div style={{ borderBlockStart: '1px solid var(--etch)', paddingBlockStart: 12, marginBlockStart: 4 }}>
-        {resolved ? (
-          <span className="flex items-center gap-2" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-            {resolution === 'cancelled' ? <Void size={14} /> : <Caret size={14} />}
-            {resolution === 'cancelled' ? tx('cancelled') : tx('answered')}
-          </span>
-        ) : (
-          <div className="flex flex-wrap items-center gap-6">
-            <button type="button" onClick={submit} disabled={!canSubmit} className="text-action">
-              {busy
-                ? <Meter cells={3} mode="indeterminate" tone="signal" label={tx('continueLabel')} />
-                : <Caret size={16} />}
+      {!resolved && (
+        <footer className="card-pad card-2" style={{ borderBlockStart: '1px solid var(--line)' }}>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <button type="button" onClick={submit} disabled={!canSubmit} className="btn-q">
+              <Caret size={15} />
               {tx('continueLabel')}
             </button>
 
-            <button type="button" onClick={onCancel} disabled={busy} className="text-action">
-              <Void size={16} />
+            <span className="caption">{tx('skipHint')}</span>
+
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="btn-t btn-t--danger"
+              style={{ marginInlineStart: 'auto' }}
+            >
+              <Void size={15} />
               {tx('cancel')}
             </button>
-
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{tx('skipHint')}</span>
           </div>
-        )}
-      </div>
-    </div>
+        </footer>
+      )}
+    </section>
   )
 }
 
