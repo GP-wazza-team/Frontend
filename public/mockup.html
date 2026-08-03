@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>وزّة — تصميم مقترح</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   WAZZA — PROPOSED REDESIGN, static mockup. Not the app. No React, no data.
+   Register: creative / media professional tool, translated to warm + light.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@font-face{font-family:'PlexAr';src:url('/src/assets/fonts/IBMPlexSansArabic-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'PlexAr';src:url('/src/assets/fonts/IBMPlexSansArabic-Medium.woff2') format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'PlexAr';src:url('/src/assets/fonts/IBMPlexSansArabic-SemiBold.woff2') format('woff2');font-weight:600;font-display:swap}
+@font-face{font-family:'CommitMono';src:url('/src/assets/fonts/CommitMono-400-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
+
+:root{
+  /* WARM, BUT NOT LOW CONTRAST. Adobe rebuilt Spectrum because their receding
+     warm grey read "washed out". The page is warm; the ink is nearly black and
+     the card is pure white, so hierarchy stays strong. */
+  --page:#F1EDE7;        /* warm limestone. Not cream: L* 93, hue 34deg */
+  --card:#FFFFFF;
+  --card-2:#FAF7F3;
+  --line:#E2DAD1;
+  --line-2:#CFC4B8;
+  --ink:#191512;         /* 15.9:1 on card */
+  --ink-2:#5F564C;       /* 6.9:1  */
+  --ink-3:#877C70;       /* 4.1:1, captions only */
+  /* ONE accent. Saudi green against limestone: national colour, warm-compatible,
+     nowhere near the purple/blue default. It marks the primary action and the
+     current selection. Nothing else. */
+  --accent:#1B5E43;
+  --accent-hi:#164C36;
+  --accent-soft:#E8F0EC;
+  /* Status is a FIELD, not an event. Muted, semantic, never celebratory. */
+  --ok:#2E6B4F; --warn:#8A5A16; --bad:#9B3226; --idle:#877C70;
+  /* THE MEDIA WELL. Dark, locally. A dark surround is how you judge video
+     colour honestly - that is the one real reason those tools are dark. So the
+     app is light and the WELL is dark. */
+  --well:#17140F;
+  --r:10px;   /* corner radius. Per the research this is the ONLY decoration
+                 this register permits, and Spectrum 2 moved toward it. */
+  --r-sm:6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-family:'PlexAr',system-ui,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+body{background:var(--page);color:var(--ink);font-size:14px;line-height:1.7}
+.mono{font-family:'CommitMono',ui-monospace,monospace;font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;display:inline-block}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+h1,h2,h3{line-height:1.3;font-weight:600}
+
+/* ── TOP BAR. 56px. Mark, project, search, PRIMARY ACTION ALONE at the far
+      end, then balance and account. Every one of the seven references does
+      this. ─────────────────────────────────────────────────────────────── */
+.top{height:56px;background:var(--card);border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:20px;padding:0 20px;position:sticky;top:0;z-index:10}
+.brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:16px}
+.brand svg{flex:none}
+.crumb{color:var(--ink-3);font-size:13px}
+.crumb b{color:var(--ink);font-weight:500}
+.search{flex:1;max-width:380px;background:var(--page);border:1px solid var(--line);
+  border-radius:var(--r-sm);height:34px;display:flex;align-items:center;gap:8px;padding:0 11px;color:var(--ink-3);font-size:13px}
+.spacer{flex:1}
+.bal{text-align:end;line-height:1.25}
+.bal .n{font-weight:600;font-size:14px}
+.bal .l{font-size:11px;color:var(--ink-3)}
+.av{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+  display:grid;place-items:center;font-weight:600;font-size:12px}
+
+/* THE PRIMARY ACTION. One filled thing. Never a filled+outlined pair. */
+.btn{background:var(--accent);color:#fff;border-radius:var(--r-sm);height:36px;padding:0 16px;
+  font-weight:500;font-size:14px;display:inline-flex;align-items:center;gap:8px;transition:background .12s}
+.btn:hover{background:var(--accent-hi)}
+.btn-q{color:var(--ink-2);border:1px solid var(--line-2);background:var(--card);
+  border-radius:var(--r-sm);height:36px;padding:0 14px;font-size:14px;display:inline-flex;align-items:center;gap:7px}
+.btn-q:hover{background:var(--card-2);color:var(--ink)}
+.btn-t{color:var(--ink-2);font-size:13px;padding:4px 0}
+.btn-t:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+
+/* ── THE SHELL: rail = where you are, centre = the work, panel = selection ── */
+.shell{display:grid;grid-template-columns:216px minmax(0,1fr);min-height:calc(100vh - 56px)}
+.rail{background:var(--page);border-inline-start:1px solid var(--line);padding:16px 12px}
+/* LABELLED navigation. The current app has five unlabelled hand-drawn symbols
+   plus five abstract status shapes - ten invented glyphs to learn. Company
+   software writes the word. */
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 11px;border-radius:var(--r-sm);
+  color:var(--ink-2);text-decoration:none;font-size:14px;margin-bottom:2px}
+.nav a:hover{background:#E9E3DB;color:var(--ink)}
+.nav a.on{background:var(--card);color:var(--ink);font-weight:500;box-shadow:0 1px 2px rgba(25,21,18,.06)}
+.nav a svg{flex:none;opacity:.75}
+.nav a.on svg{opacity:1;color:var(--accent)}
+.railcap{font-size:11px;color:var(--ink-3);font-weight:600;padding:16px 11px 6px}
+
+.main{padding:28px 32px 60px;min-width:0}
+.pagehead{display:flex;align-items:flex-start;gap:20px;margin-bottom:22px}
+/* EVERY SCREEN SAYS WHAT IT IS. The current app has zero <h1> on any route -
+   it opens with "01" in monospace. */
+h1{font-size:26px;letter-spacing:-.01em}
+.sub{color:var(--ink-2);font-size:14px;margin-top:3px}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+.pad{padding:18px 20px}
+.sechead{display:flex;align-items:baseline;gap:12px;margin:30px 0 13px}
+h2{font-size:16px}
+.sechead .btn-t{margin-inline-start:auto}
+
+/* ── BALANCE. The app today has NO credit balance anywhere and paymentService
+      is never imported: you discover you are out of credit by pressing Commit.
+      A business tool opens by telling you where you stand. ──────────────── */
+.balance{display:grid;grid-template-columns:1fr auto;align-items:center;gap:24px}
+.big{font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.riyal{font-size:20px;color:var(--ink-2);font-weight:500}
+.bar{height:6px;background:var(--page);border-radius:99px;overflow:hidden;margin-top:12px;max-width:340px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+
+/* ── PROJECT GRID. Card aspect follows MEDIA aspect (Frame.io): Gulf clients
+      order 16:9 and 9:16 in the same project, so a fixed-aspect grid looks
+      broken. ─────────────────────────────────────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:18px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  transition:border-color .12s}
+.tile:hover{border-color:var(--line-2)}
+.thumb{background:var(--well);position:relative;display:grid;place-items:center;color:#6E655A;font-size:11px}
+.thumb.wide{aspect-ratio:16/9}
+.thumb.tall{aspect-ratio:9/16}
+.dur{position:absolute;inset-block-end:7px;inset-inline-end:7px;background:rgba(0,0,0,.72);
+  color:#fff;font-size:11px;padding:1px 6px;border-radius:4px}
+.tmeta{padding:11px 13px 13px}
+.tname{font-weight:500;font-size:14px;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-3)}
+/* STATUS IS A FIELD. No glow, no pulse, no filling gauge, no celebration. */
+.st{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500}
+.st::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.st.ok{color:var(--ok)} .st.run{color:var(--warn)} .st.bad{color:var(--bad)} .st.idle{color:var(--idle)}
+.dot{color:var(--line-2)}
+
+/* ── THE MEDIA-FIRST SCREEN ───────────────────────────────────────────────── */
+.work{display:grid;grid-template-columns:minmax(0,1fr) 288px;gap:22px;align-items:start}
+.player{background:var(--well);border-radius:var(--r);overflow:hidden}
+.stage{aspect-ratio:16/9;display:grid;place-items:center;color:#6E655A;font-size:12px}
+/* TRANSPORT: bottom-pinned, on the media. And it does NOT mirror in Arabic -
+   Apple, Material, Microsoft and Mozilla all agree the scrubber and the play
+   button refer to the direction of the tape, not the direction of time. */
+.transport{direction:ltr;display:flex;align-items:center;gap:12px;padding:9px 13px;
+  background:#100E0A;color:#CFC7BC;font-size:12px}
+.seek{flex:1;height:4px;background:#332E27;border-radius:99px;position:relative}
+.seek i{position:absolute;inset:0 auto 0 0;width:27%;background:#fff;border-radius:99px}
+.seek b{position:absolute;left:27%;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;
+  background:#fff;border-radius:50%}
+.tc{font-family:'CommitMono',monospace;font-variant-numeric:tabular-nums;font-size:11px;color:#9A9188}
+/* SHOT STRIP. Scenes mirror (step sequence -> Scene 1 at the far right in
+   Arabic). The scrubber above does not. Both are correct on one screen. */
+.strip{display:flex;gap:10px;overflow-x:auto;padding:3px 1px 8px}
+.shot{flex:none;width:132px}
+.shot .sthumb{aspect-ratio:16/9;background:var(--well);border-radius:var(--r-sm);
+  border:2px solid transparent;display:grid;place-items:center;color:#6E655A;font-size:10px}
+.shot.on .sthumb{border-color:var(--accent)}
+.shot .sl{font-size:11px;color:var(--ink-3);margin-top:5px;display:flex;justify-content:space-between}
+.shot.on .sl{color:var(--ink);font-weight:500}
+
+/* RIGHT PANEL = properties of the SELECTION. Never navigation. */
+.panel dt{font-size:11px;color:var(--ink-3);margin-top:13px}
+.panel dd{font-size:13px}
+.panel dl>div:first-child dt{margin-top:0}
+
+/* ── THE COMMIT GATE. Frame.io's approve-and-lock moment. ───────────────── */
+.gate{border:1px solid var(--line-2);border-radius:var(--r);background:var(--card);overflow:hidden}
+.gate .gh{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.gate .gb{padding:6px 20px 18px}
+.clause{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:14px;align-items:baseline;
+  padding:11px 0;border-bottom:1px solid var(--line)}
+.clause:last-child{border-bottom:0}
+.clause .i{color:var(--ink-3);font-size:12px}
+.clause .c{color:var(--ink-3);font-size:12px}
+.total{display:flex;align-items:center;gap:14px;padding:15px 20px;background:var(--card-2);
+  border-top:1px solid var(--line)}
+.total .t{font-size:12px;color:var(--ink-2)}
+.total .v{font-size:21px;font-weight:600}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:start;font-size:11px;color:var(--ink-3);font-weight:600;padding:0 12px 8px;
+  border-bottom:1px solid var(--line-2);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink-2)}
+tr:last-child td{border-bottom:0}
+td.n{text-align:end}
+tbody tr:hover{background:var(--card-2)}
+
+.screens{max-width:1400px;margin:0 auto}
+.tag{background:#DDD5CB;color:#5F564C;font-size:11px;font-weight:600;padding:3px 9px;
+  border-radius:99px;display:inline-block;margin-bottom:8px}
+.note{max-width:1400px;margin:0 auto;padding:44px 32px 12px}
+.note p{color:var(--ink-2);font-size:13px;max-width:74ch}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+</style>
+</head>
+<body>
+
+<!-- ══ SCREEN 1 ═══════════════════════════════════════════════════════════ -->
+<div class="note"><span class="tag">شاشة ١ — بعد تسجيل الدخول</span>
+<p>اليوم تفتح على محادثة فارغة تقترح عليك «زجاجة عطر». لا رصيد، لا أعمال سابقة، لا حساب. هذه الشاشة تفتح بما يهمّ: كم لديك، وما الذي كنت تعمل عليه.</p></div>
+
+<div class="top">
+  <div class="brand">
+    <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2.5" y="2.5" width="15" height="15" rx="3"/><path d="M2.5 12.5h15"/></svg>
+    وزّة
+  </div>
+  <div class="search"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/></svg> ابحث في مشاريعك وملفاتك</div>
+  <div class="spacer"></div>
+  <button class="btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg> مشروع جديد</button>
+  <div class="bal"><div class="n"><span class="mono">240.50</span> <span style="font-size:12px;color:var(--ink-2)">ر.س</span></div><div class="l">الرصيد</div></div>
+  <div class="av">مج</div>
+</div>
+
+<div class="shell">
+  <nav class="rail">
+    <div class="nav">
+      <a href="#" class="on"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 6.5 8 2l6 4.5V14H2z"/></svg> الرئيسية</a>
+      <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6h12"/></svg> المشاريع</a>
+      <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="m2 10 3.5-3 3 2.5 2.5-2 3 2.5"/></svg> الملفات</a>
+      <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.8v12.4M1.8 8h12.4"/><circle cx="8" cy="8" r="6.2"/></svg> الرصيد والفواتير</a>
+    </div>
+    <div class="railcap">الإعدادات</div>
+    <div class="nav">
+      <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="5.5" r="2.6"/><path d="M2.8 14c.6-3 2.7-4.4 5.2-4.4S12.6 11 13.2 14"/></svg> الحساب</a>
+      <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4h12M2 8h12M2 12h8"/></svg> التفضيلات</a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="pagehead"><div><h1>مرحباً، مجيد</h1><div class="sub">لديك مشروع قيد التنفيذ الآن</div></div></div>
+
+    <div class="card pad balance">
+      <div>
+        <div style="font-size:12px;color:var(--ink-3);margin-bottom:2px">الرصيد المتاح</div>
+        <div class="big"><span class="mono">240.50</span> <span class="riyal">ر.س</span></div>
+        <div class="bar"><i style="width:48%"></i></div>
+        <div style="font-size:12px;color:var(--ink-3);margin-top:7px">يكفي لحوالي <b style="color:var(--ink-2)">١٩</b> مشهداً بالإعدادات الحالية</div>
+      </div>
+      <div style="display:flex;gap:9px"><button class="btn-q">سجل العمليات</button><button class="btn">شحن الرصيد</button></div>
+    </div>
+
+    <div class="sechead"><h2>أعمالك</h2><button class="btn-t">عرض الكل</button></div>
+    <div class="grid">
+      <div class="tile"><div class="thumb wide">معاينة<span class="dur mono">00:45</span></div>
+        <div class="tmeta"><div class="tname">إعلان رمضان — النسخة الثانية</div>
+        <div class="trow"><span class="st run">قيد التنفيذ · المشهد ٢ من ٣</span></div></div></div>
+      <div class="tile"><div class="thumb wide">معاينة<span class="dur mono">00:30</span></div>
+        <div class="tmeta"><div class="tname">فيديو المنتج — عطر</div>
+        <div class="trow"><span class="st ok">مكتمل</span><span class="dot">·</span><span class="mono">12.40</span> ر.س</div></div></div>
+      <div class="tile"><div class="thumb tall">معاينة<span class="dur mono">00:15</span></div>
+        <div class="tmeta"><div class="tname">ستوري انستقرام</div>
+        <div class="trow"><span class="st ok">مكتمل</span><span class="dot">·</span><span class="mono">6.80</span> ر.س</div></div></div>
+      <div class="tile"><div class="thumb wide">معاينة</div>
+        <div class="tmeta"><div class="tname">حملة العودة للمدارس</div>
+        <div class="trow"><span class="st bad">فشل — رصيد غير كافٍ</span></div></div></div>
+    </div>
+  </main>
+</div>
+
+<hr>
+<!-- ══ SCREEN 2 ═══════════════════════════════════════════════════════════ -->
+<div class="note"><span class="tag">شاشة ٢ — المشروع</span>
+<p>العمل نفسه هو أكبر شيء على الشاشة. المشغّل في المنتصف، المشاهد تحته، وتفاصيل ما هو محدّد على الجانب. لاحظ اتجاهين مختلفين في نفس الشاشة وهذا صحيح: شريط التشغيل لا ينعكس (يشير إلى اتجاه الشريط لا اتجاه الزمن)، بينما تسلسل المشاهد ينعكس فيبدأ المشهد ١ من اليمين.</p></div>
+
+<div class="top">
+  <div class="brand"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2.5" y="2.5" width="15" height="15" rx="3"/><path d="M2.5 12.5h15"/></svg> وزّة</div>
+  <div class="crumb">المشاريع &nbsp;›&nbsp; <b>إعلان رمضان — النسخة الثانية</b></div>
+  <div class="spacer"></div>
+  <button class="btn-q">تنزيل</button>
+  <button class="btn">اعتماد وتصدير</button>
+  <div class="bal"><div class="n"><span class="mono">240.50</span> <span style="font-size:12px;color:var(--ink-2)">ر.س</span></div><div class="l">الرصيد</div></div>
+  <div class="av">مج</div>
+</div>
+
+<div class="shell">
+  <nav class="rail"><div class="nav">
+    <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 6.5 8 2l6 4.5V14H2z"/></svg> الرئيسية</a>
+    <a href="#" class="on"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6h12"/></svg> المشاريع</a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="m2 10 3.5-3 3 2.5 2.5-2 3 2.5"/></svg> الملفات</a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.8v12.4M1.8 8h12.4"/><circle cx="8" cy="8" r="6.2"/></svg> الرصيد والفواتير</a>
+  </div></nav>
+
+  <main class="main">
+    <div class="pagehead"><div><h1>إعلان رمضان — النسخة الثانية</h1>
+      <div class="sub">٣ مشاهد · ٠٠:٤٥ · <span class="st run" style="font-size:14px">قيد التنفيذ</span></div></div></div>
+
+    <div class="work">
+      <div>
+        <div class="player">
+          <div class="stage">المعاينة</div>
+          <div class="transport">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5v11l9-5.5z"/></svg>
+            <span class="tc">00:12</span>
+            <div class="seek"><i></i><b></b></div>
+            <span class="tc">00:45</span>
+            <span style="opacity:.55">1x</span>
+          </div>
+        </div>
+
+        <div class="sechead" style="margin:20px 0 10px"><h2>المشاهد</h2>
+          <span style="font-size:12px;color:var(--ink-3);margin-inline-start:auto">مرّر فوق المشهد للمعاينة السريعة</span></div>
+        <div class="strip">
+          <div class="shot on"><div class="sthumb">مشهد ١</div><div class="sl"><span>المشهد ١</span><span class="mono">0:15</span></div></div>
+          <div class="shot"><div class="sthumb">مشهد ٢</div><div class="sl"><span>المشهد ٢</span><span class="mono">0:15</span></div></div>
+          <div class="shot"><div class="sthumb" style="opacity:.5">قيد الإنشاء</div><div class="sl"><span>المشهد ٣</span><span class="mono">0:15</span></div></div>
+        </div>
+      </div>
+
+      <aside class="card pad panel">
+        <div style="font-weight:600;font-size:14px;margin-bottom:4px">المشهد ١</div>
+        <dl>
+          <div><dt>الحالة</dt><dd><span class="st ok">مكتمل</span></dd></div>
+          <div><dt>المدة</dt><dd class="mono">00:15.0</dd></div>
+          <div><dt>الأبعاد</dt><dd class="mono">1920×1080 · 16:9</dd></div>
+          <div><dt>النموذج</dt><dd class="mono">runway gen4.5</dd></div>
+          <div><dt>التكلفة</dt><dd><span class="mono">4.20</span> ر.س</dd></div>
+          <div><dt>الوصف</dt><dd style="color:var(--ink-2);font-size:13px">لقطة واسعة لمائدة إفطار، إضاءة دافئة، حركة كاميرا بطيئة للأمام</dd></div>
+        </dl>
+        <div style="display:flex;gap:8px;margin-top:18px">
+          <button class="btn-q" style="flex:1;justify-content:center">إعادة الإنشاء</button>
+          <button class="btn-q" style="flex:1;justify-content:center">تنزيل</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<hr>
+<!-- ══ SCREEN 3 ═══════════════════════════════════════════════════════════ -->
+<div class="note"><span class="tag">شاشة ٣ — الاعتماد قبل الصرف</span>
+<p>اللحظة الوحيدة التي تُصرف فيها نقود. تُقرأ كوثيقة تُوقّعها لا كلوحة تحكّم تُسلّحها: بنود مرقّمة، مبلغ واضح، وزر واحد مملوء على الشاشة كلها. الرصيد بعد الصرف معروض قبل الضغط لا بعده.</p></div>
+
+<div class="top">
+  <div class="brand"><svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2.5" y="2.5" width="15" height="15" rx="3"/><path d="M2.5 12.5h15"/></svg> وزّة</div>
+  <div class="crumb">المشاريع &nbsp;›&nbsp; <b>حملة العودة للمدارس</b></div>
+  <div class="spacer"></div>
+  <div class="bal"><div class="n"><span class="mono">240.50</span> <span style="font-size:12px;color:var(--ink-2)">ر.س</span></div><div class="l">الرصيد</div></div>
+  <div class="av">مج</div>
+</div>
+
+<div class="shell">
+  <nav class="rail"><div class="nav">
+    <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 6.5 8 2l6 4.5V14H2z"/></svg> الرئيسية</a>
+    <a href="#" class="on"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6h12"/></svg> المشاريع</a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="m2 10 3.5-3 3 2.5 2.5-2 3 2.5"/></svg> الملفات</a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.8v12.4M1.8 8h12.4"/><circle cx="8" cy="8" r="6.2"/></svg> الرصيد والفواتير</a>
+  </div></nav>
+
+  <main class="main" style="max-width:820px">
+    <div class="pagehead"><div><h1>خطة العمل</h1><div class="sub">راجع البنود قبل الاعتماد. لن يُخصم شيء حتى تضغط اعتماد.</div></div></div>
+
+    <div class="gate">
+      <div class="gh"><div style="font-weight:600">حملة العودة للمدارس</div>
+        <span style="color:var(--ink-3);font-size:12px">٣ مشاهد · ٠٠:٤٥ · عمودي ٩:١٦</span></div>
+      <div class="gb">
+        <div class="clause"><span class="i mono">01</span>
+          <div><div>كتابة النص</div><div class="c">نص إعلاني قصير بالعربية الفصحى</div></div>
+          <div><span class="mono">0.30</span> ر.س</div></div>
+        <div class="clause"><span class="i mono">02</span>
+          <div><div>صور المشاهد — ٣</div><div class="c">gpt-image-2 · 1080×1920</div></div>
+          <div><span class="mono">2.10</span> ر.س</div></div>
+        <div class="clause"><span class="i mono">03</span>
+          <div><div>مقاطع الفيديو — ٣</div><div class="c">runway gen4.5 · ١٥ ثانية لكل مشهد</div></div>
+          <div><span class="mono">12.60</span> ر.س</div></div>
+        <div class="clause"><span class="i mono">04</span>
+          <div><div>التجميع والإخراج النهائي</div><div class="c">دمج المشاهد وإضافة الصوت</div></div>
+          <div><span class="mono">0.40</span> ر.س</div></div>
+      </div>
+      <div class="total">
+        <div><div class="t">الإجمالي</div><div class="v"><span class="mono">15.40</span> <span style="font-size:14px;color:var(--ink-2)">ر.س</span></div></div>
+        <div style="border-inline-start:1px solid var(--line);padding-inline-start:14px">
+          <div class="t">الرصيد بعد الاعتماد</div><div style="font-weight:600"><span class="mono">225.10</span> ر.س</div></div>
+        <div style="margin-inline-start:auto;display:flex;gap:9px;align-items:center">
+          <button class="btn-t">تعديل الخطة</button>
+          <button class="btn">اعتماد وبدء التنفيذ</button></div>
+      </div>
+    </div>
+
+    <div class="sechead"><h2>آخر العمليات</h2></div>
+    <div class="card" style="padding:14px 8px 6px">
+      <table>
+        <thead><tr><th>التاريخ</th><th>المشروع</th><th>الحالة</th><th class="n">التكلفة</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">2026-08-02</td><td>فيديو المنتج — عطر</td><td><span class="st ok">مكتمل</span></td><td class="n"><span class="mono">12.40</span></td></tr>
+          <tr><td class="mono">2026-07-29</td><td>ستوري انستقرام</td><td><span class="st ok">مكتمل</span></td><td class="n"><span class="mono">6.80</span></td></tr>
+          <tr><td class="mono">2026-07-24</td><td>إعلان رمضان — الأولى</td><td><span class="st bad">فشل</span></td><td class="n"><span class="mono">0.00</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="note" style="padding-bottom:60px">
+  <p style="color:var(--ink-3)">نموذج ثابت للعرض فقط — لا يوجد خلفها تطبيق. الخط: IBM Plex Sans Arabic، وهو الخط المعتمد في «كود المنصات» من هيئة الحكومة الرقمية السعودية.</p>
+</div>
+
+</body>
+</html>

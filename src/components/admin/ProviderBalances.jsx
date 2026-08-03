@@ -1,49 +1,67 @@
-/* PROVIDER BALANCES — the upstream ledger.
+/* ── PROVIDER BALANCES — the upstream ledger ──────────────────────────────
+   The same table geometry as the model breakdown beside it, so the two panels
+   on this route read as one instrument rather than two widgets.
 
-   Arrived from main styled against the old token set: a `surface` card with
-   its own <h3> and paragraph, lucide glyphs, and `--text-primary` /
-   `--border` / `--badge-*-text` colours that no longer exist. Rebuilt here on
-   the same ranked-ledger geometry as the model breakdown next to it, so the
-   two panels on this route read as one object.
+   STATUS IS A FIELD (principle 5). Live / No API / Not set up / Failed are
+   words in the status column with the .st dot in their tone — the same object
+   the runs table uses for a run. The old version leaned on green and red text
+   plus four glyphs; read without colour it said nothing.
 
-   THE HEADER IS GONE. The Band above supplies the legend and the note, so the
-   card's own title and description were saying it a second time. What the
-   paragraph carried that the Band cannot — how many vendors actually report,
-   and the total — moved to the footer row, where the model ledger also puts
-   its total.
+   DEPLETION IS THE ONE STATE WORTH INTERRUPTING SOMEONE FOR. A vendor that
+   reports a real zero cannot serve the next job, so it takes the --bad tone
+   in the status column outright instead of quietly reading "Live · 0".
 
-   NO COLOUR-ONLY STATUS. The old version leaned on green/red text. Depletion
-   is the one state worth interrupting someone for, so it is stated in words
-   on its own line and carries the signal tone; every other state is a word in
-   ink. Read without colour, the panel still says the same thing. */
+   Props are unchanged: { data, days, loading, onRefresh }. */
 
 import React from 'react'
 import { Money } from '../ui/Money'
 import EmptyState from '../ui/EmptyState'
-import { Check, Strike, Help, Void, Retry } from '../Icon'
+import { Retry } from '../Icon'
 import { useUIStore } from '../../store/uiStore'
 
-// USD gets cents, vendor credits are whole units — showing "460.0000 credits"
-// reads like a precision we do not have.
-function formatBalance(row) {
-  if (row.balance === null || row.balance === undefined) return '—'
-  if (row.unit === 'USD') return `$${Number(row.balance).toFixed(2)}`
-  return `${Number(row.balance).toLocaleString('en-US')} ${row.unit || ''}`.trim()
+/* USD gets cents; vendor credits are whole units — "460.0000 credits" claims
+   a precision nobody has. */
+function Balance({ row }) {
+  if (row.balance === null || row.balance === undefined) return <span className="mono">—</span>
+  if (row.unit === 'USD') return <Money usd={row.balance} digits={2} />
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
+      <span className="mono">{Number(row.balance).toLocaleString('en-US')}</span>
+      {row.unit ? <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{row.unit}</span> : null}
+    </span>
+  )
 }
 
-const STATUS_META = {
-  ok: { icon: Check, en: 'Live', ar: 'حي' },
-  unsupported: { icon: Help, en: 'No API', ar: 'لا واجهة' },
-  not_configured: { icon: Void, en: 'Not set up', ar: 'غير مهيأ' },
-  error: { icon: Strike, en: 'Failed', ar: 'فشل' },
+const STATUS = {
+  ok: { tone: 'ok', ar: 'حي', en: 'Live' },
+  unsupported: { tone: 'idle', ar: 'لا واجهة', en: 'No API' },
+  not_configured: { tone: 'idle', ar: 'غير مهيأ', en: 'Not set up' },
+  error: { tone: 'bad', ar: 'فشل', en: 'Failed' },
 }
 
-// Track sizes and the handheld reflow both live in .ledger-5 (index.css), so
-// the row shape is defined once and the breakpoint rule can reach it.
+const FOOT = {
+  blockSize: 40,
+  padding: '8px 12px',
+  borderBlockStart: '1px solid var(--line-2)',
+  color: 'var(--ink)',
+  verticalAlign: 'middle',
+}
 
 export default function ProviderBalances({ data = [], days = 30, loading = false, onRefresh }) {
-  const { language } = useUIStore()
-  const ar = language === 'ar'
+  const ar = useUIStore((s) => s.language) === 'ar'
+
+  const reread = onRefresh && (
+    <button
+      type="button"
+      className="btn-t"
+      onClick={onRefresh}
+      disabled={loading}
+      title={ar ? 'إعادة قراءة الأرصدة من المزودين' : 'Re-read balances from the providers'}
+    >
+      <Retry size={15} />
+      {ar ? 'إعادة القراءة' : 'Re-read'}
+    </button>
+  )
 
   if (data.length === 0) {
     return (
@@ -53,12 +71,7 @@ export default function ProviderBalances({ data = [], days = 30, loading = false
           ? 'لم يُبلِّغ أي مزود عن رصيد في هذه النافذة.'
           : 'No provider reported a balance in this window.'}
       >
-        {onRefresh && (
-          <button type="button" onClick={onRefresh} disabled={loading} className="text-action">
-            <Retry size={16} />
-            {ar ? 'إعادة القراءة' : 'Re-read'}
-          </button>
-        )}
+        {reread}
       </EmptyState>
     )
   }
@@ -67,109 +80,75 @@ export default function ProviderBalances({ data = [], days = 30, loading = false
   const reporting = data.filter((r) => r.status === 'ok').length
 
   return (
-    <div>
-      {onRefresh && (
-        <div className="flex justify-end" style={{ paddingBlockEnd: 8 }}>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            className="text-action"
-            title={ar ? 'إعادة قراءة الأرصدة من المزودين' : 'Re-read balances from the providers'}
-          >
-            <Retry size={16} />
-            {ar ? 'إعادة القراءة' : 'Re-read'}
-          </button>
-        </div>
+    <>
+      {reread && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBlockEnd: 4 }}>{reread}</div>
       )}
 
-      <div style={{ borderBlockStart: '1px solid var(--etch-strong)' }}>
-        <div
-          // ledger-5--head is hidden below 640px: once each row wraps to two
-          // lines the header labels no longer sit above the figures they name,
-          // and a mislabelled number is worse than an unlabelled one.
-          className="legend ledger-5 ledger-5--head"
-          style={{ blockSize: 28, alignItems: 'center', marginBlock: 0 }}
-        >
-          <span>{ar ? 'المزود' : 'Provider'}</span>
-          <span>{ar ? 'الحالة' : 'Status'}</span>
-          <span style={{ textAlign: 'end' }}>{ar ? 'المتبقي' : 'Remaining'}</span>
-          <span style={{ textAlign: 'end' }}>{ar ? `الإنفاق ${days}ي` : `Spent ${days}d`}</span>
-          <span style={{ textAlign: 'end' }}>{ar ? 'الطلبات' : 'Calls'}</span>
-        </div>
-
-        {data.map((row) => {
-          // A vendor that reports a real zero is out of credit, which is the
-          // one number on this panel worth interrupting someone for.
-          const depleted = row.status === 'ok' && Number(row.balance) === 0
-          const meta = STATUS_META[row.status] || STATUS_META.error
-          const StatusIcon = meta.icon
-
-          return (
-            <div
-              key={row.provider}
-              className="ledger-5"
-              style={{
-                alignItems: 'baseline',
-                minBlockSize: 40,
-                paddingBlock: 8,
-                borderBlockEnd: '1px solid var(--etch)',
-              }}
-            >
-              <span className="min-w-0">
-                <span className="truncate" style={{ fontSize: 12, color: 'var(--ink)', display: 'block' }}>
-                  {row.display_name}
-                </span>
-                {row.detail && (
-                  <span
-                    className="truncate"
-                    style={{ fontSize: 11, color: 'var(--ink-3)', display: 'block', marginBlockStart: 2 }}
-                    title={row.detail}
-                  >
-                    {row.detail}
-                  </span>
-                )}
-              </span>
-
-              <span className="flex items-center gap-2" style={{ fontSize: 11, color: 'var(--ink-2)' }}>
-                <StatusIcon size={14} />
-                {ar ? meta.ar : meta.en}
-              </span>
-
-              <span style={{ textAlign: 'end' }}>
-                <span className="mono" style={{ fontSize: 12, color: 'var(--ink)' }}>
-                  {formatBalance(row)}
-                </span>
-                {depleted && (
-                  <span style={{ fontSize: 10, color: 'var(--signal)', display: 'block', marginBlockStart: 2 }}>
-                    {ar ? 'نفد الرصيد' : 'out of credit'}
-                  </span>
-                )}
-              </span>
-
-              <span style={{ textAlign: 'end' }}>
-                <Money usd={parseFloat(row.spend_usd) || 0} />
-              </span>
-
-              <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'end', display: 'block' }}>
-                {(row.call_count || 0).toLocaleString('en-US')}
-              </span>
-            </div>
-          )
-        })}
-
-        <div
-          className="flex items-baseline justify-between"
-          style={{ blockSize: 36, borderBlockEnd: '1px solid var(--etch-strong)' }}
-        >
-          <span className="legend" style={{ marginBlock: 0 }}>
-            {ar
-              ? `${reporting} من ${data.length} تُبلّغ عن رصيد`
-              : `${reporting} of ${data.length} report a balance`}
-          </span>
-          <Money usd={totalSpend} style={{ fontSize: 13 }} />
-        </div>
+      <div className="scroll-x">
+        <table className="dtable">
+          <thead>
+            <tr>
+              <th>{ar ? 'المزود' : 'Provider'}</th>
+              <th>{ar ? 'الحالة' : 'Status'}</th>
+              <th className="num">{ar ? 'المتبقي' : 'Remaining'}</th>
+              <th className="num">
+                {ar ? <>الإنفاق · <span className="mono">{days}</span>ي</> : <>Spent · <span className="mono">{days}</span>d</>}
+              </th>
+              <th className="num">{ar ? 'الطلبات' : 'Calls'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => {
+              const depleted = row.status === 'ok' && Number(row.balance) === 0
+              const meta = STATUS[row.status] || STATUS.error
+              return (
+                <tr key={row.provider}>
+                  <td style={{ color: 'var(--ink)' }}>
+                    <span className="truncate" style={{ display: 'block', maxInlineSize: 220 }}>
+                      {row.display_name || row.provider}
+                    </span>
+                    {row.detail && (
+                      <span
+                        className="caption truncate"
+                        style={{ display: 'block', maxInlineSize: 220 }}
+                        title={row.detail}
+                      >
+                        {row.detail}
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    {depleted ? (
+                      <span className="st st--bad">{ar ? 'نفد الرصيد' : 'Out of credit'}</span>
+                    ) : (
+                      <span className={`st st--${meta.tone}`}>{ar ? meta.ar : meta.en}</span>
+                    )}
+                  </td>
+                  <td className="num" style={{ color: 'var(--ink)' }}><Balance row={row} /></td>
+                  <td className="num"><Money usd={parseFloat(row.spend_usd) || 0} /></td>
+                  {/* .mono is display:inline-block — on a <td> it would pull
+                      the cell out of the table box, so it wraps the value. */}
+                  <td className="num">
+                    <span className="mono">{(Number(row.call_count) || 0).toLocaleString('en-US')}</span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={3} style={{ ...FOOT, color: 'var(--ink-2)' }}>
+                {ar
+                  ? <><span className="mono">{reporting}</span> من <span className="mono">{data.length}</span> تُبلّغ عن رصيد</>
+                  : <><span className="mono">{reporting}</span> of <span className="mono">{data.length}</span> report a balance</>}
+              </td>
+              <td className="num" style={FOOT}><Money usd={totalSpend} /></td>
+              <td style={FOOT} />
+            </tr>
+          </tfoot>
+        </table>
       </div>
-    </div>
+    </>
   )
 }

@@ -1,11 +1,42 @@
-import React, { useEffect, useRef, useState } from 'react'
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE WORKSPACE
+
+   This route has two states, and the first one is new.
+
+     NO PROJECT OPEN — THE GRID. A returning customer used to land on an empty
+     chat box suggesting a perfume-bottle prompt. On a media product, with
+     their own finished work sitting one API call away, that is a dead end.
+     Now the workspace opens on the WORK: a grid of project blocks, each
+     showing the newest thing that project produced. Picking one opens its
+     transcript and they carry on writing.
+
+     A PROJECT OPEN — THE TRANSCRIPT. Named at the top with a way back to the
+     grid, the conversation in the middle, the live run stated as a FIELD
+     above the composer, and the composer pinned at the bottom.
+
+   THE AUTHORISATION IS NOT IN THE PAGE. When a work order is waiting, the
+   single filled button on the screen is mounted into the top bar through
+   <TopBarAction>, labelled with the figure it will authorise. That is where
+   Frame.io, YouTube Studio and Premiere put Export / CREATE / Share, it cannot
+   be scrolled past the way the bottom of a long work order can, and it is the
+   mechanism that guarantees one filled control per screen.
+
+   ⚠ WHAT DID NOT CHANGE, AND MUST NOT. The entire run lifecycle below —
+   messages addressed BY ARRAY INDEX, the socket-drop recovery that re-queries
+   /active-run because a completion is broadcast exactly once and never
+   replayed, the restore-on-mount path, and every guard around them — is
+   carried over unaltered. This was a visual and structural rebuild. Nothing in
+   the transport was touched to make a layout work.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import ChatMessages from '../components/chat/ChatMessages'
 import PromptInput from '../components/chat/PromptInput'
-import { useChatText } from '../components/chat/chatKit'
+import { useChatText, isoDay } from '../components/chat/chatKit'
+import { TopBarAction } from '../components/TopBar'
 import { useRunStatus } from '../components/RunStatusContext'
-import Meter from '../components/ui/Meter'
-import { Duration } from '../components/ui/Money'
-import { ShapeRun } from '../components/Icon'
+import { Duration, Money } from '../components/ui/Money'
+import { Commit, Caret } from '../components/Icon'
 import { useUIStore } from '../store/uiStore'
 import { useChatStore } from '../store/chatStore'
 import { generateService } from '../services/generateService'
@@ -13,67 +44,144 @@ import { chatService } from '../services/chatService'
 import { assetService } from '../services/assetService'
 import { describeError } from '../services/errorText'
 
-/**
- * THE RUN STRIP.
- *
- * Progress used to be a text string mutating in place inside a message that
- * scrolled away mid-generation. This is a fixed strip pinned ABOVE the composer
- * and OUTSIDE the scroll container, so the machine's state cannot leave the
- * screen while it is spending money.
- *
- * It is a READER, not a controller. `patchMessage` keeps writing its progress
- * line into the transcript exactly as it did — the strip is an additional
- * surface over the same values, and it owns no behaviour of its own.
- */
-function RunStrip({ phase, percent, sceneNumber, elapsedMs }) {
+/* ── THE RUN BAND ─────────────────────────────────────────────────────────
+   Pinned ABOVE the composer and OUTSIDE the scroll container, so the
+   machine's state cannot leave the screen while it is spending money.
+
+   It is a READER, not a controller. `patchMessage` keeps writing its progress
+   line into the transcript exactly as it did — this is an additional surface
+   over the same values and it owns no behaviour of its own.
+
+   Status is a FIELD: a word, and the one dot in this system allowed to move.
+   The bar beside it is a JOB progress bar, not a media time axis, so it fills
+   in the reading direction and mirrors correctly (A4). */
+function RunBand({ phase, percent, sceneNumber, elapsedMs }) {
   const { t } = useUIStore()
   const { tx } = useChatText()
   const hasPercent = typeof percent === 'number' && Number.isFinite(percent)
 
   return (
     <div
-      className="shrink-0 grid items-center chat-pad"
+      className="shrink-0 px-4 sm:px-6"
       style={{
-        // var(--rail-spine), not a literal 56px: the gutter narrows to 32px
-        // below 640px and a hardcoded track would leave the strip's legend
-        // misaligned against every other row in the app.
-        gridTemplateColumns: 'var(--rail-spine) minmax(0, 1fr)',
-        backgroundColor: 'var(--panel)',
-        borderBlockStart: '1px solid var(--etch)',
-        paddingInline: 24,
-        paddingBlock: 8,
+        background: 'var(--card)',
+        borderBlockStart: '1px solid var(--line)',
+        paddingBlock: 10,
       }}
     >
-      <span className="wz-gutter" style={{ fontSize: 10 }}>{tx('runLegend')}</span>
-
-      <div className="flex items-center gap-4 min-w-0">
-        <span className="marker marker--run">
-          <ShapeRun size={10} />
-          <span className="truncate">{phase || t('generating')}</span>
+      <div
+        className="flex flex-wrap items-center gap-x-4 gap-y-2"
+        style={{ maxInlineSize: 900, marginInline: 'auto' }}
+      >
+        <span className="st st--run truncate" style={{ maxInlineSize: 320 }}>
+          {phase || t('generating')}
         </span>
 
         {sceneNumber ? (
-          <span className="mono shrink-0" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            {tx('scene')} {String(sceneNumber).padStart(2, '0')}
+          <span className="caption">
+            {tx('scene')} <span className="mono">{sceneNumber}</span>
           </span>
         ) : null}
 
-        <Meter
-          cells={5}
-          value={hasPercent ? percent : 0}
-          mode={hasPercent ? 'determinate' : 'indeterminate'}
-          tone="signal"
-          label={t('generating')}
-        />
+        {hasPercent && (
+          <div className="bar" style={{ flex: '1 1 120px', maxInlineSize: 260 }} aria-hidden="true">
+            <i className="bar__fill" style={{ inlineSize: `${Math.round(percent * 100)}%` }} />
+          </div>
+        )}
 
         {Number.isFinite(elapsedMs) && (
-          <span className="ms-auto flex items-center gap-2 shrink-0">
-            <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>{tx('elapsed')}</span>
-            <Duration ms={elapsedMs} style={{ fontSize: 11, color: 'var(--ink-2)' }} />
+          <span className="caption flex items-center gap-2" style={{ marginInlineStart: 'auto' }}>
+            {tx('elapsed')}
+            <Duration ms={elapsedMs} style={{ color: 'var(--ink-2)' }} />
           </span>
         )}
       </div>
     </div>
+  )
+}
+
+/* ── THE PROJECT GRID ─────────────────────────────────────────────────────
+   PRINCIPLE 6: media aspect drives card aspect. A Gulf client orders 16:9 and
+   9:16 in the same project, so a fixed-aspect grid looks broken.
+
+   Nothing in the pipeline reliably writes an aspect ratio into an asset's
+   metadata, so the tile does not trust one. It reads the metadata if it is
+   there (which arrives as `metadata`, and sometimes as a JSON *string*), and
+   otherwise MEASURES the real ratio off the decoded frame — naturalWidth on
+   an image, videoWidth on loadedmetadata for a clip — and settles to it.
+   Wide until proven tall; never a guess presented as a fact.
+
+   PRINCIPLE 7: at most three facts under a thumbnail. Title, status, date. */
+
+function assetMeta(asset) {
+  const raw = asset?.metadata_json ?? asset?.metadata
+  if (!raw) return {}
+  if (typeof raw === 'object') return raw
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function ProjectTile({ chat, asset, tx, onOpen }) {
+  const meta = assetMeta(asset)
+  const declaredTall = meta.aspect_ratio === '9:16' || meta.orientation === 'vertical'
+  const [tall, setTall] = useState(declaredTall)
+  const isVideo = asset?.asset_type === 'video'
+
+  // Fall back through chat title → asset id → "Untitled". Never "undefined".
+  const title = (chat.title || '').trim() || (asset?.id ? String(asset.id).slice(0, 8) : tx('untitled'))
+  const day = isoDay(chat.updated_at || chat.created_at)
+
+  const measure = (w, h) => { if (w > 0 && h > 0) setTall(h > w) }
+
+  return (
+    <button type="button" className="tile group" onClick={onOpen} title={title}>
+      {/* THE DARK WELL IS FOR MEDIA. With nothing generated yet there is no
+          media to judge, and the well rendered as a solid black rectangle that
+          read as a failed image rather than as an empty project. An empty
+          project gets a quiet page-toned panel that says so in words. */}
+      <div
+        className={`thumb ${tall ? 'thumb--tall' : 'thumb--wide'}`}
+        style={asset ? undefined : { background: 'var(--card-2)', borderBlockEnd: '1px solid var(--line)' }}
+      >
+        {!asset && (
+          <span className="caption" style={{ color: 'var(--ink-3)' }}>{tx('stEmpty')}</span>
+        )}
+        {asset && (isVideo ? (
+          /* preload="metadata" gives a poster frame without pulling the whole
+             clip. Forty autoplaying videos is a bandwidth bill. */
+          <video
+            src={asset.url}
+            muted
+            playsInline
+            preload="metadata"
+            onLoadedMetadata={(e) => measure(e.currentTarget.videoWidth, e.currentTarget.videoHeight)}
+          />
+        ) : (
+          <img
+            src={asset.url}
+            alt=""
+            loading="lazy"
+            onLoad={(e) => measure(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
+          />
+        ))}
+        {/* A project with nothing in it yet gets a clean dark well. No broken
+            image, no invented placeholder graphic. */}
+      </div>
+
+      <div className="tile__meta">
+        <div className="tile__name">{title}</div>
+        <div className="tile__row">
+          <span className={`st ${asset ? 'st--ok' : 'st--idle'}`} style={{ fontSize: 12 }}>
+            {asset ? tx('stReady') : tx('stEmpty')}
+          </span>
+          {day && <span className="mono" style={{ marginInlineStart: 'auto' }}>{day}</span>}
+        </div>
+      </div>
+    </button>
   )
 }
 
@@ -83,7 +191,8 @@ function RunStrip({ phase, percent, sceneNumber, elapsedMs }) {
 const RETRY_PHRASE = /^(retry|resume|try again|again|continue|go on|أعد|أعد المحاولة|إعادة|اعد|كمل|أكمل|اكمل|حاول مرة أخرى|جرب مرة أخرى)[\s!.،؟?]*$/i
 
 function ChatPage() {
-  const { currentChatId, messages, setMessages, addMessage, updateMessage, loading, setLoading } = useChatStore()
+  const { chats, currentChatId, setCurrentChatId, messages, setMessages, addMessage, updateMessage, loading, setLoading } = useChatStore()
+  const { tx } = useChatText()
   const wsRef = useRef(null)
   // Index of the card message (plan or clarification) currently awaiting the user.
   const cardIndexRef = useRef(null)
@@ -108,9 +217,19 @@ function ChatPage() {
   // it arrives, so a slow or failed fetch never blocks reviewing a plan.
   const [modelCatalog, setModelCatalog] = useState(null)
 
+  // ── THE WORKSPACE GRID'S DATA ─────────────────────────────────────────────
+  // The chat list itself is owned by the top bar's project switcher and
+  // already sits in the store — it is read here, never fetched a second time.
+  // (It used to be loaded by the rail; the rail is navigation now.) What this
+  // page adds is one
+  // page of recent assets, reduced to the newest asset per chat so every block
+  // can show the work it stands for.
+  const [workByChat, setWorkByChat] = useState({})
+  const [workLoading, setWorkLoading] = useState(true)
+
   // ── PRESENTATION-ONLY RUN TELEMETRY ───────────────────────────────────────
   // The same values `openRunSocket`'s onmessage already parses out of the
-  // payload, held as local state so the run strip and the status bar can read
+  // payload, held as local state so the run band and the top bar can read
   // them. No store gains state, no service changes, and the transcript's
   // progress line is written exactly as before.
   const { publish, clear } = useRunStatus()
@@ -156,6 +275,28 @@ function ChatPage() {
       })
   }, [])
 
+  /* One page of recent assets, reduced to the newest per chat. The list comes
+     back newest-first, so the FIRST asset seen for a chat id is the one that
+     represents it. A failure here must never blank the grid: the projects are
+     still openable without a thumbnail. */
+  useEffect(() => {
+    let cancelled = false
+    assetService.getAssets(1, 40)
+      .then(({ assets }) => {
+        if (cancelled) return
+        const newest = {}
+        for (const asset of Array.isArray(assets) ? assets : []) {
+          if (asset?.chat_id && !newest[asset.chat_id]) newest[asset.chat_id] = asset
+        }
+        setWorkByChat(newest)
+      })
+      .catch((error) => {
+        console.error('Could not load recent work:', error)
+      })
+      .finally(() => { if (!cancelled) setWorkLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
   // Load messages whenever currentChatId changes while on this page, then pick
   // up any run that chat left unfinished.
   //
@@ -171,8 +312,16 @@ function ChatPage() {
   // The guard has to come before endRun(): the run this tab just started is
   // the one we would be tearing down, and there is no unfinished run to
   // restore for a chat created moments ago.
+  //
+  // Leaving the project entirely — the top bar's "All projects", or the open
+  // project being deleted from the switcher, both of which null currentChatId
+  // from outside this file — has to tear the socket down exactly the way
+  // switching projects does. Otherwise the previous chat's progress keeps
+  // being written into a messages array that no longer belongs to it. The RUN
+  // is untouched and still going server-side; reopening the project re-queries
+  // /active-run and picks it up, which is the same contract as a chat switch.
   useEffect(() => {
-    if (!currentChatId) return
+    if (!currentChatId) { endRun(); return undefined }
     if (skipNextHistoryLoad.current === currentChatId) {
       skipNextHistoryLoad.current = null
       return
@@ -246,7 +395,7 @@ function ChatPage() {
     setActiveRunId(null)
     setAwaitingUser(false)
     setLoading(false)
-    // Presentation only: the strip and the status bar have nothing left to read.
+    // Presentation only: the band and the top bar have nothing left to read.
     setPhase(null)
     setPercent(null)
     setSceneNumber(null)
@@ -398,7 +547,7 @@ function ChatPage() {
         // Follows the run across both phases: the pre-plan line first, then
         // the post-confirm line. Null while a card awaits the user.
         patchMessage(progressTargetRef.current, { content: `${prefix} - ${data.message}` })
-        // The SAME values, published for the run strip and the status bar. This
+        // The SAME values, published for the run band and the top bar. This
         // adds a reader; it changes nothing about the line above.
         setPhase(data.message || null)
         setPercent(Number.isFinite(Number(data.progress))
@@ -410,7 +559,7 @@ function ChatPage() {
       }
     }
 
-    // Without these two, a socket that dies mid-run leaves the strip spinning
+    // Without these two, a socket that dies mid-run leaves the band spinning
     // on its last progress line forever: no completion event ever arrives, so
     // nothing clears it and nothing says why. The run itself is usually still
     // alive on the server, which is why this reports a lost CHANNEL rather than
@@ -683,7 +832,7 @@ function ChatPage() {
           console.error('Failed to upload attachment:', err)
         }
       }
-  
+
       addMessage({
         role: 'user',
         content: prompt,
@@ -826,7 +975,7 @@ function ChatPage() {
 
   const handleConfirm = (runId) => withCardBusy(async (index) => {
     // Read before the patch: this is what the user just authorised, and it is
-    // what the session spend in the status bar accumulates. Presentation only —
+    // what the session spend in the top bar accumulates. Presentation only —
     // the figure comes off the card that is already on screen.
     const authorised = Number(useChatStore.getState().messages[index]?.plan?.total_cost_usd)
 
@@ -857,7 +1006,7 @@ function ChatPage() {
       cardIndexRef.current = index
       patchMessage(progressIndex, {
         content: `Error: ${error?.response?.data?.detail || error?.message || 'Generation failed'}`
-          + ' — your plan is still here, press Confirm again once it is sorted.',
+          + ' — your plan is still here, press Authorise again once it is sorted.',
       })
       closeSocket()
       progressTargetRef.current = null
@@ -881,11 +1030,180 @@ function ChatPage() {
 
   const composerDisabled = loading || (!!activeRunId && !awaitingUser)
 
-  /* Three bands: the transcript scrolls, the run strip and the composer are
-     pinned. No viewport calc — <main> is a flex child with a definite height,
-     so the page is simply h-full. */
+  /* ── OPENING A PROJECT ───────────────────────────────────────────────────
+     Exactly the path the rail takes: set the current chat id and let the
+     effect above own everything that follows — loading the transcript AND
+     re-querying /active-run so an unfinished run is picked back up. There is
+     deliberately no second implementation of "open a chat"; a parallel one
+     would drift from the run-restoration and message-index behaviour the rest
+     of this file depends on. */
+  const openProject = (chatId) => {
+    if (chatId === currentChatId) return
+    setMessages([])
+    setCurrentChatId(chatId)
+  }
+
+  /* Going back tears the run down exactly the way a chat switch does. The run
+     itself keeps going server-side; reopening the project re-queries
+     /active-run and picks it up again. */
+  const backToWorkspace = () => {
+    endRun()
+    setMessages([])
+    setCurrentChatId(null)
+  }
+
+  const startProject = async () => {
+    try {
+      const chat = await chatService.createChat()
+      useChatStore.setState((state) => ({
+        chats: [chat, ...state.chats],
+        currentChatId: chat.id,
+        messages: [],
+      }))
+    } catch (error) {
+      console.error('Failed to create chat:', error)
+    }
+  }
+
+  /* THE WORK ORDER AWAITING AUTHORISATION.
+     Derived from the message array, read-only, scanning backwards by index —
+     the same identity every other part of this flow uses. Nothing is
+     reordered, filtered or re-keyed; this only reads.
+
+     It is NOT gated on `awaitingUser`, deliberately: that flag drops to false
+     for the duration of every free card call (edit, settings, preview), and
+     gating on it would make the authorisation blink out of the top bar every
+     time the user changed the aspect ratio. The card's own `busy` flag
+     disables the button instead, which is what busy means. */
+  const pendingPlan = useMemo(() => {
+    if (!activeRunId) return null
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i]
+      if (!m) continue
+      if (m.kind === 'plan' && m.plan && !m.resolved) return m
+      // A clarification still on screen is the thing being answered; there is
+      // no plan to authorise until it resolves into one.
+      if (m.kind === 'clarification' && !m.resolved) return null
+    }
+    return null
+  }, [messages, activeRunId])
+
+  const pendingCost = Number(pendingPlan?.plan?.total_cost_usd)
+  const hasPendingCost = Number.isFinite(pendingCost) && pendingCost > 0
+
+  const openChat = chats.find((c) => c.id === currentChatId)
+  const openTitle = (openChat?.title || '').trim() || tx('untitled')
+
+  /* ── THE WORKSPACE GRID ─────────────────────────────────────────────────── */
+  if (!currentChatId) {
+    return (
+      <div className="main">
+        <div className="pagehead">
+          <div className="min-w-0">
+            <h1 className="page-title">{tx('workspace')}</h1>
+            <p className="page-sub">{tx('workspaceSub')}</p>
+          </div>
+          <div className="shrink-0" style={{ marginInlineStart: 'auto' }}>
+            {/* The one filled button on this screen. */}
+            <button type="button" className="btn" onClick={startProject}>
+              {tx('newProject')}
+            </button>
+          </div>
+        </div>
+
+        <div className="sechead">
+          <h2 className="sec-title">{tx('projects')}</h2>
+        </div>
+
+        {workLoading && chats.length === 0 ? (
+          <div className="grid-media">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="card" style={{ overflow: 'hidden' }}>
+                <div className="skel" style={{ aspectRatio: '16/9', borderRadius: 0 }} />
+                <div style={{ padding: 13 }}>
+                  <div className="skel" style={{ blockSize: 12, inlineSize: '70%' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : chats.length === 0 ? (
+          <div className="card card-pad">
+            <h3 className="sec-title">{tx('noProjects')}</h3>
+            <p style={{ color: 'var(--ink-2)', fontSize: 14, marginBlockStart: 2, marginBlockEnd: 12 }}>{tx('noProjectsLine')}</p>
+            <button type="button" className="btn-q btn-q--sm" onClick={startProject}>
+              {tx('newProject')}
+            </button>
+          </div>
+        ) : (
+          <div className="grid-media">
+            {chats.map((chat) => (
+              <ProjectTile
+                key={chat.id}
+                chat={chat}
+                asset={workByChat[chat.id]}
+                tx={tx}
+                onOpen={() => openProject(chat.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  /* ── THE TRANSCRIPT ──────────────────────────────────────────────────────
+     Three bands: the head and the composer are pinned, the transcript scrolls.
+     No viewport calc — <main> is a grid child with a definite height, so this
+     is simply h-full. */
   return (
-    <div className="flex flex-col h-full min-h-0" style={{ backgroundColor: 'var(--paper)' }}>
+    <div className="flex flex-col h-full min-h-0">
+      {/* THE ONE FILLED BUTTON ON THIS SCREEN, in the slot the whole system
+          reserves for the action that spends money. The label carries the
+          figure, so the cost is stated on the control as well as in the
+          document above it. */}
+      {pendingPlan && (
+        <TopBarAction>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => handleConfirm(pendingPlan.runId || activeRunId)}
+            disabled={!!pendingPlan.busy || loading}
+            title={tx('commitCosts')}
+          >
+            <Commit size={16} />
+            <span>{tx('authorise')}</span>
+            {hasPendingCost && <Money usd={pendingCost} onFill style={{ fontSize: 13 }} />}
+          </button>
+        </TopBarAction>
+      )}
+
+      <header
+        className="shrink-0 px-4 sm:px-6"
+        style={{ background: 'var(--card)', borderBlockEnd: '1px solid var(--line)', paddingBlock: 12 }}
+      >
+        {/* THE WAY BACK SITS ON THE LEADING EDGE. It used to sit inside the
+            900px centred column, which parked it in the middle of the bar with
+            nothing to its outside — a breadcrumb belongs at the edge you read
+            from. `inset-inline-start` by construction: it is simply first in a
+            full-width flex row, so it is the far RIGHT in Arabic and the far
+            LEFT in English with nothing hard-coded.
+
+            The title is .sec-title (16px/600), not .page-title (26px). This is
+            a persistent header above a scrolling transcript, not a page hero;
+            at hero size it dominated the screen and ate the height the
+            transcript needs. Full title stays in `title`. */}
+        <div className="flex items-center gap-3">
+          <button type="button" className="btn-t shrink-0" onClick={backToWorkspace}>
+            <Caret size={15} direction="start" />
+            {tx('workspace')}
+          </button>
+          {/* <bdi>: a project title is written in the language of the prompt,
+              and an English title inside the Arabic UI otherwise has its
+              punctuation dragged to the wrong end (A3). */}
+          <h1 className="sec-title truncate min-w-0" title={openTitle}><bdi>{openTitle}</bdi></h1>
+        </div>
+      </header>
+
       <ChatMessages
         messages={messages}
         loading={loading}
@@ -893,9 +1211,11 @@ function ChatPage() {
         onSubmit={handleSendPrompt}
         phase={phase}
       />
+
       {composerDisabled && (
-        <RunStrip phase={phase} percent={percent} sceneNumber={sceneNumber} elapsedMs={elapsedMs} />
+        <RunBand phase={phase} percent={percent} sceneNumber={sceneNumber} elapsedMs={elapsedMs} />
       )}
+
       <PromptInput onSubmit={handleSendPrompt} disabled={composerDisabled} />
     </div>
   )

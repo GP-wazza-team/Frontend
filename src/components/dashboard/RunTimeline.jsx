@@ -9,8 +9,6 @@
      · The four summary boxes lose their individual borders and become the
        same rubric strip the ledger page uses — one instrument on a shared
        baseline, not four cards.
-     · The dialog is laid on the app's own 56px gutter grid, so scene numbers
-       and step indices sit on the same axis as the chat turn indices.
      · THE SEAM AT STEP RESOLUTION: every step that actually charged credits
        carries a 2px --signal rule on its leading edge. Scroll the table and
        you can see exactly where the money went inside the run — the same
@@ -46,38 +44,56 @@ function formatTime(ts) {
   }
 }
 
-/* A ruled entry: legend in the gutter, prose in the column. Replaces the
-   label-above-value stack inside a bordered box. */
+/* A label above its value, not beside it.
+
+   The value is prose — a plan summary runs several lines — and a 132px label
+   column beside it wasted a third of a narrow drawer to hold one word. Label
+   over value gives the text the full measure.
+
+   <bdi> because the plan is written in the language of the PROMPT: English
+   prose lands in this Arabic drawer, and without isolation the trailing full
+   stop resolves against the RTL paragraph and renders as ".first light". */
 function Entry({ label, value }) {
   if (!value) return null
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 132px) minmax(0, 1fr)',
-        gap: 16,
-        paddingBlock: 10,
-        borderBlockStart: '1px solid var(--etch)',
-      }}
-    >
-      <span className="legend" style={{ marginBlock: 0 }}>{label}</span>
-      <span style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 'var(--lh-body)' }}>{value}</span>
+    <div style={{ paddingBlock: 10, borderBlockStart: '1px solid var(--line)' }}>
+      <span className="label" style={{ display: 'block', marginBlockEnd: 3 }}>{label}</span>
+      <bdi
+        style={{
+          display: 'block',
+          fontSize: 13,
+          color: 'var(--ink)',
+          lineHeight: 1.65,
+          overflowWrap: 'break-word',
+        }}
+      >
+        {value}
+      </bdi>
     </div>
   )
 }
 
-function Group({ legend, index, children }) {
+/* THE PHANTOM COLUMN, and why this section rendered as a ribbon.
+
+   This used to be `gridTemplateColumns: 'var(--rail-spine) minmax(0,1fr)'`
+   with a `.wz-gutter` first child holding a zero-padded ordinal. Two things
+   then happened to it:
+
+     1. `--rail-spine` is a compatibility alias that now resolves to the NEW
+        rail width. The gutter went from 56px to 216px.
+     2. `.wz-gutter` is `display: none` in the compatibility shim — and a
+        display:none grid item is REMOVED FROM THE GRID, so it never occupies
+        its cell. The content div was then auto-placed into column 1.
+
+   So the whole section was rendering inside a 216px track while the real
+   content column sat empty beside it: a paragraph wrapping two words per line
+   with a third of the drawer blank. The gutter carried an ordinal nobody was
+   navigating by, so it is gone rather than resized. */
+function Group({ legend, children }) {
   return (
-    <section style={{ display: 'grid', gridTemplateColumns: 'var(--rail-spine) minmax(0, 1fr)', marginBlockStart: 24 }}>
-      <div className="wz-gutter">
-        <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start', display: 'block' }}>
-          {String(index).padStart(2, '0')}
-        </span>
-      </div>
-      <div className="min-w-0">
-        <span className="legend" style={{ marginBlockStart: 0 }}>{legend}</span>
-        {children}
-      </div>
+    <section style={{ marginBlockStart: 24, minInlineSize: 0 }}>
+      <h3 className="sec-title" style={{ fontSize: 14, marginBlockEnd: 6 }}>{legend}</h3>
+      {children}
     </section>
   )
 }
@@ -245,7 +261,7 @@ function RunTimeline({ runId, onClose }) {
               />
 
               {data.plan && (data.plan.brief_summary || data.plan.characters) && (
-                <Group legend="What was approved" index={1}>
+                <Group legend="What was approved">
                   <div>
                     <Entry label="Summary" value={data.plan.brief_summary} />
                     <Entry label="Characters" value={data.plan.characters} />
@@ -256,7 +272,7 @@ function RunTimeline({ runId, onClose }) {
               )}
 
               {data.scenes?.length > 1 && (
-                <Group legend={`Script — ${data.scenes.length} scenes`} index={2}>
+                <Group legend={`Script — ${data.scenes.length} scenes`}>
                   <ol>
                     {data.scenes.map((s) => (
                       <li
@@ -279,7 +295,7 @@ function RunTimeline({ runId, onClose }) {
                 </Group>
               )}
 
-              <Group legend="Every step, beginning to end" index={3}>
+              <Group legend="Every step, beginning to end">
                 {steps.length === 0 ? (
                   <EmptyState line="No model calls recorded for this run." compact />
                 ) : (
@@ -372,7 +388,7 @@ function RunTimeline({ runId, onClose }) {
               </Group>
 
               {previews.length > 0 && (
-                <Group legend="Previews you asked for" index={4}>
+                <Group legend="Previews you asked for">
                   <div className="grid grid-cols-2 sm:grid-cols-4" style={{ gap: 12, marginBlockStart: 4 }}>
                     {previews.map((a) => (
                       <Frame key={a.id} caption={a.preview_type || 'preview'}>
@@ -384,7 +400,7 @@ function RunTimeline({ runId, onClose }) {
               )}
 
               {outputs.length > 0 && (
-                <Group legend="Final output" index={5}>
+                <Group legend="Final output">
                   <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 12, marginBlockStart: 4 }}>
                     {outputs.map((a) => (
                       <Frame key={a.id} caption={(a.asset_type || 'asset').toLowerCase()}>

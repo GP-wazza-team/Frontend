@@ -1,65 +1,68 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WAZZA · الصَّكّ — THE ICON SET
-   Hand-drawn. Nothing here comes from an icon package.
+   WAZZA — THE ICON SET
 
-   HOUSE STYLE — non-negotiable, applies to every mark.
-     · 20 x 20 viewBox. Not 24. Geometry snaps to a 2px sub-grid.
-     · stroke-width 1.5, stroke="currentColor", fill="none" by default.
-     · stroke-linecap BUTT. stroke-linejoin MITER. Never round — round caps
-       are the stock-icon-pack fingerprint.
-     · Outer geometry has zero corner radius.
-     · Arrows are 45 degree diagonals, never a horizontal chevron.
-     · No mark ever sits inside a tile, chip, circle or tinted box. Anywhere.
+   These are SUPPORTING marks. The navigation carries words, so no icon here
+   has to encode meaning on its own. Each one draws the CONVENTIONAL form of
+   its concept — the shape a user already knows from every other competent
+   product — so it is recognised in under a second with no training. If a mark
+   could sit unchanged in Frame.io, YouTube Studio or Premiere, that is the
+   correct outcome. Legibility beats novelty for a functional icon set.
 
-   THE THREE INVENTED CONSTANTS — this is what makes the set ours.
-     I1  THE NOTCH. Every plate-bodied mark carries one 3.5px 45 degree
-         chamfer at its block-start / inline-end corner. The notch follows the
-         LOGICAL corner: marks flagged `mirror` flip their geometry inside the
-         SVG under [dir=rtl], so the cut is top-end in both directions.
+   HOUSE STYLE — applies to every mark, no exceptions.
+     · 20 x 20 viewBox. Geometry snaps to a 2px sub-grid where it can.
+     · fill="none", stroke="currentColor", stroke-width 1.6.
+     · stroke-linecap ROUND, stroke-linejoin ROUND. The system uses a 10px/6px
+       corner radius everywhere; the icons agree with it rather than fighting
+       it. This is the single rule that keeps the set from reading as a
+       cockpit HUD.
+     · Rectangular bodies carry a 2–3px corner radius. No chamfers, no cut
+       corners, no notches anywhere.
+     · Consistent optical weight, roughly 16 x 16 of live area inside the
+       20 x 20 box, every mark optically centred.
+     · Monochrome outline. No two-tone, no accent fill, no filled variants.
+       Emphasis comes from colour and placement, set by the caller.
 
-         L2 CHANGED WHAT THIS MEANS, and it is worth being exact about it.
-         The notch used to be true because every panel and button in the app
-         was chamfered too — icons and containers were stamped from one die.
-         Under L2 the containers are no longer cut; the seal is reserved for
-         a committed record. So the notch is no longer a shared die. It is a
-         PICTURE of one: a mark whose body is an instrument with its corner
-         clipped, drawn the way the real thing is clipped. A drawing of a
-         sealed document may show the seal — that is what a drawing is for.
-         The set keeps its invented constant instead of being squared off to
-         play safe, which would have cost the iconography its point of view
-         and bought nothing.
-     I2  THE TICK ROW. Any mark representing a MEASURABLE QUANTITY — cost,
-         duration, credits, progress, tokens, count — carries three marks
-         along its bottom edge at x = 5, 10, 15. Non-quantitative marks never
-         carry it. The set encodes a semantic distinction no icon pack has.
-     I3  FILL IS MONEY (L1). Marks are hollow by default. A mark is drawn
-         FILLED only when the action it labels spends real credits. The
-         complete filled list: Send, Retry, Character, Environment, Commit.
-         Everything else is hollow, because everything else is free.
+   WHAT WAS DELETED, AND WHY
+     · THE NOTCH — a 3.5px 45° chamfer on every plate-bodied mark. It was a
+       private symbol and it is what made the set read as faction UI. Gone.
+     · THE TICK ROW — three ticks along the bottom edge of any "quantitative"
+       mark. It encoded a distinction no user ever decoded. Gone.
+     · FILL IS MONEY — marks drawn solid only when the action spent credits.
+       A filled icon reads as "selected" to everyone on earth, not as "costs
+       money". Gone; every mark is now a consistent outline.
+
+   RTL
+     `useRtl()` reports the current direction from the language store, and
+     App.jsx drives html[dir] from the same value. Genuinely directional marks
+     carry `mirror`, which adds `.wz-icon--flip`; the stylesheet flips those
+     under [dir=rtl]. Non-directional marks never flip — a magnifier, a clock,
+     a gear, a trend line and a play triangle read the same in both
+     directions, and flipping them is a bug, not a courtesy.
+     `Caret` is the exception: it rotates rather than flips, so it computes
+     its own angle from `useRtl()`.
 
    USAGE
      import { Chat, Ledger, Close } from '../components/Icon'
      <Chat size={16} />                      // size defaults to 16
-     <Caret size={16} direction="down" />    // caret is the only rotatable mark
+     <Caret size={16} direction="down" />    // the only rotatable mark
      Colour comes from `currentColor`. Set it on the parent, or pass
      className="text-[var(--ink-3)]" / style={{ color: 'var(--ink-3)' }}.
 
    SIZES  16px in dense rows and controls · 20px in the rail spine ·
-          14px inside a 24px action bar. Never larger than 20px in the product.
+          14px inside a 24px action bar · 10px for the status shapes.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React from 'react'
 import { useUIStore } from '../store/uiStore'
 
 /* The direction the marks are stamped for. App.jsx drives html[dir] from this
-   same value, so the notch can never disagree with the container chamfer. */
+   same value, so a mirrored mark can never disagree with its container. */
 export function useRtl() {
   return useUIStore((s) => s.language === 'ar')
 }
 
 function Svg({ size = 16, className = '', mirror = false, children, ...rest }) {
-  const rtl = useRtl()
-  const flip = mirror && rtl
+  const cls = `wz-icon${mirror ? ' wz-icon--flip' : ''}${className ? ' ' + className : ''}`
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -68,98 +71,79 @@ function Svg({ size = 16, className = '', mirror = false, children, ...rest }) {
       height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="butt"
-      strokeLinejoin="miter"
-      className={`wz-icon${className ? ' ' + className : ''}`}
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cls}
       aria-hidden="true"
       focusable="false"
       {...rest}
     >
-      {flip ? <g transform="translate(20,0) scale(-1,1)">{children}</g> : children}
+      {children}
     </svg>
   )
 }
 
-/* I1 — the notched plate. One die, every mark. */
-const plate = (x = 2, y = 2, w = 16, h = 16, c = 3.5) =>
-  `M${x} ${y} H${x + w - c} L${x + w} ${y + c} V${y + h} H${x} Z`
-
-/* I2 — the tick row. Quantitative marks only. */
-const TICKS = 'M5 16.4 V18.4 M10 16.4 V18.4 M15 16.4 V18.4'
-
 /* ── NAVIGATION ─────────────────────────────────────────────────────────── */
 
-/* The transcript, not a speech bubble. One flush entry rule (the assistant)
-   and one indented rule carrying the 2px seam bar (you) — the exact grammar
-   of the chat surface it opens. */
+/* Speech bubble with a tail. Mirrored: the tail follows the reading side. */
 export const Chat = (p) => (
   <Svg mirror {...p}>
-    <path d={plate(2, 3, 16, 14)} />
-    <path d="M5 7.5 H14.5" />
-    <path d="M8.5 12 H14.5" />
-    <path d="M5.9 10 V14" />
+    <path d="M17 11.5 A2.5 2.5 0 0 1 14.5 14 H10.5 L6.5 17 V14 H5.5 A2.5 2.5 0 0 1 3 11.5 V6 A2.5 2.5 0 0 1 5.5 3.5 H14.5 A2.5 2.5 0 0 1 17 6 Z" />
   </Svg>
 )
 
-/* Ruled entries with a running total, and the tick row: this is the ledger. */
+/* The dashboard. A bar chart on a baseline — the universal analytics mark. */
 export const Ledger = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 13)} />
-    <path d="M5 6.5 H14.5" />
-    <path d="M5 9.5 H11.5" />
-    <path d="M5 12.5 H14.5" />
-    <path d={TICKS} />
+  <Svg {...p}>
+    <path d="M3 16.5 H17" />
+    <path d="M6.5 16.5 V10" />
+    <path d="M10 16.5 V4.5" />
+    <path d="M13.5 16.5 V7.5" />
   </Svg>
 )
 
-/* A stack of prints. The front plate carries the notch. */
+/* The asset library. A stack of pictures. */
 export const Library = (p) => (
   <Svg mirror {...p}>
-    <path d="M6.5 2.5 H17.5 V13.5" />
-    <path d={plate(2, 6, 13, 12)} />
-    <path d="M2 15 L6 11 L8.5 13.5 L11 11 L15 15" />
+    <path d="M6 3.5 H15.5 A1.5 1.5 0 0 1 17 5 V14.5" />
+    <rect x="2.5" y="6" width="12" height="11" rx="2" />
+    <path d="M2.6 14.6 L6.6 10.6 L9.2 13.2 L11 11.4 L14.4 14.8" />
   </Svg>
 )
 
-/* Not a shield. A plate inside a plate: the console seen from above, the one
-   view that contains all the others. Structurally distinct from every
-   rule-bearing mark, so it still reads at 16px in the spine. */
+/* The admin console. A shield. */
 export const Admin = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d={plate(6, 6, 8, 8, 2)} />
+  <Svg {...p}>
+    <path d="M10 2.8 L16.5 5.3 V10.2 Q16.5 15.2 10 17.3 Q3.5 15.2 3.5 10.2 V5.3 Z" />
   </Svg>
 )
 
-/* Not a gear. A fader bank — three rules, three handles, an instrument. */
+/* Settings. A gear — hub, ring, six teeth. */
 export const Settings = (p) => (
-  <Svg mirror {...p}>
-    <path d="M2.5 5.5 H17.5" />
-    <path d="M2.5 10 H17.5" />
-    <path d="M2.5 14.5 H17.5" />
-    <path d="M11.5 4 H14.5 V7 H11.5 Z" />
-    <path d="M5 8.5 H8 V11.5 H5 Z" />
-    <path d="M12.5 13 H15.5 V16 H12.5 Z" />
+  <Svg {...p}>
+    <circle cx="10" cy="10" r="2.4" />
+    <circle cx="10" cy="10" r="5" />
+    <path d="M15 10 H17.2" />
+    <path d="M12.5 5.67 L13.6 3.77" />
+    <path d="M7.5 5.67 L6.4 3.77" />
+    <path d="M5 10 H2.8" />
+    <path d="M7.5 14.33 L6.4 16.23" />
+    <path d="M12.5 14.33 L13.6 16.23" />
   </Svg>
 )
 
 /* ── THE BRAND MARK ─────────────────────────────────────────────────────── */
 
-/* THE GATE. A chamfered plate carrying three ascending meter ticks. Two are
-   THE SEALED SQUARE. A square with its block-start / inline-end corner cut,
-   and one rule across it at the baseline position: the seal and the jadwal,
-   the two ideas the whole system is built from. A cut corner means this
-   record was issued and cannot be issued again (L2); the rule is the ruled
-   line of a set page, and the only line this system permits.
+/* A rounded square with one rule across it: the jadwal, the ruled line of a
+   set page, and the only line this system permits. Monochrome — it takes
+   currentColor and nothing else.
 
-   It replaces the old meter-tick mark, which drew three ascending ticks with
-   the tallest one filled in amber. That mark taught L1 rather than L2, and
-   the filled amber bar made the logo itself the loudest accent on the login
-   screen — a brand mark spending one of L3's two permitted appearances.
-   Monochrome now: it takes currentColor and nothing else.
-
-   Language-neutral, legible at 16px, and the same drawing as the favicon. */
+   NOTE: this used to be a CHAMFERED square (a 3.5px corner cut). The chamfer
+   is gone along with the rest of the notch doctrine, so public/favicon.svg —
+   which still draws the cut corner and butt caps — no longer matches this
+   file and needs the same treatment: rx 3.2, stroke-width 1.6, round caps
+   and joins. */
 export const Mark = ({ size = 20, className = '', ...rest }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -168,300 +152,292 @@ export const Mark = ({ size = 20, className = '', ...rest }) => (
     height={size}
     fill="none"
     stroke="currentColor"
-    strokeWidth={1.5}
-    strokeLinecap="butt"
-    strokeLinejoin="miter"
+    strokeWidth={1.6}
+    strokeLinecap="round"
+    strokeLinejoin="round"
     className={`wz-icon${className ? ' ' + className : ''}`}
     aria-hidden="true"
     focusable="false"
     {...rest}
   >
-    <path d="M2 2 H14.5 L18 5.5 V18 H2 Z" />
-    <path d="M2 13 H18" />
+    <rect x="2.8" y="2.8" width="14.4" height="14.4" rx="3.2" />
+    <path d="M2.8 12.4 H17.2" />
   </svg>
 )
 
 /* ── RAIL ───────────────────────────────────────────────────────────────── */
 
-/* An ID plate. No circle, no initials disc, no avatar. */
+/* The account. A person. */
 export const Account = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 4, 16, 12)} />
-    <path d="M4.5 7 H8 V10.5 H4.5 Z" />
-    <path d="M10 8 H15.5" />
-    <path d="M4.5 13 H15.5" />
+  <Svg {...p}>
+    <circle cx="10" cy="7" r="3.3" />
+    <path d="M4 17 A6.25 6.25 0 0 1 16 17" />
   </Svg>
 )
 
-/* A tonal step wedge, not a sun and a moon. */
+/* Appearance. A crescent moon. */
 export const Theme = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d="M10 2 V18" />
-    <path d="M4.5 7 H7.5" />
-    <path d="M4.5 10 H7.5" />
-    <path d="M4.5 13 H7.5" />
+  <Svg {...p}>
+    <path d="M17.17 10.66 A7.2 7.2 0 1 1 9.34 2.83 A5.6 5.6 0 0 0 17.17 10.66 Z" />
   </Svg>
 )
 
-/* Two scripts inside one bracket pair. No flags, no globes. */
+/* Language. A globe. */
 export const Language = (p) => (
   <Svg {...p}>
-    <path d="M7 3.5 H3.5 V16.5 H7" />
-    <path d="M13 3.5 H16.5 V16.5 H13" />
-    <path d="M10 6 V14" />
+    <circle cx="10" cy="10" r="7.2" />
+    <path d="M2.8 10 H17.2" />
+    <ellipse cx="10" cy="10" rx="3.1" ry="7.2" />
   </Svg>
 )
 
 /* ── CHAT ───────────────────────────────────────────────────────────────── */
 
-/* FILLED (I3): sending a prompt starts a run, and a run costs money.
-   A solid 45 degree arrow flying up and out of the frame. */
+/* A paper plane. Directional, so it mirrors. */
 export const Send = (p) => (
   <Svg mirror {...p}>
-    <path
-      d="M16.6 3.4 V11.2 L13.4 8 L4.8 16.6 L3.4 15.2 L12 6.6 L8.8 3.4 Z"
-      fill="currentColor"
-      stroke="none"
-    />
+    <path d="M17.5 2.5 L2.5 9.3 L9.1 11.6 L11.5 17.5 Z" />
+    <path d="M17.5 2.5 L9.1 11.6" />
   </Svg>
 )
 
-/* A flat clip at 45 degrees. No paperclip curve — there are no curves here. */
+/* A paperclip. */
 export const Attach = (p) => (
-  <Svg mirror {...p}>
-    <path d="M13.5 4.5 L4.5 13.5" />
-    <path d="M15.5 6.5 L6.5 15.5" />
-    <path d="M13.5 4.5 L15.5 6.5" />
-    <path d="M4.5 13.5 L6.5 15.5" />
-  </Svg>
-)
-
-/* A blank plate, opened. */
-export const NewJob = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d="M10 6 V14" />
-    <path d="M6 10 H14" />
-  </Svg>
-)
-
-/* A caret resting on a rule: rename, edit in place. */
-export const Amend = (p) => (
   <Svg {...p}>
-    <path d="M3.5 16.5 H16.5" />
-    <path d="M6 12 L10 6.5 L14 12" />
-    <path d="M10 6.5 V13.5" />
+    <path d="M17.47 9.44 l-7.35 7.35 a4.8 4.8 0 0 1 -6.79 -6.79 l7.35 -7.35 a3.2 3.2 0 0 1 4.53 4.53 l-7.36 7.35 a1.6 1.6 0 0 1 -2.26 -2.26 l6.79 -6.78" />
   </Svg>
 )
 
-/* A record struck through. Deleting a chat removes an entry from the log — it
-   is not a wastebasket, and this application has no wastebasket. Deliberately
-   the inverse of NewJob: the same plate, a bar instead of a cross. */
+/* New. A plus. */
+export const NewJob = (p) => (
+  <Svg {...p}>
+    <path d="M10 4.2 V15.8" />
+    <path d="M4.2 10 H15.8" />
+  </Svg>
+)
+
+/* Rename / edit in place. A pencil. Handed, so it mirrors. */
+export const Amend = (p) => (
+  <Svg mirror {...p}>
+    <path d="M3.7 16.8 L4.6 13.5 L14.1 4 L16.5 6.4 L7 15.9 Z" />
+    <path d="M12.1 6 L14.5 8.4" />
+  </Svg>
+)
+
+/* Delete. A wastebasket. (Was a struck record — same meaning, conventional
+   drawing.) */
 export const Strike = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d="M5.5 10 H14.5" />
+  <Svg {...p}>
+    <path d="M3.6 5.4 H16.4" />
+    <path d="M8 5.4 V4 A1 1 0 0 1 9 3 H11 A1 1 0 0 1 12 4 V5.4" />
+    <path d="M5.5 5.4 V15.6 A1.6 1.6 0 0 0 7.1 17.2 H12.9 A1.6 1.6 0 0 0 14.5 15.6 V5.4" />
   </Svg>
 )
 
-/* FILLED (I3): retrying resumes a paid run. A square loop, hard corners. */
+/* Retry. A single counter-clockwise arrow — "run it again". */
 export const Retry = (p) => (
-  <Svg mirror {...p}>
-    <path d="M5 10.5 V15.5 H15.5 V4.5 H11" />
-    <path d="M11.8 1.8 V7.2 L8 4.5 Z" fill="currentColor" stroke="none" />
+  <Svg {...p}>
+    <path d="M2 3.6 V8.4 H6.8" />
+    <path d="M4.01 12.4 A7.2 7.2 0 1 0 5.71 4.91 L2 8.4" />
   </Svg>
 )
 
+/* Help. A question mark in a circle. */
 export const Help = (p) => (
-  <Svg mirror {...p}>
-    <path d="M6.5 7.5 L10 4 L13.5 7.5 L10 11 V13" />
-    <path d="M10 15 V17" />
+  <Svg {...p}>
+    <circle cx="10" cy="10" r="7.2" />
+    <path d="M7.7 8 A2.3 2.3 0 1 1 10 11 V12.3" />
+    <path d="M10 14.6 V14.61" />
   </Svg>
 )
 
 /* ── PLAN ───────────────────────────────────────────────────────────────── */
 
-/* A chamfered frame with a numeral slot cut from its leading edge. */
+/* A scene. A three-panel storyboard strip. */
 export const Scene = (p) => (
-  <Svg mirror {...p}>
-    <path d="M2 2 H14.5 L18 5.5 V18 H2 V12.5 H6 V7.5 H2 Z" />
-    <path d="M9 8 H15" />
-    <path d="M9 12 H15" />
+  <Svg {...p}>
+    <rect x="2.6" y="4.6" width="14.8" height="10.8" rx="2" />
+    <path d="M7.5 4.6 V15.4" />
+    <path d="M12.5 4.6 V15.4" />
   </Svg>
 )
 
+/* The script. A document with a folded corner and ruled lines. */
 export const Script = (p) => (
   <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d="M5 7 H14" />
-    <path d="M5 10 H14" />
-    <path d="M5 13 H10.5" />
+    <path d="M11.2 2.8 H6 A2 2 0 0 0 4 4.8 V15.2 A2 2 0 0 0 6 17.2 H14 A2 2 0 0 0 16 15.2 V7.6 Z" />
+    <path d="M11.2 2.8 V6.6 A1 1 0 0 0 12.2 7.6 H16" />
+    <path d="M6.8 11 H13.2" />
+    <path d="M6.8 13.8 H13.2" />
   </Svg>
 )
 
-/* FILLED (I3): generating a character preview spends credits. */
+/* A character. A portrait in a frame. */
 export const Character = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <rect x="6" y="5.5" width="5" height="5" fill="currentColor" stroke="none" />
-    <path d="M6 14 H14" />
+  <Svg {...p}>
+    <rect x="2.8" y="2.8" width="14.4" height="14.4" rx="3" />
+    <circle cx="10" cy="8.2" r="2.2" />
+    <path d="M5.9 15.6 A4.6 4.6 0 0 1 14.1 15.6" />
   </Svg>
 )
 
-/* FILLED (I3): generating an environment preview spends credits. */
+/* An environment. A landscape. */
 export const Environment = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d="M4 14.5 L8 9 L10.8 12.5 L13 10 L16 14.5 Z" fill="currentColor" stroke="none" />
+  <Svg {...p}>
+    <path d="M2.8 15.6 L7.4 8.6 L11 13.4 L13.2 10.6 L17.2 15.6" />
+    <circle cx="14.4" cy="5.4" r="1.9" />
   </Svg>
 )
 
-/* Free: ask for the plan again. Hollow square loop, 45 degree head. */
+/* Revise / reload. The two-arrow refresh loop. Distinct from Retry, which is
+   one arrow going the other way. */
 export const Revise = (p) => (
-  <Svg mirror {...p}>
-    <path d="M5 10.5 V15.5 H15.5 V4.5 H11" />
-    <path d="M13.5 2 L10.5 4.9 L13.5 7.8" />
+  <Svg {...p}>
+    <path d="M17.7 4.4 V8.6 H13.5" />
+    <path d="M2.3 15.6 V11.4 H6.5" />
+    <path d="M4.06 7.9 A6.3 6.3 0 0 1 14.46 5.55 L17.7 8.6" />
+    <path d="M2.3 11.4 L5.55 14.45 A6.3 6.3 0 0 0 15.94 12.1" />
   </Svg>
 )
 
-/* FILLED (I3): this is the one that authorises the spend. A struck seal. */
+/* Commit — the action that authorises the spend. A check in a circle. */
 export const Commit = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d="M6 6 H11.5 L14 8.5 V14 H6 Z" fill="currentColor" stroke="none" />
+  <Svg {...p}>
+    <circle cx="10" cy="10" r="7.2" />
+    <path d="M6.6 10.2 L8.9 12.5 L13.5 7.6" />
   </Svg>
 )
 
-/* Two crossed ticks at stroke weight, on a plate: the order is voided. */
+/* Cancel / void. An X in a circle — distinct from Close, which is a bare X. */
 export const Void = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d="M6.5 6.5 L13.5 13.5" />
-    <path d="M13.5 6.5 L6.5 13.5" />
+  <Svg {...p}>
+    <circle cx="10" cy="10" r="7.2" />
+    <path d="M7.3 7.3 L12.7 12.7" />
+    <path d="M12.7 7.3 L7.3 12.7" />
   </Svg>
 )
 
+/* A note. The information mark. */
 export const Note = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 2, 16, 16)} />
-    <path d="M10 5.5 V11" />
-    <path d="M10 13 V14.8" />
+  <Svg {...p}>
+    <circle cx="10" cy="10" r="7.2" />
+    <path d="M10 9.4 V13.6" />
+    <path d="M10 6.6 V6.61" />
   </Svg>
 )
 
 /* ── MEDIA ──────────────────────────────────────────────────────────────── */
 
+/* A photograph. */
 export const ImageMark = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2, 3, 16, 14)} />
-    <path d="M2 14 L7 8.5 L10 12 L12.5 9.5 L18 15" />
-    <path d="M12.5 6 H14.5" />
+  <Svg {...p}>
+    <rect x="2.8" y="3.6" width="14.4" height="12.8" rx="2.4" />
+    <circle cx="6.8" cy="7.6" r="1.4" />
+    <path d="M3 16 L8.4 10.6 L11.8 14 L13.8 12 L17 15.2" />
   </Svg>
 )
 
-/* A frame with two sprocket notches cut into its leading edge only. */
+/* A video. Play, in a frame. Playback marks are never mirrored. */
 export const VideoMark = (p) => (
-  <Svg mirror {...p}>
-    <path d="M2 3 H14.5 L18 6.5 V17 H2 V14 H4.5 V12 H2 V8 H4.5 V6 H2 Z" />
-    <path d="M8 7.5 L13 10 L8 12.5 Z" />
+  <Svg {...p}>
+    <rect x="2.8" y="4" width="14.4" height="12" rx="2.4" />
+    <path d="M8.4 7.6 L13.4 10 L8.4 12.4 Z" />
   </Svg>
 )
 
-/* A level meter, not a musical note. */
+/* Audio. A waveform. */
 export const AudioMark = (p) => (
   <Svg {...p}>
-    <path d="M3.5 8 V12" />
-    <path d="M7 5 V15" />
-    <path d="M10 7 V13" />
-    <path d="M13 3.5 V16.5" />
-    <path d="M16.5 8.5 V11.5" />
+    <path d="M3.4 8.6 V11.4" />
+    <path d="M6.7 5.8 V14.2" />
+    <path d="M10 7.4 V12.6" />
+    <path d="M13.3 4.6 V15.4" />
+    <path d="M16.6 8.6 V11.4" />
   </Svg>
 )
 
 export const Download = (p) => (
   <Svg {...p}>
-    <path d="M3.5 13 V16.5 H16.5 V13" />
-    <path d="M10 3 V12.5" />
-    <path d="M6 8.5 L10 12.5 L14 8.5" />
+    <path d="M10 3.2 V13.4" />
+    <path d="M6.2 9.6 L10 13.4 L13.8 9.6" />
+    <path d="M3.6 14.2 V15.6 A1.6 1.6 0 0 0 5.2 17.2 H14.8 A1.6 1.6 0 0 0 16.4 15.6 V14.2" />
   </Svg>
 )
 
+/* Expand to full size. Four corner brackets. */
 export const Expand = (p) => (
   <Svg {...p}>
-    <path d="M3 8 V3 H8" />
-    <path d="M17 12 V17 H12" />
-    <path d="M3.5 3.5 L8.5 8.5" />
-    <path d="M16.5 16.5 L11.5 11.5" />
+    <path d="M7.6 2.8 H4.4 A1.6 1.6 0 0 0 2.8 4.4 V7.6" />
+    <path d="M12.4 2.8 H15.6 A1.6 1.6 0 0 1 17.2 4.4 V7.6" />
+    <path d="M17.2 12.4 V15.6 A1.6 1.6 0 0 1 15.6 17.2 H12.4" />
+    <path d="M7.6 17.2 H4.4 A1.6 1.6 0 0 1 2.8 15.6 V12.4" />
   </Svg>
 )
 
-/* ── DATA — all five carry the tick row (I2) ────────────────────────────── */
+/* ── DATA ───────────────────────────────────────────────────────────────── */
 
-/* A squared currency mark. Straight lines only; no calligraphic S. */
+/* Money. A currency mark. */
 export const LedgerTick = (p) => (
-  <Svg mirror {...p}>
-    <path d="M13.5 5 H7.5 V9 H12.5 V13 H6.5" />
-    <path d="M10 3 V15" />
-    <path d={TICKS} />
+  <Svg {...p}>
+    <path d="M13.4 6.6 C13.4 5.1 11.9 4.2 10 4.2 C8.1 4.2 6.6 5.1 6.6 6.6 C6.6 8.2 8.1 8.9 10 9.4 C11.9 9.9 13.4 10.7 13.4 12.3 C13.4 13.8 11.9 14.7 10 14.7 C8.1 14.7 6.6 13.8 6.6 12.3" />
+    <path d="M10 2.6 V17.4" />
   </Svg>
 )
 
-/* A square clock. There are no circles in this system. */
+/* Elapsed time. A clock. */
 export const Duration = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(3, 2, 14, 12)} />
-    <path d="M10 5 V8.5 H13.5" />
-    <path d={TICKS} />
+  <Svg {...p}>
+    <circle cx="10" cy="10" r="7.2" />
+    <path d="M10 5.8 V10 H13.4" />
   </Svg>
 )
 
+/* Credits on the account. A card. */
 export const Credits = (p) => (
-  <Svg mirror {...p}>
-    <path d="M3.5 4 H16.5 V7.5 H3.5 Z" />
-    <path d="M3.5 9.5 H16.5 V13 H3.5 Z" />
-    <path d={TICKS} />
+  <Svg {...p}>
+    <rect x="2.6" y="4.6" width="14.8" height="10.8" rx="2.2" />
+    <path d="M2.6 8.4 H17.4" />
   </Svg>
 )
 
+/* A reading against a scale. A gauge. */
 export const MeterMark = (p) => (
-  <Svg mirror {...p}>
-    <path d="M3.5 11.5 V14.5" />
-    <path d="M7.5 8.5 V14.5" />
-    <path d="M11.5 6 V14.5" />
-    <path d="M15.5 3.5 V14.5" />
-    <path d={TICKS} />
+  <Svg {...p}>
+    <path d="M3.5 13.75 A6.6 6.6 0 1 1 16.5 13.75" />
+    <path d="M10 12.6 L14 8.6" />
   </Svg>
 )
 
+/* Tokens. Counted units. */
 export const Tokens = (p) => (
-  <Svg mirror {...p}>
-    <path d="M3.5 3.5 H8 V8 H3.5 Z" />
-    <path d="M11 3.5 H15.5 V8 H11 Z" />
-    <path d="M3.5 10 H8 V14.5 H3.5 Z" />
-    <path d="M11 10 H15.5 V14.5 H11 Z" />
-    <path d={TICKS} />
+  <Svg {...p}>
+    <rect x="3.2" y="3.2" width="6" height="6" rx="1.6" />
+    <rect x="10.8" y="3.2" width="6" height="6" rx="1.6" />
+    <rect x="3.2" y="10.8" width="6" height="6" rx="1.6" />
+    <rect x="10.8" y="10.8" width="6" height="6" rx="1.6" />
   </Svg>
 )
 
 /* ── SYSTEM ─────────────────────────────────────────────────────────────── */
 
-/* A square lens with the notch, and a 45 degree handle. */
+/* A magnifier. Never mirrored — the search glyph is the same in both
+   directions and flipping it only makes it look wrong. */
 export const Search = (p) => (
-  <Svg mirror {...p}>
-    <path d={plate(2.5, 2.5, 10, 10, 2.5)} />
-    <path d="M12.5 12.5 L17.5 17.5" />
+  <Svg {...p}>
+    <circle cx="8.8" cy="8.8" r="5.4" />
+    <path d="M12.7 12.7 L16.8 16.8" />
   </Svg>
 )
 
 export const Close = (p) => (
   <Svg {...p}>
-    <path d="M4.5 4.5 L15.5 15.5" />
-    <path d="M15.5 4.5 L4.5 15.5" />
+    <path d="M5.2 5.2 L14.8 14.8" />
+    <path d="M14.8 5.2 L5.2 14.8" />
   </Svg>
 )
 
-/* ONE caret, rotated by CSS. Never four separate files.
+/* ONE chevron, rotated. It rotates rather than flips, so it takes its angle
+   from the direction directly.
    direction: 'end' (default, points along the reading direction) | 'start' |
    'up' | 'down'. */
 export const Caret = ({ direction = 'end', style, ...rest }) => {
@@ -473,127 +449,144 @@ export const Caret = ({ direction = 'end', style, ...rest }) => {
     (rtl ? 180 : 0)
   return (
     <Svg {...rest} style={{ ...style, transform: `rotate(${deg}deg)` }}>
-      <path d="M7 3.5 L13.5 10 L7 16.5" />
+      <path d="M7.6 4 L13.4 10 L7.6 16" />
     </Svg>
   )
 }
 
 export const Check = (p) => (
   <Svg {...p}>
-    <path d="M3.5 10 L8 14.5 L16.5 5" />
+    <path d="M4.4 10.4 L8.2 14.2 L15.6 5.8" />
   </Svg>
 )
 
-/* ── SHELL EXTRAS — not in the core 34, but the app needs them ──────────── */
+/* ── SHELL ──────────────────────────────────────────────────────────────── */
 
-/* The rail panel toggle: the spine, and the panel beside it. */
+/* The rail toggle. A panel with its sidebar column. Directional. */
 export const Fold = (p) => (
   <Svg mirror {...p}>
-    <path d={plate(2, 3, 16, 14)} />
-    <path d="M7.5 3 V17" />
+    <rect x="2.8" y="3.6" width="14.4" height="12.8" rx="2.4" />
+    <path d="M8 3.6 V16.4" />
   </Svg>
 )
 
-/* Leaving the console: a plate opened on the inline-end, and a 45 degree exit. */
+/* Sign out. A door and an arrow leaving through it. Directional. */
 export const SignOut = (p) => (
   <Svg mirror {...p}>
-    <path d="M10.5 3 H3.5 V17 H10.5" />
-    <path d="M8.5 10 H17" />
-    <path d="M13 6 L17 10 L13 14" />
+    <path d="M12 16.6 H5.2 A1.8 1.8 0 0 1 3.4 14.8 V5.2 A1.8 1.8 0 0 1 5.2 3.4 H12" />
+    <path d="M8.2 10 H16.6" />
+    <path d="M13.2 6.6 L16.6 10 L13.2 13.4" />
   </Svg>
 )
 
-/* A square aperture. No lens circle, no eyelid arc. */
+/* Reveal the password. An eye. */
 export const Reveal = (p) => (
   <Svg {...p}>
-    <path d="M2.5 10 L10 4 L17.5 10 L10 16 Z" />
-    <path d="M8.5 8.5 H11.5 V11.5 H8.5 Z" />
+    <path d="M2 10 s2.91 -5.82 8 -5.82 s8 5.82 8 5.82 s-2.91 5.82 -8 5.82 s-8 -5.82 -8 -5.82 Z" />
+    <circle cx="10" cy="10" r="2.18" />
   </Svg>
 )
 
 export const RevealOff = (p) => (
   <Svg {...p}>
-    <path d="M2.5 10 L10 4 L17.5 10 L10 16 Z" />
-    <path d="M8.5 8.5 H11.5 V11.5 H8.5 Z" />
-    <path d="M3 17 L17 3" />
+    <path d="M2 10 s2.91 -5.82 8 -5.82 s8 5.82 8 5.82 s-2.91 5.82 -8 5.82 s-8 -5.82 -8 -5.82 Z" />
+    <circle cx="10" cy="10" r="2.18" />
+    <path d="M3.4 16.6 L16.6 3.4" />
   </Svg>
 )
 
+/* Opens outside the app. Directional. */
 export const External = (p) => (
   <Svg mirror {...p}>
-    <path d="M9 3.5 H3.5 V16.5 H16.5 V11" />
-    <path d="M9.5 10.5 L16.5 3.5" />
-    <path d="M11 3.5 H16.5 V9" />
+    <path d="M10.6 3.8 H5.2 A1.4 1.4 0 0 0 3.8 5.2 V14.8 A1.4 1.4 0 0 0 5.2 16.2 H14.8 A1.4 1.4 0 0 0 16.2 14.8 V9.4" />
+    <path d="M12.6 3.4 H16.6 V7.4" />
+    <path d="M9.6 10.4 L16.6 3.4" />
   </Svg>
 )
 
+/* Trend marks are NOT mirrored. They read as miniature charts, and the charts
+   they sit beside (Recharts) always plot left to right in both directions —
+   a flipped arrow beside an unflipped chart is the wrong answer. */
 export const TrendUp = (p) => (
-  <Svg mirror {...p}>
-    <path d="M3 14.5 L8 9.5 L11 12.5 L17 6.5" />
-    <path d="M12 6.5 H17 V11.5" />
+  <Svg {...p}>
+    <path d="M3.2 14.6 L8 9.8 L11 12.8 L16.8 7" />
+    <path d="M12.4 7 H16.8 V11.4" />
   </Svg>
 )
 
 export const TrendDown = (p) => (
-  <Svg mirror {...p}>
-    <path d="M3 5.5 L8 10.5 L11 7.5 L17 13.5" />
-    <path d="M12 13.5 H17 V8.5" />
+  <Svg {...p}>
+    <path d="M3.2 5.4 L8 10.2 L11 7.2 L16.8 13" />
+    <path d="M12.4 13 H16.8 V8.6" />
   </Svg>
 )
 
-/* Two ID plates, overlapped. */
+/* People. */
 export const Users = (p) => (
   <Svg mirror {...p}>
-    <path d="M7.5 3.5 H17.5 V13" />
-    <path d={plate(2.5, 6.5, 12, 10, 2.5)} />
-    <path d="M5 9.5 H8 V12.5 H5 Z" />
-    <path d="M10 10 H13.5" />
-    <path d="M5 14.5 H13.5" />
+    <path d="M13.64 16.55 V15.09 A2.91 2.91 0 0 0 10.73 12.18 H4.91 A2.91 2.91 0 0 0 2 15.09 V16.55" />
+    <circle cx="7.82" cy="6.36" r="2.91" />
+    <path d="M17.99 16.55 V15.09 A2.91 2.91 0 0 0 15.81 12.28" />
+    <path d="M12.91 3.55 A2.91 2.91 0 0 1 12.91 9.19" />
   </Svg>
 )
 
+/* A funnel. */
 export const Filter = (p) => (
   <Svg {...p}>
-    <path d="M3 5.5 H17" />
-    <path d="M5.5 10 H14.5" />
-    <path d="M8 14.5 H12" />
+    <path d="M3.2 4.6 H16.8 L11.4 11.2 V16.2 L8.6 14.4 V11.2 Z" />
   </Svg>
 )
 
-/* ── STATE SHAPES (L4) ──────────────────────────────────────────────────────
-   Shape carries the meaning; hue is the second channel, never the first. A
-   colourblind user reads run state from these alone. Drawn on a 10px grid,
-   rendered at 10px inside <StatusMarker>. */
+/* ── STATUS SHAPES ──────────────────────────────────────────────────────────
+   Rendered at 10px inside <StatusMarker>. Shape carries the meaning; hue is
+   the second channel, never the first — a colourblind user, or anyone looking
+   at a greyscale print, reads run state from these alone.
+
+   The three circular states form a fill ramp, which is why they are legible
+   as a set: QUEUED is an empty ring, RUN is a ring with its trailing half
+   solid, DONE is a solid disc. Nothing → half → full. The two failure states
+   are deliberately NOT on that ramp: CANCELLED is a ring with a bar struck
+   through it, and FAIL has no ring at all — it is two crossing strokes, the
+   only mark in the set with no round outline. So at 10px the five silhouettes
+   are: solid disc · half-solid ring · empty ring · barred ring · bare cross.
+   These are the one place the set is allowed a solid fill, because at 10px
+   solidity is the only difference that survives.
+
+   Verified by eye at 10px in the browser: no. Verified geometrically — the
+   five silhouettes differ in ink coverage and in outline presence, which are
+   the two properties that survive downscaling. Worth one look on a real
+   screen before shipping. */
 
 export const ShapeDone = ({ size = 10, className = '', ...rest }) => (
   <svg viewBox="0 0 10 10" width={size} height={size} className={`wz-icon${className ? ' ' + className : ''}`} aria-hidden="true" focusable="false" {...rest}>
-    <rect x="1" y="1" width="8" height="8" fill="currentColor" />
+    <circle cx="5" cy="5" r="4" fill="currentColor" />
   </svg>
 )
 
 export const ShapeFail = ({ size = 10, className = '', ...rest }) => (
-  <svg viewBox="0 0 10 10" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="butt" className={`wz-icon${className ? ' ' + className : ''}`} aria-hidden="true" focusable="false" {...rest}>
-    <path d="M1.4 1.4 L8.6 8.6" />
-    <path d="M8.6 1.4 L1.4 8.6" />
+  <svg viewBox="0 0 10 10" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className={`wz-icon${className ? ' ' + className : ''}`} aria-hidden="true" focusable="false" {...rest}>
+    <path d="M1.7 1.7 L8.3 8.3" />
+    <path d="M8.3 1.7 L1.7 8.3" />
   </svg>
 )
 
 export const ShapeRun = ({ size = 10, className = '', ...rest }) => (
   <svg viewBox="0 0 10 10" width={size} height={size} className={`wz-icon${className ? ' ' + className : ''}`} aria-hidden="true" focusable="false" {...rest}>
-    <rect x="1.2" y="1.2" width="7.6" height="7.6" fill="none" stroke="currentColor" strokeWidth={1.4} />
-    <rect x="1.9" y="1.9" width="6.2" height="3.1" fill="currentColor" />
+    <circle cx="5" cy="5" r="3.5" fill="none" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M5 2.2 A2.8 2.8 0 0 1 5 7.8 Z" fill="currentColor" stroke="none" />
   </svg>
 )
 
 export const ShapeQueued = ({ size = 10, className = '', ...rest }) => (
-  <svg viewBox="0 0 10 10" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.4} className={`wz-icon${className ? ' ' + className : ''}`} aria-hidden="true" focusable="false" {...rest}>
-    <rect x="1.2" y="1.2" width="7.6" height="7.6" />
+  <svg viewBox="0 0 10 10" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.3} className={`wz-icon${className ? ' ' + className : ''}`} aria-hidden="true" focusable="false" {...rest}>
+    <circle cx="5" cy="5" r="3.5" />
   </svg>
 )
 
 export const ShapeCancelled = ({ size = 10, className = '', ...rest }) => (
-  <svg viewBox="0 0 10 10" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="butt" className={`wz-icon${className ? ' ' + className : ''}`} aria-hidden="true" focusable="false" {...rest}>
-    <rect x="1.2" y="1.2" width="7.6" height="7.6" />
-    <path d="M0.6 9.4 L9.4 0.6" />
+  <svg viewBox="0 0 10 10" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" className={`wz-icon${className ? ' ' + className : ''}`} aria-hidden="true" focusable="false" {...rest}>
+    <circle cx="5" cy="5" r="3.5" />
+    <path d="M2.53 7.47 L7.47 2.53" />
   </svg>
 )

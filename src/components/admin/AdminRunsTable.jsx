@@ -1,58 +1,37 @@
-/* ALL RUNS — the densest surface in the application.
+/* ── ALL RUNS — the densest surface in the application ────────────────────
+   A table is where you SCAN, so this is the dense half of principle 2: 13px
+   type, 40px rows, tabular figures in every repeating column, one hairline
+   between rows and nothing else.
 
-   THE RECOMPOSITION
-     · The plate is gone. Nine columns of run data do not need a card around
-       them; on a 1280 laptop that card's padding was the difference between
-       fitting and scrolling sideways. The table now runs the full band width
-       with a 56px leading column that lands on the page's gutter axis.
-     · The filter set left the table header entirely. Search, status and
-       Export are route controls, so they mount into the RAIL PANEL through
-       the named RunsFilters export below — which is why this component is now
-       just a table and a pager.
-     · The tinted uppercase pill chips are gone: state is a SHAPE in the
-       leading column (readable without colour, L4) and the word repeats at
-       the trailing edge in its tone.
-     · Every number goes through the ledger line, so a column of costs scans
-       magnitude-first.
-     · The row actions were pointer-only. They are now reachable by keyboard
-       through :focus-within, and they are bare marks — no circle, no tint.
-     · The spinner became a skeleton body at the true 36px row height, so the
-       table does not resize when the data lands.
+   THE CONTROLS CAME BACK OUT OF THE RAIL.
+   Search, the status filter and Export CSV used to be portalled into the left
+   rail through <RailPanelPortal>, which meant this page's ONLY search box
+   lived inside a collapsible panel that had to force itself open on arrival
+   so its own controls could be found. That is the shape of the problem, not a
+   fix — and the rail is where you ARE, never what is selected (principle 11).
+   They are now a toolbar row sitting directly above the table they filter,
+   exported as <RunsToolbar> so the route can place it there.
 
-   Every prop is unchanged: runs, total, page, limit, loading, onPageChange,
-   onRunClick, onExport, onDelete, filters, onFilterChange. */
+   THE STATUS FILTER USED TO BE A DEAD CONTROL. Its options were
+   [completed, failed, running, pending] but the API emits `succeeded`, never
+   `completed`, so picking "Completed" emptied the table every time. The list
+   now comes from the real enum (see RunStatusField.jsx).
 
-import React, { useEffect, useState } from 'react'
+   SEARCH IS LIVE. It reads the runs already in memory — there is no request
+   behind it — so making the user press Enter to see an in-memory filter was
+   latency that did not exist.
+
+   Props are unchanged: runs, total, page, limit, loading, onPageChange,
+   onRunClick, onDelete, filters, onFilterChange, onExport. */
+
+import React from 'react'
 import { Search, Caret, Expand, Strike, Download } from '../Icon'
 import { Money, Duration, RunId } from '../ui/Money'
-import { RunMarker, TableSkeleton } from '../dashboard/Instruments'
+import RunStatusField, { STATUS_FILTERS, statusLabel } from './RunStatusField'
 import EmptyState from '../ui/EmptyState'
 import { useUIStore } from '../../store/uiStore'
 
-const STATUS_OPTIONS = ['all', 'completed', 'failed', 'running', 'pending']
-
-/* The app is Arabic-first and every other route is bilingual; admin was the
-   one screen still hardcoded to English. uiStore has no key for a run's column
-   set or its status words and the store is frozen, so the pair is inlined here
-   exactly as AssetsPage inlines its filter labels — t() still wins the moment
-   those keys are added upstream. */
-function useLabel() {
-  const { t, language } = useUIStore()
-  const ar = language === 'ar'
-  const label = (key, arText, enText) => {
-    const v = t(key)
-    return v === key ? (ar ? arText : enText) : v
-  }
-  return { label, ar }
-}
-
-const STATUS_WORD = {
-  all: ['كل الحالات', 'All statuses'],
-  completed: ['مكتمل', 'Completed'],
-  failed: ['فاشل', 'Failed'],
-  running: ['قيد التنفيذ', 'Running'],
-  pending: ['في الانتظار', 'Pending'],
-}
+const COLUMNS = 9
 
 function formatTime(ts) {
   if (!ts) return '—'
@@ -63,76 +42,106 @@ function formatTime(ts) {
   }
 }
 
-/* ── THE RAIL-PANEL FILTER SET ─────────────────────────────────────────────
-   Mounted by the route into <RailPanelPortal>. It holds exactly the controls
-   that used to sit in the table header, with the same handlers. */
-export function RunsFilters({ filters = {}, onFilterChange, onExport, total = 0, matched }) {
-  const [search, setSearch] = useState(filters.search || '')
-  const { label, ar } = useLabel()
-
-  // Keep the field in step if the route resets the filters.
-  useEffect(() => { setSearch(filters.search || '') }, [filters.search])
-
-  const commit = () => onFilterChange({ ...filters, search: search.trim() })
+/* ── THE TOOLBAR ──────────────────────────────────────────────────────────
+   Search · status · the matched count · Export. The one filled button on this
+   screen is Export: on a page an auditor reads, taking the ledger away with
+   you is the action the screen exists to enable (principle 12). Everything
+   else here is quiet. */
+export function RunsToolbar({ filters = {}, onFilterChange, onExport, total = 0, matched = 0, disabled = false }) {
+  const { language } = useUIStore()
+  const ar = language === 'ar'
+  const filtered = Boolean(filters.search || filters.status)
 
   return (
-    <div>
-      <div className="relative" style={{ marginBlockEnd: 12 }}>
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap',
+        gap: 10, marginBlockEnd: 12,
+      }}
+    >
+      <div style={{ position: 'relative', flex: '1 1 260px', minInlineSize: 0 }}>
         <input
           type="text"
-          value={search}
+          value={filters.search || ''}
           placeholder={ar ? 'ابحث في الطلبات والمستخدمين والمعرّفات…' : 'Search prompts, users, IDs…'}
           aria-label={ar ? 'البحث في التشغيلات' : 'Search runs'}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') commit() }}
-          onBlur={commit}
-          className="field field--sm"
-          style={{ paddingInlineStart: 32 }}
+          onChange={(e) => onFilterChange({ ...filters, search: e.target.value })}
+          className="field"
+          style={{ paddingInlineStart: 36 }}
         />
         <Search
-          size={14}
-          className="absolute top-1/2 -translate-y-1/2 start-[10px] pointer-events-none"
-          style={{ color: 'var(--ink-3)' }}
+          size={15}
+          style={{
+            position: 'absolute', insetBlockStart: '50%', insetInlineStart: 12,
+            transform: 'translateY(-50%)', color: 'var(--ink-3)', pointerEvents: 'none',
+          }}
         />
       </div>
 
-      <div className="relative" style={{ marginBlockEnd: 12 }}>
+      <div style={{ position: 'relative', flex: '0 0 auto' }}>
         <select
           value={filters.status || 'all'}
           aria-label={ar ? 'تصفية حسب الحالة' : 'Status filter'}
-          onChange={(e) => onFilterChange({ ...filters, status: e.target.value === 'all' ? undefined : e.target.value })}
-          className="field field--sm select"
+          onChange={(e) => onFilterChange({
+            ...filters,
+            status: e.target.value === 'all' ? undefined : e.target.value,
+          })}
+          className="field select"
+          style={{ inlineSize: 'auto', minInlineSize: 172 }}
         >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>{ar ? STATUS_WORD[s][0] : STATUS_WORD[s][1]}</option>
+          <option value="all">{ar ? 'كل الحالات' : 'All statuses'}</option>
+          {STATUS_FILTERS.map((s) => (
+            <option key={s} value={s}>{statusLabel(s, ar)}</option>
           ))}
         </select>
         <Caret
           direction="down"
           size={14}
-          className="absolute top-1/2 -translate-y-1/2 end-[12px] pointer-events-none"
-          style={{ color: 'var(--ink-3)' }}
+          style={{
+            position: 'absolute', insetBlockStart: '50%', insetInlineEnd: 12,
+            transform: 'translateY(-50%)', color: 'var(--ink-3)', pointerEvents: 'none',
+          }}
         />
       </div>
 
-      {/* A3: the figure is isolated and the word sits outside it, so the count
-          reads correctly in an Arabic run instead of being dragged into an LTR
-          box with the noun. */}
-      <p style={{ fontSize: 10, color: 'var(--ink-3)', textAlign: 'start', marginBlockEnd: 8 }}>
-        <span className="figure">
-          {matched === undefined || matched === total
-            ? total.toLocaleString('en-US')
-            : `${matched.toLocaleString('en-US')} / ${total.toLocaleString('en-US')}`}
-        </span>
-        {' '}
-        {ar ? 'تشغيل' : 'runs'}
-      </p>
+      {/* A3 — the figures are isolated and the noun sits outside them, so the
+          count reads correctly in an Arabic run. */}
+      <span className="caption" style={{ marginInlineStart: 'auto', whiteSpace: 'nowrap' }}>
+        {filtered
+          ? (ar
+            ? <><span className="mono">{matched.toLocaleString('en-US')}</span> من <span className="mono">{total.toLocaleString('en-US')}</span> تشغيل</>
+            : <><span className="mono">{matched.toLocaleString('en-US')}</span> of <span className="mono">{total.toLocaleString('en-US')}</span> runs</>)
+          : (ar
+            ? <><span className="mono">{total.toLocaleString('en-US')}</span> تشغيل</>
+            : <><span className="mono">{total.toLocaleString('en-US')}</span> runs</>)}
+      </span>
 
-      <button type="button" className="text-action" onClick={onExport}>
-        <Download size={16} />
-        {label('exportCsv', 'تصدير CSV', 'Export CSV')}
+      <button type="button" className="btn" onClick={onExport} disabled={disabled}>
+        <Download size={15} />
+        {ar ? 'تصدير CSV' : 'Export CSV'}
       </button>
     </div>
+  )
+}
+
+/* Rows at their TRUE final height, so nothing reflows when the data lands,
+   and no pulse — a pulsing skeleton is decorative motion. */
+function TableSkeleton({ rows = 8 }) {
+  return (
+    <tbody aria-busy="true">
+      {Array.from({ length: rows }).map((_, r) => (
+        <tr key={r}>
+          {Array.from({ length: COLUMNS }).map((__, c) => (
+            <td key={c}>
+              <span
+                className="skel"
+                style={{ display: 'block', blockSize: 10, inlineSize: c === 0 ? 28 : `${45 + ((r * 7 + c * 13) % 40)}%` }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
   )
 }
 
@@ -144,56 +153,66 @@ export default function AdminRunsTable({
   loading = false,
   onPageChange,
   onRunClick,
-  onExport,     // eslint-disable-line no-unused-vars -- rendered by RunsFilters in the rail
   onDelete,
-  filters = {}, // eslint-disable-line no-unused-vars -- rendered by RunsFilters in the rail
-  onFilterChange, // eslint-disable-line no-unused-vars -- rendered by RunsFilters in the rail
+  onClearFilters,
+  filtered = false,
 }) {
+  const { t, language } = useUIStore()
+  const ar = language === 'ar'
   const totalPages = Math.ceil(total / limit) || 1
-  const { label, ar } = useLabel()
 
   return (
-    <div>
+    <>
       {/* The sticky thead needs a real scrollport. `overflow-x: auto` alone
-          computes overflow-y to auto too, which makes THIS div the nearest
-          scroll container — but it has auto height and never scrolls, so the
+          computes overflow-y to auto as well, which makes THIS box the nearest
+          scroll container — but with auto height it never scrolls, so the
           header scrolled away with the rows. A bounded block size gives the
-          header something to stick to, keeps horizontal scroll, and leaves the
-          pager on screen. */}
-      {/* dvh, not vh: Safari's 100vh excludes the URL bar, so a vh-derived
-          max height is taller than the visible page and the pager below is
-          pushed off-screen. */}
-      <div className="scroll-x" style={{ overflowY: 'auto', maxBlockSize: 'min(calc(100vh - 260px), calc(100dvh - 260px))' }}>
-        <table className="dtable">
+          header something to stick to and keeps the pager on screen.
+          dvh, not vh: Safari's 100vh excludes the URL bar, so a vh-derived
+          bound is taller than the visible page. */}
+      <div
+        className="scroll-x"
+        style={{ overflowY: 'auto', maxBlockSize: 'min(calc(100vh - 300px), calc(100dvh - 300px))' }}
+      >
+        <table className="dtable dtable--min">
           <thead>
             <tr>
-              <th style={{ inlineSize: 'var(--rail-spine)', paddingInlineStart: 0 }} aria-label={label('status', 'الحالة', 'State')} />
-              <th>{label('id', 'المعرّف', 'ID')}</th>
-              <th>{label('time', 'الوقت', 'Time')}</th>
-              <th>{label('user', 'المستخدم', 'User')}</th>
-              <th style={{ inlineSize: '26%' }}>{label('prompt', 'الطلب', 'Prompt')}</th>
-              <th>{label('path', 'المسار', 'Path')}</th>
-              <th className="num">{label('duration', 'المدة', 'Duration')}</th>
-              <th className="num">{label('cost', 'التكلفة', 'Cost')}</th>
-              <th>{label('status', 'الحالة', 'Status')}</th>
-              <th style={{ inlineSize: 64 }} aria-label={label('actions', 'إجراءات', 'Actions')} />
+              <th style={{ inlineSize: 72 }}>{ar ? 'المعرّف' : 'ID'}</th>
+              <th>{ar ? 'البداية' : 'Started'}</th>
+              <th>{ar ? 'المستخدم' : 'User'}</th>
+              <th style={{ inlineSize: '26%' }}>{t('prompt')}</th>
+              <th>{ar ? 'المسار' : 'Path'}</th>
+              <th className="num">{ar ? 'المدة' : 'Duration'}</th>
+              <th className="num">{t('cost')}</th>
+              <th>{t('status')}</th>
+              <th style={{ inlineSize: 76 }} aria-label={ar ? 'إجراءات' : 'Actions'} />
             </tr>
           </thead>
 
           {loading ? (
-            <TableSkeleton columns={10} rows={8} />
+            <TableSkeleton />
           ) : (
             <tbody>
               {runs.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ blockSize: 'auto', paddingBlock: 4 }}>
+                  <td colSpan={COLUMNS} style={{ blockSize: 'auto' }}>
                     <EmptyState
-                      legend={label('noRuns', 'لا توجد تشغيلات', 'No runs')}
-                      line={ar
-                        ? 'لا شيء يطابق الفلتر الحالي. امسح البحث من الشريط لعرض النافذة كاملة.'
-                        : 'Nothing matches the current filter. Clear the search in the rail to see the full window.'}
+                      legend={t('noRuns')}
+                      line={filtered
+                        ? (ar
+                          ? 'لا شيء يطابق البحث أو الحالة المختارة في هذه النافذة.'
+                          : 'Nothing matches the search or the status you picked in this window.')
+                        : (ar
+                          ? 'لم يُنفَّذ أي تشغيل داخل النافذة المختارة.'
+                          : 'No run was executed inside the selected window.')}
                       compact
-                    />
+                    >
+                      {filtered && onClearFilters && (
+                        <button type="button" className="btn-q btn-q--sm" onClick={onClearFilters}>
+                          {ar ? 'مسح الفلاتر' : 'Clear filters'}
+                        </button>
+                      )}
+                    </EmptyState>
                   </td>
                 </tr>
               ) : (
@@ -203,28 +222,31 @@ export default function AdminRunsTable({
                     className="group"
                     onClick={() => onRunClick(run)}
                     tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRunClick(run) } }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onRunClick(run) }
+                    }}
                     style={{ cursor: 'pointer' }}
                   >
-                    <td style={{ paddingInlineStart: 0 }}>
-                      <RunMarker status={run.status} word={false} />
-                    </td>
                     <td><RunId id={run.id} style={{ color: 'var(--ink-3)' }} /></td>
-                    <td className="mono" style={{ whiteSpace: 'nowrap', fontSize: 11, color: 'var(--ink-3)', textAlign: 'start' }}>
-                      {formatTime(run.started_at)}
+                    {/* .mono is display:inline-block, so it can never sit on
+                        the <td> itself — that pulls the cell out of the table
+                        box and its row rule stops lining up with the rest of
+                        the row. It always wraps the value instead. */}
+                    <td style={{ whiteSpace: 'nowrap', color: 'var(--ink-3)' }}>
+                      <span className="mono">{formatTime(run.started_at)}</span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <span className="truncate" style={{ display: 'block', maxInlineSize: 160 }}>
+                      <span className="truncate" style={{ display: 'block', maxInlineSize: 168 }}>
                         {run.user_email || run.user_id || '—'}
                       </span>
                     </td>
                     <td>
-                      <span className="truncate" style={{ display: 'block', color: 'var(--ink)' }}>
+                      <span className="truncate" style={{ display: 'block', color: 'var(--ink)' }} title={run.user_prompt || ''}>
                         {run.user_prompt || '—'}
                       </span>
                     </td>
-                    <td className="mono" style={{ whiteSpace: 'nowrap', fontSize: 11, textAlign: 'start' }}>
-                      {run.selected_path || '—'}
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {run.selected_path ? <span className="mono">{run.selected_path}</span> : '—'}
                     </td>
                     <td className="num" style={{ whiteSpace: 'nowrap' }}>
                       {(run.duration_seconds ?? run.duration_ms) != null
@@ -235,18 +257,18 @@ export default function AdminRunsTable({
                       <Money usd={run.total_cost_usd} />
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
-                      <RunMarker status={run.status} shape={false} />
+                      <RunStatusField status={run.status} />
                     </td>
                     <td style={{ paddingInlineEnd: 4 }}>
-                      {/* .stow: keyboard-reachable through focus-within, and
-                          always visible on a coarse pointer — a tap on the row
-                          opens the run, so hover-gating hid these for good on
-                          a tablet. */}
-                      <span className="flex items-center gap-1 stow">
+                      {/* .stow: invisible at rest, reachable by keyboard through
+                          focus-within, and ALWAYS visible on a coarse pointer —
+                          a tap on the row opens the run, so hover-gating hid
+                          delete for good on a tablet. */}
+                      <span className="stow" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <button
                           type="button"
-                          className="text-action"
-                          style={{ padding: 4 }}
+                          className="btn-i"
+                          style={{ inlineSize: 26, blockSize: 26 }}
                           aria-label={ar ? `فتح التشغيل ${run.id}` : `Open run ${run.id}`}
                           onClick={(e) => { e.stopPropagation(); onRunClick(run) }}
                         >
@@ -254,8 +276,8 @@ export default function AdminRunsTable({
                         </button>
                         <button
                           type="button"
-                          className="text-action text-action--danger"
-                          style={{ padding: 4 }}
+                          className="btn-i"
+                          style={{ inlineSize: 26, blockSize: 26, color: 'var(--bad)' }}
                           aria-label={ar ? `حذف التشغيل ${run.id}` : `Delete run ${run.id}`}
                           onClick={(e) => { e.stopPropagation(); onDelete(run) }}
                         >
@@ -271,37 +293,40 @@ export default function AdminRunsTable({
         </table>
       </div>
 
-      {/* PAGER — text actions with the one caret mark rotated, never two icons. */}
+      {/* THE PAGER — one caret mark, rotated, never two drawn arrows. */}
       <div
-        className="flex items-center justify-between gap-4"
-        style={{ paddingBlockStart: 10, borderBlockStart: '1px solid var(--etch-strong)' }}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 16, paddingBlockStart: 11, marginBlockStart: 4,
+          borderBlockStart: '1px solid var(--line)',
+        }}
       >
-        <span className="mono" style={{ fontSize: 10, color: 'var(--ink-3)', textAlign: 'start' }}>
-          {page} / {totalPages} · {total.toLocaleString('en-US')}
+        <span className="caption">
+          {ar
+            ? <>صفحة <span className="mono">{page}</span> من <span className="mono">{totalPages}</span> · <span className="mono">{total.toLocaleString('en-US')}</span> تشغيل</>
+            : <>Page <span className="mono">{page}</span> of <span className="mono">{totalPages}</span> · <span className="mono">{total.toLocaleString('en-US')}</span> runs</>}
         </span>
-        <div className="flex items-center gap-4">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
-            className="text-action"
+            className="btn-q btn-q--sm"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
-            aria-label={ar ? 'الصفحة السابقة' : 'Previous page'}
           >
-            <Caret direction="start" size={16} />
-            {label('prev', 'السابق', 'Prev')}
+            <Caret direction="start" size={14} />
+            {ar ? 'السابق' : 'Prev'}
           </button>
           <button
             type="button"
-            className="text-action"
+            className="btn-q btn-q--sm"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages}
-            aria-label={ar ? 'الصفحة التالية' : 'Next page'}
           >
-            {label('next', 'التالي', 'Next')}
-            <Caret direction="end" size={16} />
+            {ar ? 'التالي' : 'Next'}
+            <Caret direction="end" size={14} />
           </button>
         </div>
       </div>
-    </div>
+    </>
   )
 }

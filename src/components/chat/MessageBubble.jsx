@@ -1,45 +1,39 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    ONE TURN OF THE TRANSCRIPT
 
-   BUBBLES ARE GONE. Both roles sit in the same content column on the app-wide
-   56px gutter grid, at the same measure:
+   WHAT WENT. The 56px numbered gutter and the zero-padded turn ordinal that
+   ran down the leading edge of every message. Nobody has ever said "look at
+   turn 07". Scene numbers are real and they stayed; turn numbers were an index
+   into an array printed on the screen.
 
-     USER       an indented block on --sunk carrying a 2px --signal seam on its
-                inline-start edge. The gutter reads "you".
-     ASSISTANT  flush, no container at all, plain ink on the board. The gutter
-                carries the turn index in Commit Mono.
+   WHAT A TURN IS NOW. A named row: who spoke, when, and what they said.
+     USER       a quiet block on --card-2, capped at the prose measure.
+     ASSISTANT  flush prose on the page, no container.
+   Both carry a small role label and a .mono timestamp. Neither starts at
+   opacity 0, and nothing is revealed by hover that is not also reachable by
+   keyboard and always visible on a coarse pointer.
 
-   The repeated "W" glyph is deleted. A mark that appears on every single
-   assistant turn carries no information, and it was the only thing in the app
-   still wearing the display face on a working screen.
+   THE MEDIA IS THE HERO. Generated work no longer arrives as a 520px inline
+   attachment. A finished cut fills the content column inside a DARK WELL, and
+   a multi-scene result is a PLAYER plus a shot strip — the scene you are
+   judging at full size, every scene reachable in one click. The strip is a step
+   sequence so it mirrors (scene 1 sits at the far right in Arabic); the
+   player's own transport is inside dir="ltr" and does not. A4 says those two
+   point in opposite directions on the same Arabic screen, and that is correct.
 
-   Generated media breaks out of the prose measure into a FRAME — the artifact
-   IS the message, and it renders at its true aspect ratio.
-
-   THE COMMIT SEAM: when a plan message resolved as 'confirmed', the transcript
-   draws a permanent 2px --signal rule with the authorised figure stamped in the
-   gutter. Scroll back through a two-hour session and every point at which money
-   started moving is visible at a glance. It is derived entirely from state that
-   already exists — message.resolved, message.resolution, plan.total_cost_usd.
+   THE COMMIT RECORD. A plan that was authorised keeps a permanent line in the
+   transcript stating the figure that was authorised, so scrolling back through
+   a two-hour session shows every point at which money started moving. It is a
+   FIELD, not an event: a rule, a word and a number — no seam colour, no glow.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState } from 'react'
-import { Retry, Note, Expand, useRtl } from '../Icon'
+import { Retry, Note } from '../Icon'
 import { Money } from '../ui/Money'
 import PlanReviewCard from './PlanReviewCard'
 import ClarificationCard from './ClarificationCard'
 import { useLightbox } from '../MediaLightbox'
-import { useChatText, TurnRow } from './chatKit'
-import Frame from '../ui/Frame'
-
-function formatTime(ts) {
-  if (!ts) return ''
-  try {
-    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  } catch {
-    return ''
-  }
-}
+import { useChatText, MediaWell, clockTime } from './chatKit'
 
 const IMAGE_EXTS = /\.(png|jpg|jpeg|gif|webp)(\?|$)/i
 const VIDEO_EXTS = /\.(mp4|mov|webm|avi)(\?|$)/i
@@ -78,139 +72,6 @@ function parseContent(content) {
   return parts
 }
 
-/* ── MEDIA ───────────────────────────────────────────────────────────────── */
-
-/** Every image, video and audio clip in the transcript goes through one object.
- *  Nothing is object-cover: a tool that sells 9:16 and 21:9 never crops. */
-function MediaFrame({ type, url, caption = [], openMedia, tx }) {
-  // A dead URL must not leave a broken-image glyph sitting in the transcript.
-  // The original fell back to the raw link; so does this, inside the well.
-  const [broken, setBroken] = useState(false)
-
-  if (type === 'audio') {
-    return (
-      <Frame caption={[...caption, 'audio']} maxWidth={520}>
-        <audio controls className="w-full" src={url} />
-      </Frame>
-    )
-  }
-  if (type === 'video') {
-    return (
-      <Frame
-        caption={[...caption, 'video']}
-        maxWidth={520}
-        actions={
-          <button
-            type="button"
-            onClick={() => openMedia(url, 'video')}
-            className="text-action"
-            style={{ padding: 0 }}
-            title={tx('openOriginal')}
-            aria-label={tx('openOriginal')}
-          >
-            <Expand size={14} />
-          </button>
-        }
-      >
-        <video
-          controls
-          src={url}
-          style={{ display: 'block', inlineSize: '100%', blockSize: 'auto', maxBlockSize: 420 }}
-          onDoubleClick={() => openMedia(url, 'video')}
-        />
-      </Frame>
-    )
-  }
-  return (
-    <Frame
-      caption={[...caption, 'image']}
-      maxWidth={520}
-      actions={!broken && (
-        <button
-          type="button"
-          onClick={() => openMedia(url, 'image')}
-          className="text-action"
-          style={{ padding: 0 }}
-          title={tx('openOriginal')}
-          aria-label={tx('openOriginal')}
-        >
-          <Expand size={14} />
-        </button>
-      )}
-    >
-      {broken ? (
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="underline break-all block"
-          style={{ color: 'var(--signal)', fontSize: 12, textUnderlineOffset: 3 }}
-        >
-          {url}
-        </a>
-      ) : (
-        <img
-          src={url}
-          alt=""
-          className="cursor-zoom-in"
-          style={{ display: 'block', inlineSize: '100%', blockSize: 'auto', maxBlockSize: 420 }}
-          onClick={() => openMedia(url, 'image')}
-          onError={() => setBroken(true)}
-        />
-      )}
-    </Frame>
-  )
-}
-
-/**
- * Multi-scene results arrive as a flat scenes[] on the run result. Rendering
- * them grouped keeps a 4-scene story readable instead of collapsing into an
- * undifferentiated pile of media. The scene index sits in the same numeral
- * column the plan card's script uses, so a scene keeps its identity from the
- * work order all the way to the print.
- */
-function SceneResults({ scenes, tx }) {
-  const openMedia = useLightbox()
-  if (!scenes || scenes.length === 0) return null
-  return (
-    <div className="flex flex-col" style={{ marginBlockStart: 12 }}>
-      {scenes.map((scene) => (
-        <div
-          key={scene.scene_number}
-          className="grid grid-cols-[36px_minmax(0,1fr)] items-start"
-          style={{ paddingBlock: 10, borderBlockStart: '1px solid var(--etch)' }}
-        >
-          <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start', paddingBlockStart: 4 }}>
-            {String(scene.scene_number).padStart(2, '0')}
-          </span>
-          <div className="min-w-0 flex flex-col gap-2">
-            {scene.video_url ? (
-              <MediaFrame
-                type="video"
-                url={scene.video_url}
-                caption={[`${tx('scene')} ${scene.scene_number}`]}
-                openMedia={openMedia}
-                tx={tx}
-              />
-            ) : (
-              (scene.image_urls || []).map((url, i) => (
-                <MediaFrame
-                  key={i}
-                  type="image"
-                  url={url}
-                  caption={[`${tx('scene')} ${scene.scene_number}`]}
-                  openMedia={openMedia}
-                  tx={tx}
-                />
-              ))
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 /**
  * Media carried by a message loaded from history.
  *
@@ -228,32 +89,91 @@ function attachmentMedia(message) {
     .map((url) => ({ type: isVideoUrl(url) ? 'video' : 'image', url }))
 }
 
-/* ── THE SEAM ─────────────────────────────────────────────────────────────── */
+/* ── THE PLAYER ───────────────────────────────────────────────────────────
+   A multi-scene run is a piece of work with parts, not a pile of clips. One
+   scene plays at full size and the rest sit in a strip underneath — the shape
+   every editing tool in this register uses, and the reason the strip class is
+   in the design system. */
 
-function CommitSeam({ usd, tx }) {
+const SHOT_MEDIA = { inlineSize: '100%', blockSize: '100%', objectFit: 'contain', display: 'block' }
+
+function SceneResults({ scenes, tx, openMedia }) {
+  const [selected, setSelected] = useState(0)
+  const index = Math.min(selected, scenes.length - 1)
+  const scene = scenes[index]
+  const url = scene?.video_url || (scene?.image_urls || [])[0]
+  const type = scene?.video_url ? 'video' : 'image'
+
+  return (
+    <section style={{ marginBlockStart: 12 }}>
+      {url && (
+        <MediaWell
+          type={type}
+          url={url}
+          caption={[`${tx('scene')} ${scene.scene_number}`, type]}
+          onOpen={type === 'image' ? () => openMedia(url, 'image') : undefined}
+          openLabel={tx('openOriginal')}
+        />
+      )}
+
+      {/* A step sequence: this DOES mirror (A4). Scene 1 sits at the far right
+          in Arabic, while the player's transport above it does not move. */}
+      {scenes.length > 1 && (
+        <div className="strip" style={{ marginBlockStart: 10 }}>
+          {scenes.map((s, i) => {
+            const thumb = s.video_url || (s.image_urls || [])[0]
+            return (
+              <button
+                key={s.scene_number ?? i}
+                type="button"
+                className="shot"
+                aria-selected={i === index}
+                onClick={() => setSelected(i)}
+                title={`${tx('scene')} ${s.scene_number ?? i + 1}`}
+              >
+                <span className="shot__thumb">
+                  {/* preload="metadata" gives a poster frame without pulling
+                      the whole clip. A strip of autoplaying video is a bill. */}
+                  {s.video_url
+                    ? <video src={s.video_url} muted playsInline preload="metadata" style={SHOT_MEDIA} />
+                    : thumb
+                      ? <img src={thumb} alt="" loading="lazy" style={SHOT_MEDIA} />
+                      : null}
+                </span>
+                <span className="shot__label">
+                  <span>{tx('scene')}</span>
+                  <span className="mono">{s.scene_number ?? i + 1}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/* ── THE COMMIT RECORD ────────────────────────────────────────────────────── */
+
+function CommitRecord({ usd, tx }) {
   const hasFigure = Number.isFinite(Number(usd)) && Number(usd) > 0
   return (
-    <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center" style={{ marginBlock: 12 }}>
-      <span className="wz-gutter" style={{ paddingInlineEnd: 12 }}>
-        {hasFigure
-          ? <Money usd={usd} style={{ fontSize: 11, color: 'var(--signal)' }} />
-          : <span style={{ fontSize: 10, color: 'var(--signal)' }}>{tx('authorised')}</span>}
-      </span>
-      <span aria-hidden="true" style={{ blockSize: 2, backgroundColor: 'var(--signal)', display: 'block' }} />
+    <div
+      className="flex items-center gap-3"
+      style={{ marginBlockStart: 12, paddingBlockStart: 10, borderBlockStart: '1px solid var(--line-2)' }}
+    >
+      <span className="st st--ok">{tx('approved')}</span>
+      {hasFigure && <Money usd={usd} style={{ fontSize: 13, color: 'var(--ink-2)' }} />}
     </div>
   )
 }
 
 /* ── THE FAILURE REPORT ────────────────────────────────────────────────────
-   A failure used to arrive as one grey-red sentence reading "Error: " plus
-   whatever survived `detail || message || fallback` — which for a validation
-   error was "[object Object]", and for a dropped socket was nothing at all.
-
-   Three lines instead, because they answer three different questions: WHAT
-   operation failed, WHAT the server or agent actually said, and WHICH run to
-   quote when asking about it. The detail is mono and selectable — it is a
-   machine string, and it exists to be copied into a bug report, so there is a
-   control that does exactly that. */
+   Three lines, because they answer three different questions: WHAT operation
+   failed, WHAT the server or agent actually said, and WHICH run to quote when
+   asking about it. The detail is mono and selectable — it is a machine string
+   and it exists to be copied into a bug report, so there is a control that
+   does exactly that. */
 function ErrorReport({ title, detail, runId, tx }) {
   const [copied, setCopied] = useState(false)
 
@@ -271,40 +191,38 @@ function ErrorReport({ title, detail, runId, tx }) {
   }
 
   return (
-    <div className="flex flex-col gap-2" style={{ maxInlineSize: '68ch' }}>
-      <span style={{ fontSize: 15, lineHeight: 'var(--lh-body)', color: 'var(--state-fail)' }}>
-        {title}
-      </span>
+    <div className="card card-pad" style={{ borderColor: 'var(--bad)', maxInlineSize: '72ch' }}>
+      <div className="st st--bad" style={{ marginBlockEnd: 8 }}>{title}</div>
 
       {detail && (
-        <span
-          className="mono whitespace-pre-wrap break-words"
+        <p
+          className="mono break-anywhere"
           style={{
             fontSize: 12,
             lineHeight: 1.55,
             color: 'var(--ink-2)',
-            borderInlineStart: '2px solid var(--state-fail)',
-            paddingInlineStart: 10,
+            whiteSpace: 'pre-wrap',
             userSelect: 'text',
+            display: 'block',
           }}
         >
           {detail}
-        </span>
+        </p>
       )}
 
-      <span className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2" style={{ marginBlockStart: 12 }}>
         {runId && (
-          <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            {tx('runRef')} <span style={{ userSelect: 'text' }}>{runId}</span>
+          <span className="caption">
+            {tx('runRef')} <span className="mono" style={{ userSelect: 'text' }}>{runId}</span>
           </span>
         )}
         {detail && (
-          <button type="button" onClick={copy} className="text-action">
-            <Note size={16} />
+          <button type="button" onClick={copy} className="btn-t">
+            <Note size={15} />
             {copied ? tx('copied') : tx('copyDetail')}
           </button>
         )}
-      </span>
+      </div>
     </div>
   )
 }
@@ -319,46 +237,41 @@ function MessageBubble({ message, handlers, index }) {
   // This sits above the hooks, not between them. ChatMessages already skips
   // falsy slots, so a message going null unmounts this component outright
   // rather than re-rendering it — the hook order can never change underneath
-  // a live instance. Guarding after `useLightbox()` but before `useState`
-  // below would be the actual rules-of-hooks violation.
+  // a live instance.
   if (!message) return null
 
   const openMedia = useLightbox()
   const { tx } = useChatText()
-  const rtl = useRtl()
   const isUser = message.role === 'user'
   const parts = parseContent(message.content)
   // `media` is set by the live flow; `attachments` comes back from history. A
   // reloaded chat has only the latter, so both have to render.
   const mediaItems = [...(message.media || []), ...attachmentMedia(message)]
-  const [showTime, setShowTime] = useState(false)
 
-  const stamp = formatTime(message.created_at || message.timestamp)
+  const stamp = clockTime(message.created_at || message.timestamp)
 
-  // Interactive cards replace the turn entirely — they own their own chrome and
-  // they run to the full grid width. The docket is a work order, not a message.
+  /* Interactive cards replace the turn entirely — they own their own chrome
+     and they run the full width of the column. A work order is a document,
+     not a message, and it is allowed to be wider than the prose measure. */
   if (message.kind === 'plan' && message.plan) {
     return (
       <div className="settle">
-        <TurnRow span>
-          <PlanReviewCard
-            plan={message.plan}
-            resolved={message.resolved}
-            outcome={message.resolution}
-            busy={message.busy}
-            previews={message.previews}
-            catalog={handlers?.modelCatalog}
-            onEdit={(field, text) => handlers?.onEdit?.(message.runId, field, text)}
-            onEditScript={(scenes) => handlers?.onEditScript?.(message.runId, scenes)}
-            onPreview={(type, characterName) => handlers?.onPreview?.(message.runId, type, characterName)}
-            onRevise={(feedback) => handlers?.onRevise?.(message.runId, feedback)}
-            onConfirm={() => handlers?.onConfirm?.(message.runId)}
-            onCancel={() => handlers?.onCancel?.(message.runId)}
-            onSettings={(settings) => handlers?.onSettings?.(message.runId, settings)}
-          />
-        </TurnRow>
+        <PlanReviewCard
+          plan={message.plan}
+          resolved={message.resolved}
+          outcome={message.resolution}
+          busy={message.busy}
+          previews={message.previews}
+          catalog={handlers?.modelCatalog}
+          onEdit={(field, text) => handlers?.onEdit?.(message.runId, field, text)}
+          onEditScript={(scenes) => handlers?.onEditScript?.(message.runId, scenes)}
+          onPreview={(type, characterName) => handlers?.onPreview?.(message.runId, type, characterName)}
+          onRevise={(feedback) => handlers?.onRevise?.(message.runId, feedback)}
+          onCancel={() => handlers?.onCancel?.(message.runId)}
+          onSettings={(settings) => handlers?.onSettings?.(message.runId, settings)}
+        />
         {message.resolved && message.resolution === 'confirmed' && (
-          <CommitSeam usd={message.plan?.total_cost_usd} tx={tx} />
+          <CommitRecord usd={message.plan?.total_cost_usd} tx={tx} />
         )}
       </div>
     )
@@ -366,7 +279,7 @@ function MessageBubble({ message, handlers, index }) {
 
   if (message.kind === 'clarification' && message.questions) {
     return (
-      <TurnRow span className="settle">
+      <div className="settle">
         <ClarificationCard
           questions={message.questions}
           resolved={message.resolved}
@@ -375,46 +288,16 @@ function MessageBubble({ message, handlers, index }) {
           onSubmit={(answers) => handlers?.onClarify?.(message.runId, answers)}
           onCancel={() => handlers?.onCancel?.(message.runId)}
         />
-      </TurnRow>
+      </div>
     )
   }
 
-  // An error line is a state, not a sentence in grey. It reads in --state-fail
-  // with the note mark in the gutter, so a failure is findable when scrolling.
-  //
   // `kind` is the reliable signal. The content sniff stays for messages
-  // reloaded from chat history, which the server stores as plain text and which
-  // therefore carry no kind.
+  // reloaded from chat history, which the server stores as plain text and
+  // which therefore carry no kind.
   const isError = message.kind === 'error' ||
     (typeof message.content === 'string' && message.content.startsWith('Error:'))
   const hasErrorReport = message.kind === 'error' && (message.errorTitle || message.errorDetail)
-
-  const gutter = (
-    <span className="flex flex-col gap-1" style={{ textAlign: 'start' }}>
-      {isUser ? (
-        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{tx('you')}</span>
-      ) : isError ? (
-        <Note size={14} style={{ color: 'var(--state-fail)' }} />
-      ) : (
-        <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'start' }}>
-          {String(index + 1).padStart(2, '0')}
-        </span>
-      )}
-      {/* The timestamp lives in the gutter, not floating beside the text. */}
-      <span
-        className="mono"
-        style={{
-          fontSize: 10,
-          color: 'var(--ink-3)',
-          textAlign: 'start',
-          opacity: showTime ? 1 : 0,
-          transition: 'opacity 120ms var(--ease)',
-        }}
-      >
-        {stamp}
-      </span>
-    </span>
-  )
 
   const body = (
     <>
@@ -433,7 +316,14 @@ function MessageBubble({ message, handlers, index }) {
         {parts.map((part, i) => {
           if (part.type === 'image' || part.type === 'video') {
             return (
-              <MediaFrame key={i} type={part.type} url={part.value} openMedia={openMedia} tx={tx} />
+              <MediaWell
+                key={i}
+                type={part.type}
+                url={part.value}
+                caption={[tx('result'), part.type]}
+                onOpen={part.type === 'image' ? () => openMedia(part.value, 'image') : undefined}
+                openLabel={tx('openOriginal')}
+              />
             )
           }
           if (part.type === 'link') {
@@ -443,8 +333,8 @@ function MessageBubble({ message, handlers, index }) {
                 href={part.value}
                 target="_blank"
                 rel="noreferrer"
-                className="underline break-all"
-                style={{ color: 'var(--signal)', textUnderlineOffset: 3, fontSize: 13 }}
+                className="break-anywhere"
+                style={{ color: 'var(--accent)', textDecoration: 'underline', textUnderlineOffset: 3, fontSize: 13 }}
               >
                 {part.value}
               </a>
@@ -453,12 +343,10 @@ function MessageBubble({ message, handlers, index }) {
           return part.value.trim() ? (
             <p
               key={i}
-              className="whitespace-pre-wrap break-words"
+              className="prose break-anywhere"
               style={{
-                fontSize: 15,
-                lineHeight: 'var(--lh-body)',
-                color: isError ? 'var(--state-fail)' : 'var(--ink)',
-                maxInlineSize: '68ch',
+                whiteSpace: 'pre-wrap',
+                color: isError ? 'var(--bad)' : 'var(--ink)',
               }}
             >
               {part.value.trim()}
@@ -468,60 +356,58 @@ function MessageBubble({ message, handlers, index }) {
       </div>
 
       {mediaItems.length > 0 && (
-        <div className="flex flex-col gap-3" style={{ marginBlockStart: 12 }}>
+        <div className="flex flex-col gap-4" style={{ marginBlockStart: 12 }}>
           {mediaItems.map((item, idx) => (
-            <MediaFrame key={idx} type={item.type} url={item.url} openMedia={openMedia} tx={tx} />
+            <MediaWell
+              key={idx}
+              type={item.type}
+              url={item.url}
+              caption={[isUser ? tx('attachment') : tx('result'), item.type]}
+              maxWidth={isUser ? 320 : undefined}
+              maxHeight={isUser ? 240 : undefined}
+              onOpen={item.type === 'image' ? () => openMedia(item.url, 'image') : undefined}
+              openLabel={tx('openOriginal')}
+            />
           ))}
         </div>
       )}
 
-      <SceneResults scenes={message.scenes} tx={tx} />
+      {message.scenes?.length > 0 && (
+        <SceneResults scenes={message.scenes} tx={tx} openMedia={openMedia} />
+      )}
 
       {message.failedRunId && (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2" style={{ marginBlockStart: 8 }}>
-          {/* FILLED MARK: retrying resumes a paid run. It stays a text action —
-              the commit gate is the only filled surface in this application. */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2" style={{ marginBlockStart: 12 }}>
+          {/* Quiet, not filled: resuming a paid run is a recovery, and the
+              authorisation in the top bar is the only filled control here. */}
           <button
             type="button"
             onClick={() => handlers?.onRetry?.(message.failedRunId, index)}
-            className="text-action"
+            className="btn-q btn-q--sm"
           >
-            <Retry size={16} />
+            <Retry size={15} />
             {tx('retry')}
           </button>
-          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{tx('retryHint')}</span>
+          <span className="caption">{tx('retryHint')}</span>
         </div>
       )}
     </>
   )
 
   return (
-    <TurnRow
-      gutter={gutter}
-      className="settle"
-      onMouseEnter={() => setShowTime(true)}
-      onMouseLeave={() => setShowTime(false)}
-    >
+    <article className="settle" style={{ minInlineSize: 0 }}>
+      <header className="flex items-baseline gap-3" style={{ marginBlockEnd: 6 }}>
+        <span className="label">{isUser ? tx('you') : tx('wazza')}</span>
+        {stamp && <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)' }}>{stamp}</span>}
+      </header>
+
       {isUser ? (
         <div
+          className="card-2"
           style={{
-            backgroundColor: 'var(--sunk)',
-            /* THE SEAM BAR, and it is no longer the accent.
-               L3 caps the second ink at two appearances per viewport, and a
-               signal-coloured seam on every user turn blew that budget by
-               itself: a scrolled transcript could show a dozen. The bar is
-               structure — it says "this turn is yours" — and structure is
-               what --etch-strong is for. The accent is reserved for the two
-               things it actually means: this is running, or this costs money.
-
-               L2: NOT CUT. A message is not a committed record. With the clip
-               gone this could be a real border-inline-start, but it stays an
-               inset shadow so the bar cannot enter the box model and shift
-               the text by 2px. */
-            boxShadow: `inset ${rtl ? '-2px' : '2px'} 0 0 0 var(--etch-strong)`,
-            paddingBlock: 10,
-            paddingInlineStart: 14,
-            paddingInlineEnd: 14,
+            border: '1px solid var(--line)',
+            borderRadius: 'var(--r)',
+            padding: '12px 16px',
             maxInlineSize: '72ch',
           }}
         >
@@ -530,7 +416,7 @@ function MessageBubble({ message, handlers, index }) {
       ) : (
         body
       )}
-    </TurnRow>
+    </article>
   )
 }
 

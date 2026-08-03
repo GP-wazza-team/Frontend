@@ -1,33 +1,53 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   CHAT KIT — the one thing the chat surface needs that the foundation does
-   not ship, plus the chat scope's bilingual strings.
+   CHAT KIT — the chat scope's bilingual strings, plus the ONE media object the
+   chat surface draws generated work into.
+
+   WHAT WAS DELETED. `TurnRow` and `TURN_GRID` — a 56px leading gutter that ran
+   zero-padded turn ordinals down the edge of every message. It was the loudest
+   thing on the screen and it numbered the wrong noun: nobody refers to "turn
+   07". Scene numbers are real and they stay; turn ordinals are gone, and with
+   them the whole `.wz-page` / `.wz-gutter` apparatus.
+
+   WHAT ARRIVED. <MediaWell>. This is a video product, and its main screen used
+   to show generated video as a 520px-wide attachment inside a chat transcript.
+   Media now sits in a DARK WELL at a size worth judging, because a dark
+   surround is how you judge video colour honestly — the reason every editor is
+   dark and the reason this application is light everywhere except here.
+
+   A4 / A5. The player subtree carries dir="ltr". A scrubber and a transport
+   refer to the direction of the tape, not the direction of reading, so they do
+   not mirror even though the Arabic page around them does. Native controls are
+   used rather than a hand-built scrubber precisely so A5 is satisfied by
+   construction: there is no input[type=range] anywhere in this scope.
 
    Nothing here talks to a store beyond uiStore.language (read-only) and
    nothing here calls a service. It is presentation only.
-
-     useChatText()   the chat scope's strings in both languages. uiStore's t()
-                     covers the shell's vocabulary; the transcript, the plan
-                     docket and the clarification card have their own, and the
-                     app ships Arabic-first — an English-only work order on an
-                     Arabic console is the two-class interface again.
-     <TurnRow>       one row on the app-wide 56px gutter grid. Every turn, every
-                     card and the composer hint sit on the same spine, so a
-                     scene number, a turn index and a seam figure line up on one
-                     axis all the way down a two-hour session.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useUIStore } from '../../store/uiStore'
 
 /* ── STRINGS ─────────────────────────────────────────────────────────────── */
 
 const STRINGS = {
   en: {
-    you: 'you',
-    turn: 'turn',
+    /* the workspace — the no-project-open state */
+    workspace: 'Workspace',
+    workspaceSub: 'Open a project to carry on, or start something new.',
+    projects: 'Your projects',
+    projectsSub: 'Open one to carry on, or start something new.',
+    newProject: 'New project',
+    noProjects: 'No projects yet',
+    noProjectsLine: 'Start one and everything you make will collect here.',
+    untitled: 'Untitled project',
+    stReady: 'Has work',
+    stEmpty: 'Not started',
+    loadingProjects: 'Loading',
 
     /* transcript */
-    retry: 'Retry',
+    you: 'You',
+    wazza: 'Wazza',
+    retry: 'Resume',
     retryHint: "Picks up where it stopped — finished scenes aren't charged again.",
     somethingFailed: 'Something failed',
     copyDetail: 'Copy detail',
@@ -36,27 +56,32 @@ const STRINGS = {
     scene: 'Scene',
     openOriginal: 'Open full size',
     working: 'Working',
+    result: 'Result',
+    attachment: 'Attachment',
 
-    /* empty state */
-    emptyLegend: 'Start a job',
+    /* empty transcript */
+    emptyLegend: 'Describe what you want made',
     starterLegend: 'Or start from one of these',
     starter1: 'A 5-second product shot of a glass perfume bottle on wet stone',
     starter2: 'Four scenes: a courier crossing a city at dawn',
     starter3: 'A portrait of a falconer at golden hour, 9:16',
 
-    /* run strip */
+    /* the run band */
     runLegend: 'Run',
     elapsed: 'Elapsed',
+    stRunning: 'Running',
+    stWaiting: 'Waiting for you',
 
     /* composer */
     attach: 'Attach an image',
     removeAttachment: 'Remove the attachment',
     sendHint: 'Enter to send · Shift+Enter for a new line',
-    costsCredits: 'Starts a run — this costs credits',
+    costsCredits: 'Plans a run. Nothing is spent until you authorise it.',
 
-    /* plan docket */
+    /* the work order */
     workOrder: 'Work order',
-    reviewBefore: 'Review before generating',
+    reviewBefore: 'Awaiting your approval',
+    approved: 'Approved',
     summary: 'Summary',
     characters: 'Characters',
     environment: 'Environment',
@@ -73,38 +98,50 @@ const STRINGS = {
     revise: 'Revise',
     whatShouldChange: 'What should change?',
     sendFeedback: 'Send feedback',
-    spec: 'Spec',
+    output: 'Output',
     model: 'Model',
-    imageModel: 'Image',
+    imageModel: 'Image model',
     quality: 'Quality',
     aspect: 'Aspect',
     sceneCount: 'Scenes',
     seconds: 'Seconds',
-    estimate: 'Est.',
-    previews: 'Previews',
+    previews: 'Reference images',
     previewCharacter: 'Preview character',
     previewEnvironment: 'Preview environment',
     previewCosts: 'Generates a real image — this costs credits',
     whichCharacter: 'Which character to draw a reference sheet for',
     noCharacters: 'No named characters in this plan',
-    commit: 'Commit',
-    commitCosts: 'Authorises the spend and starts the render',
-    cancelled: 'Cancelled.',
-    authorised: 'Authorised',
+    total: 'Total to authorise',
+    authorise: 'Authorise',
+    authoriseHint: 'The authorisation sits in the bar at the top of the screen.',
+    commitCosts: 'Authorises the total above and starts the render',
+    cancelled: 'Cancelled',
     empty: '—',
 
     /* clarification */
     detailsFirst: 'A few details first',
+    detailsSub: 'Answer what matters; the rest is filled in sensibly.',
     typeYourOwn: 'or type your own…',
     continueLabel: 'Continue',
     skipHint: 'Anything you skip is filled in with a sensible default.',
-    answered: 'Answered.',
+    answered: 'Answered',
   },
   ar: {
-    you: 'أنت',
-    turn: 'دور',
+    workspace: 'مساحة العمل',
+    workspaceSub: 'افتح مشروعاً لتكمله، أو ابدأ مشروعاً جديداً.',
+    projects: 'مشاريعك',
+    projectsSub: 'افتح مشروعاً لتكمله، أو ابدأ مشروعاً جديداً.',
+    newProject: 'مشروع جديد',
+    noProjects: 'لا توجد مشاريع بعد',
+    noProjectsLine: 'ابدأ مشروعاً وسيتجمع هنا كل ما تنتجه.',
+    untitled: 'مشروع بدون عنوان',
+    stReady: 'يحتوي على أعمال',
+    stEmpty: 'لم يبدأ',
+    loadingProjects: 'جارٍ التحميل',
 
-    retry: 'إعادة المحاولة',
+    you: 'أنت',
+    wazza: 'وزّة',
+    retry: 'استئناف',
     retryHint: 'يكمل من حيث توقف — المشاهد المكتملة لا تُحتسب مرة أخرى.',
     somethingFailed: 'حدث خطأ',
     copyDetail: 'نسخ التفاصيل',
@@ -113,8 +150,10 @@ const STRINGS = {
     scene: 'مشهد',
     openOriginal: 'عرض بالحجم الكامل',
     working: 'جارٍ العمل',
+    result: 'الناتج',
+    attachment: 'مرفق',
 
-    emptyLegend: 'ابدأ مهمة',
+    emptyLegend: 'صف ما تريد إنتاجه',
     starterLegend: 'أو ابدأ من أحد هذه',
     starter1: 'لقطة منتج مدتها ٥ ثوانٍ لزجاجة عطر زجاجية على حجر مبلل',
     starter2: 'أربعة مشاهد: مندوب توصيل يعبر المدينة عند الفجر',
@@ -122,14 +161,17 @@ const STRINGS = {
 
     runLegend: 'التشغيل',
     elapsed: 'المدة',
+    stRunning: 'قيد التنفيذ',
+    stWaiting: 'بانتظارك',
 
     attach: 'إرفاق صورة',
     removeAttachment: 'إزالة المرفق',
     sendHint: 'Enter للإرسال · Shift+Enter لسطر جديد',
-    costsCredits: 'يبدأ تشغيلاً — هذا يستهلك رصيداً',
+    costsCredits: 'يجهّز خطة التنفيذ. لا يُصرف شيء قبل اعتمادك.',
 
     workOrder: 'أمر العمل',
-    reviewBefore: 'راجع قبل التنفيذ',
+    reviewBefore: 'بانتظار اعتمادك',
+    approved: 'معتمد',
     summary: 'الملخص',
     characters: 'الشخصيات',
     environment: 'البيئة',
@@ -146,31 +188,32 @@ const STRINGS = {
     revise: 'مراجعة',
     whatShouldChange: 'ما الذي يجب تغييره؟',
     sendFeedback: 'إرسال الملاحظات',
-    spec: 'المواصفات',
+    output: 'المخرجات',
     model: 'النموذج',
-    imageModel: 'الصورة',
+    imageModel: 'نموذج الصورة',
     quality: 'الجودة',
     aspect: 'الأبعاد',
     sceneCount: 'المشاهد',
     seconds: 'الثواني',
-    estimate: 'التقدير',
-    previews: 'المعاينات',
+    previews: 'الصور المرجعية',
     previewCharacter: 'معاينة الشخصية',
     previewEnvironment: 'معاينة البيئة',
     previewCosts: 'ينتج صورة حقيقية — هذا يستهلك رصيداً',
     whichCharacter: 'الشخصية التي ستُرسم لها ورقة مرجعية',
     noCharacters: 'لا توجد شخصيات مسماة في هذه الخطة',
-    commit: 'اعتماد',
-    commitCosts: 'يعتمد المبلغ ويبدأ التنفيذ',
-    cancelled: 'أُلغي.',
-    authorised: 'معتمد',
+    total: 'الإجمالي المطلوب اعتماده',
+    authorise: 'اعتماد',
+    authoriseHint: 'زر الاعتماد في الشريط أعلى الشاشة.',
+    commitCosts: 'يعتمد الإجمالي أعلاه ويبدأ التنفيذ',
+    cancelled: 'أُلغي',
     empty: '—',
 
     detailsFirst: 'بعض التفاصيل أولاً',
+    detailsSub: 'أجب عمّا يهمك، والباقي يُملأ بقيم مناسبة.',
     typeYourOwn: 'أو اكتب إجابتك…',
     continueLabel: 'متابعة',
     skipHint: 'أي سؤال تتخطاه يُملأ بقيمة افتراضية مناسبة.',
-    answered: 'تمت الإجابة.',
+    answered: 'تمت الإجابة',
   },
 }
 
@@ -181,31 +224,129 @@ export function useChatText() {
   return { tx, ar }
 }
 
-/* ── THE GUTTER ROW ──────────────────────────────────────────────────────────
-   56px leading gutter + the content column, the same spine every other route
-   in the application is laid on. `span` drops the gutter and runs the child
-   across the whole grid — the plan docket is a work order, not a message, and
-   it is allowed to be wider than the prose measure. */
-
-export const TURN_GRID = 'grid grid-cols-[56px_minmax(0,1fr)]'
-
-export function TurnRow({ gutter = null, span = false, className = '', children, ...rest }) {
-  return (
-    <div className={`${TURN_GRID}${className ? ' ' + className : ''}`} {...rest}>
-      {!span && (
-        <div className="wz-gutter" style={{ paddingBlockStart: 2 }}>
-          {gutter}
-        </div>
-      )}
-      <div className="min-w-0" style={span ? { gridColumn: '1 / -1' } : undefined}>
-        {children}
-      </div>
-    </div>
-  )
+/* ── DATES ───────────────────────────────────────────────────────────────────
+   A3: a date is Latin numerals inside an Arabic run, so it is rendered numeric
+   and .mono in BOTH languages. Month names would need a locale-specific script
+   and would then have to be excluded from .mono, which costs the tabular
+   alignment down a column of tiles for nothing. */
+export function isoDay(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-/* THE FRAME is not here. Every piece of generated media in the application —
-   the transcript, the plan docket, the library, the run drawer and the
-   lightbox — goes through the ONE implementation in ../ui/Frame. A second
-   construction living in the chat scope is exactly what stops a preview in
-   chat and a print in the library from being the same artifact. */
+export function clockTime(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n) => String(n).padStart(2, '0')
+  return `${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/* ── MEDIA ───────────────────────────────────────────────────────────────────
+   THE MEDIA IS THE HERO. One object, used by the transcript and by the work
+   order's reference images, so a preview and a finished cut are visibly the
+   same artifact.
+
+     · a --card shell so the caption rail is chrome and reads as chrome
+     · the media itself on --well, dark, never cropped (no object-fit: cover —
+       this product sells 9:16 and 21:9 and must never trim what was paid for)
+     · at most three facts in the caption rail (principle 7)
+
+   The player subtree carries dir="ltr" (A4). Native controls, so there is no
+   input[type=range] scrubber anywhere in this scope (A5). */
+
+export function MediaWell({
+  type,
+  url,
+  caption = [],
+  onOpen,
+  openLabel,
+  maxHeight = '58vh',
+  maxWidth,
+}) {
+  // A dead URL must not leave a broken-image glyph sitting in the transcript.
+  const [broken, setBroken] = useState(false)
+  const facts = caption.filter((c) => c !== null && c !== undefined && c !== '')
+
+  const mediaStyle = {
+    display: 'block',
+    inlineSize: '100%',
+    blockSize: 'auto',
+    maxBlockSize: maxHeight,
+    margin: '0 auto',
+  }
+
+  let body
+  if (broken) {
+    body = (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="mono break-anywhere"
+        style={{ color: 'var(--on-well)', fontSize: 12, padding: 20, display: 'block', textDecoration: 'underline' }}
+      >
+        {url}
+      </a>
+    )
+  } else if (type === 'audio') {
+    body = (
+      <div dir="ltr" style={{ padding: 16 }}>
+        <audio controls src={url} style={{ inlineSize: '100%' }} />
+      </div>
+    )
+  } else if (type === 'video') {
+    body = (
+      /* A4/A5 — the transport does not mirror. */
+      <div dir="ltr">
+        <video controls preload="metadata" src={url} style={mediaStyle} onError={() => setBroken(true)} />
+      </div>
+    )
+  } else {
+    body = (
+      <img
+        src={url}
+        alt=""
+        loading="lazy"
+        style={{ ...mediaStyle, cursor: onOpen ? 'zoom-in' : 'default' }}
+        onClick={onOpen}
+        onError={() => setBroken(true)}
+      />
+    )
+  }
+
+  return (
+    <figure
+      className="card"
+      style={{ margin: 0, overflow: 'hidden', ...(maxWidth ? { maxInlineSize: maxWidth } : null) }}
+    >
+      <div className="well" style={{ borderRadius: 0, display: 'block' }}>
+        {body}
+      </div>
+
+      {(facts.length > 0 || onOpen) && (
+        <figcaption className="tile__row" style={{ padding: '9px 12px' }}>
+          {/* A3 — each fact is isolated with <bdi> so a resolution, a scene
+              number or a model name inside an Arabic run keeps its own
+              direction without being forced into the mono face. */}
+          <span className="truncate" style={{ flex: 1 }}>
+            {facts.map((f, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span aria-hidden="true" style={{ padding: '0 6px' }}>·</span>}
+                <bdi>{f}</bdi>
+              </React.Fragment>
+            ))}
+          </span>
+          {onOpen && (
+            <button type="button" className="btn-t" onClick={onOpen} title={openLabel} aria-label={openLabel}>
+              {openLabel}
+            </button>
+          )}
+        </figcaption>
+      )}
+    </figure>
+  )
+}

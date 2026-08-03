@@ -1,48 +1,68 @@
-/* ADMIN — /admin
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE ADMIN CONSOLE — /admin
 
-   WHAT CHANGED, COMPOSITIONALLY
-     · The Shield glyph, the 24px h1 and "Full platform analytics." are gone.
-       The status bar names the page; a subtitle that restates the title is
-       noise on a screen whose job is a nine-column table.
-     · The route is a numbered docket on the 56px gutter grid, the same spine
-       as /dashboard and the chat transcript.
-     · The 7/30/90 control moved out of the page header into the RAIL PANEL as
-       a rocker, next to the run filters, the export and the section index —
-       it drives the existing `days` state through the existing `loadAll`.
-     · THE THREE DEAD CONTROLS ARE NOW LIVE. Search, the status filter and the
-       pager were wired to `() => {}` and `page={1}`: they looked functional
-       and did nothing. They now filter and paginate the runs already in
-       memory. No service call changed, no request was added — `loadAll` is
-       byte-identical. A control that does nothing is not something this
-       system ships.
-     · The no-access state is a marker and a sentence, not a 40px grey glyph.
+   Who reads this screen: whoever has to answer for the money. So it is built
+   to be read like a company record, not like a dashboard template.
 
-   Every handler — loadAll, handleRunClick, handleDelete, handleExport — and
-   the admin guard effect are unchanged. */
+   WHAT THIS REPLACES
+     · The numbered docket. Five "bands" hanging off a 56px gutter that ran
+       zero-padded ordinals — 01, 02, 03 — down the leading edge of the page.
+       An index into a list nobody was navigating. Gone, with the .wz-page /
+       .wz-gutter / Band / SectionIndex apparatus behind it. This is .main and
+       a real <h1>, which the application previously had nowhere at all.
+     · THE RAIL PANEL. This route used to portal its ONLY search box, its
+       status filter, its Export CSV button and its 7/30/90 range control into
+       the left rail through <RailPanelPortal>. That panel is collapsible and
+       persisted, so it had to force itself open on arrival or an admin who
+       had once collapsed it arrived at /admin with no search, no filter and
+       no export anywhere on screen. Every one of those controls is now inline
+       on the page, beside the thing it acts on:
+           range 7/30/90 + Refresh   → the page header, because the window
+                                       scopes EVERY figure on the page, not
+                                       just the table
+           search + status + Export  → the toolbar row directly above the runs
+                                       table, which is what they filter
+       Nothing was dropped and nothing gained a second home.
+
+   SELECTIVE DENSITY (principle 2). The eight summary figures and the drawer's
+   three are judging surfaces and get cards, padding and 26px values. The runs
+   table, the model ledger and the balance ledger are scanning surfaces and
+   stay at .dtable density — 13px, 40px rows.
+
+   THE PAGE RENDERS IMMEDIATELY. The heading, the window control, the section
+   headings and the toolbar are present on the first paint; only the data
+   regions carry skeletons. Nothing starts at opacity 0.
+
+   NAMING TRAP, left exactly as it is: the admin stats block reports
+   `total_cost_usd` and the admin DAILY series reports `total_cost` for the
+   same quantity, while the user dashboard's daily series uses
+   `total_cost_usd`. All three are correct against the backend. Do not
+   normalise one into another.
+
+   Every handler — loadAll, loadBalances, handleRunClick, handleDelete,
+   handleExport — and the admin guard effect are unchanged.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adminService } from '../services/adminService'
-import { describeFailure } from '../services/errorText'
+import describeError, { describeFailure } from '../services/errorText'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { useToastStore } from '../store/toastStore'
-import AdminStatsCards from '../components/admin/AdminStatsCards'
+import AdminStatsCards, { AdminStatsSkeleton } from '../components/admin/AdminStatsCards'
 import ModelCostBreakdown from '../components/admin/ModelCostBreakdown'
 import ProviderBalances from '../components/admin/ProviderBalances'
 import DailyMetricsChart from '../components/admin/DailyMetricsChart'
-import AdminRunsTable, { RunsFilters } from '../components/admin/AdminRunsTable'
+import AdminRunsTable, { RunsToolbar } from '../components/admin/AdminRunsTable'
 import RunDetailDrawer from '../components/admin/RunDetailDrawer'
 import ConfirmDialog from '../components/ConfirmDialog'
-import {
-  Band, RubricSkeleton, SectionIndex, PanelGroup,
-} from '../components/dashboard/Instruments'
 import Rocker from '../components/ui/Rocker'
 import EmptyState from '../components/ui/EmptyState'
-import { RailPanelPortal } from '../components/Sidebar'
-import { Revise, Admin as AdminMark } from '../components/Icon'
+import { Revise } from '../components/Icon'
 
 const PAGE_LIMIT = 25
+const RANGES = [7, 30, 90]
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate()
@@ -66,6 +86,7 @@ export default function AdminDashboardPage() {
   const [runToDelete, setRunToDelete] = useState(null)
   const [days, setDays] = useState(30)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [providerBalances, setProviderBalances] = useState([])
   const [balancesLoading, setBalancesLoading] = useState(false)
 
@@ -81,13 +102,17 @@ export default function AdminDashboardPage() {
       setModelCosts(Array.isArray(data.model_costs) ? data.model_costs : [])
       setDailyMetrics(Array.isArray(data.daily_metrics) ? data.daily_metrics : [])
       setRuns(Array.isArray(data.runs) ? data.runs : [])
+      setError(null)
     } catch (err) {
       console.error('Failed to load admin dashboard:', err)
+      /* The toast is transient and this page is often left open. The reason
+         also lands on the page itself, next to a retry that works. */
+      setError(describeError(err, ar ? 'تعذّر تحميل بيانات الإدارة.' : 'Could not load the admin data.'))
       addToast('Failed to load admin data', 'error')
     } finally {
       setLoading(false)
     }
-  }, [days, addToast])
+  }, [days, addToast, ar])
 
   useEffect(() => {
     if (user?.is_admin || user?.role === 'admin') {
@@ -161,11 +186,15 @@ export default function AdminDashboardPage() {
       link.remove()
     } catch (err) {
       console.error('Export failed:', err)
+      addToast(
+        describeFailure(ar ? 'تعذّر التصدير' : 'Export failed', err),
+        'error',
+      )
     }
   }
 
   const filteredRuns = useMemo(() => {
-    const q = (filters.search || '').toLowerCase()
+    const q = (filters.search || '').trim().toLowerCase()
     const status = (filters.status || '').toLowerCase()
     return runs.filter((r) => {
       if (status && String(r.status || '').toLowerCase() !== status) return false
@@ -187,109 +216,139 @@ export default function AdminDashboardPage() {
   const costSeries = useMemo(() => dailyMetrics.map((d) => Number(d?.total_cost) || 0), [dailyMetrics])
   const runSeries = useMemo(() => dailyMetrics.map((d) => Number(d?.run_count) || 0), [dailyMetrics])
 
+  const isFiltered = Boolean(filters.search || filters.status)
+
+  /* THE NO-ACCESS STATE. A heading and a sentence — it is still a page, so it
+     still gets its <h1>. */
   if (!user?.is_admin && user?.role !== 'admin') {
     return (
-      <div className="wz-page">
-        <div className="wz-gutter"><AdminMark size={16} style={{ color: 'var(--ink-3)' }} /></div>
-        <div className="wz-col">
+      <div className="main main--narrow">
+        <div className="pagehead">
+          <h1 className="page-title">{ar ? 'الإدارة' : 'Admin'}</h1>
+        </div>
+        <div className="card card-pad">
           <EmptyState
-            legend={ar ? 'الإدارة' : 'Admin'}
-            line={ar ? 'هذه الشاشة تتطلب صلاحية إدارية.' : 'This screen requires an admin account.'}
-          />
+            legend={ar ? 'صلاحية مطلوبة' : 'Permission required'}
+            line={ar
+              ? 'هذه الشاشة تتطلب حساباً بصلاحية إدارية.'
+              : 'This screen requires an admin account.'}
+          >
+            <button type="button" className="btn-q btn-q--sm" onClick={() => navigate('/dashboard')}>
+              {ar ? 'العودة إلى اللوحة' : 'Back to the dashboard'}
+            </button>
+          </EmptyState>
         </div>
       </div>
     )
   }
 
-  const sections = [
-    { id: 'wz-admin-rubric', ord: '01', label: ar ? 'المؤشرات' : 'Readout' },
-    { id: 'wz-admin-daily', ord: '02', label: ar ? 'يوميًا' : 'Daily' },
-    { id: 'wz-admin-models', ord: '03', label: ar ? 'النماذج' : 'Models' },
-    { id: 'wz-admin-runs', ord: '04', label: ar ? 'التشغيلات' : 'Runs' },
-  ]
-
   return (
-    <div className="wz-page" style={{ rowGap: 32, alignContent: 'start' }}>
-      <RailPanelPortal>
-        <PanelGroup legend={ar ? 'النطاق' : 'Window'} first>
+    <div className="main">
+      {/* ── THE HEAD. The window control lives here because `days` is refetched
+             through loadAll and scopes every figure on the page — the stats,
+             both charts, the model ledger, the balances AND the runs. A
+             control belongs beside the thing it controls, and the thing it
+             controls is the whole page. */}
+      <div className="pagehead">
+        <div style={{ minInlineSize: 0 }}>
+          <h1 className="page-title">{ar ? 'لوحة الإدارة' : 'Admin console'}</h1>
+          <p className="page-sub">
+            {ar
+              ? <>كل تشغيل وكل تكلفة خلال آخر <span className="mono">{days}</span> يوماً</>
+              : <>Every run and every cost across the last <span className="mono">{days}</span> days</>}
+          </p>
+        </div>
+        <div
+          style={{
+            marginInlineStart: 'auto', display: 'flex', alignItems: 'center',
+            gap: 10, flexWrap: 'wrap', flex: 'none',
+          }}
+        >
           <Rocker
             value={days}
             onChange={setDays}
             ariaLabel={ar ? 'نطاق الأيام' : 'Day range'}
-            options={[7, 30, 90].map((d) => ({ value: d, label: `${d}d` }))}
+            options={RANGES.map((d) => ({ value: d, label: `${d}d` }))}
           />
-          <div style={{ marginBlockStart: 10 }}>
-            <button type="button" className="text-action" onClick={loadAll} disabled={loading}>
-              <Revise size={16} />
-              {ar ? 'تحديث' : 'Refresh'}
-            </button>
-          </div>
-        </PanelGroup>
-
-        <PanelGroup legend={ar ? 'الفلاتر' : 'Filters'}>
-          <RunsFilters
-            filters={filters}
-            onFilterChange={setFilters}
-            onExport={handleExport}
-            total={runs.length}
-            matched={filteredRuns.length}
-          />
-        </PanelGroup>
-
-        <PanelGroup legend={ar ? 'الأقسام' : 'Sections'}>
-          <SectionIndex items={sections} />
-        </PanelGroup>
-      </RailPanelPortal>
-
-      <Band index={1} id="wz-admin-rubric" legend={ar ? 'المؤشرات' : 'Readout'} note={`${days}d`}>
-        {loading
-          ? <RubricSkeleton columns={4} count={8} />
-          : <AdminStatsCards stats={stats} costSeries={costSeries} runSeries={runSeries} />}
-      </Band>
-
-      <Band
-        index={2}
-        id="wz-admin-daily"
-        legend={ar ? 'يوميًا' : 'Daily'}
-        note={ar ? 'الإنفاق والتشغيلات عبر النافذة' : 'Spend and runs across the window'}
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-2" style={{ gap: 16 }}>
-          {loading ? (
-            <>
-              <div className="plate"><div className="skel" style={{ blockSize: 220 }} /></div>
-              <div className="plate"><div className="skel" style={{ blockSize: 220 }} /></div>
-            </>
-          ) : (
-            <>
-              <DailyMetricsChart data={dailyMetrics} metric="cost" />
-              <DailyMetricsChart data={dailyMetrics} metric="runs" />
-            </>
-          )}
+          <button type="button" className="btn-q" onClick={loadAll} disabled={loading}>
+            <Revise size={15} />
+            {ar ? 'تحديث' : 'Refresh'}
+          </button>
         </div>
-      </Band>
+      </div>
 
-      <Band
-        index={3}
-        id="wz-admin-models"
-        legend={ar ? 'تكلفة النماذج' : 'Model cost'}
-        note={ar ? 'مرتّبة حسب الإنفاق' : 'Ranked by spend'}
+      {error && (
+        <div className="card card-pad" style={{ borderColor: 'var(--bad)', marginBlockEnd: 20 }}>
+          <div className="st st--bad" style={{ marginBlockEnd: 6 }}>{ar ? 'خطأ' : 'Error'}</div>
+          <p style={{ color: 'var(--ink-2)', fontSize: 13 }}>{error}</p>
+          <button type="button" className="btn-q btn-q--sm" style={{ marginBlockStart: 12 }} onClick={loadAll}>
+            <Revise size={14} />
+            {ar ? 'إعادة المحاولة' : 'Retry'}
+          </button>
+        </div>
+      )}
+
+      {/* ── THE FIGURES. Generous, because this is where you judge. ───────── */}
+      <div className="sechead" style={{ marginBlockStart: 0 }}>
+        <h2 className="sec-title">{ar ? 'المؤشرات' : 'Readout'}</h2>
+        <span className="caption">
+          {ar
+            ? <>نافذة <span className="mono">{days}</span> يوماً</>
+            : <><span className="mono">{days}</span>-day window</>}
+        </span>
+      </div>
+      {loading
+        ? <AdminStatsSkeleton count={8} />
+        : <AdminStatsCards stats={stats} costSeries={costSeries} runSeries={runSeries} />}
+
+      {/* ── DAILY ────────────────────────────────────────────────────────── */}
+      <div className="sechead">
+        <h2 className="sec-title">{ar ? 'يوميًا' : 'Daily'}</h2>
+        <span className="caption">
+          {ar ? 'الإنفاق والتشغيلات عبر النافذة' : 'Spend and runs across the window'}
+        </span>
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: 16,
+        }}
       >
+        <div className="card card-pad">
+          {loading
+            ? <div className="skel" style={{ blockSize: 220 }} />
+            : <DailyMetricsChart data={dailyMetrics} metric="cost" />}
+        </div>
+        <div className="card card-pad">
+          {loading
+            ? <div className="skel" style={{ blockSize: 220 }} />
+            : <DailyMetricsChart data={dailyMetrics} metric="runs" />}
+        </div>
+      </div>
+
+      {/* ── MODEL COST ───────────────────────────────────────────────────── */}
+      <div className="sechead">
+        <h2 className="sec-title">{ar ? 'تكلفة النماذج' : 'Model cost'}</h2>
+        <span className="caption">{ar ? 'مرتّبة حسب الإنفاق' : 'Ranked by spend'}</span>
+      </div>
+      <div className="card" style={{ padding: '14px 16px' }}>
         {loading
-          ? <div className="skel" style={{ blockSize: 8 * 40 + 36 }} />
+          ? <div className="skel" style={{ blockSize: 9 * 40 }} />
           : <ModelCostBreakdown data={modelCosts} totalCost={stats.total_cost_usd || 0} />}
-      </Band>
+      </div>
 
-      {/* Loaded separately from the overview — it calls five vendors
-          server-side, so it must not hold the rest of the page hostage. It
-          gets its own skeleton for the same reason. */}
-      <Band
-        index={4}
-        id="wz-admin-balances"
-        legend={ar ? 'أرصدة المزودين' : 'Provider balances'}
-        note={ar ? 'الرصيد المتبقي والإنفاق' : 'Remaining credit and spend'}
-      >
+      {/* ── PROVIDER BALANCES ────────────────────────────────────────────────
+          Loaded separately from the overview — it calls five vendors
+          server-side, so it must not hold the rest of the page hostage, and it
+          carries its own skeleton for the same reason. */}
+      <div className="sechead">
+        <h2 className="sec-title">{ar ? 'أرصدة المزودين' : 'Provider balances'}</h2>
+        <span className="caption">{ar ? 'الرصيد المتبقي والإنفاق' : 'Remaining credit and spend'}</span>
+      </div>
+      <div className="card" style={{ padding: '14px 16px' }}>
         {balancesLoading
-          ? <div className="skel" style={{ blockSize: 5 * 40 + 36 }} />
+          ? <div className="skel" style={{ blockSize: 6 * 40 }} />
           : (
             <ProviderBalances
               data={providerBalances}
@@ -298,35 +357,46 @@ export default function AdminDashboardPage() {
               onRefresh={() => loadBalances(true)}
             />
           )}
-      </Band>
+      </div>
 
-      <Band
-        index={5}
-        id="wz-admin-runs"
-        legend={ar ? 'كل التشغيلات' : 'All runs'}
-        note={filters.search || filters.status
-          ? `${filteredRuns.length.toLocaleString('en-US')} / ${runs.length.toLocaleString('en-US')}`
-          : `${runs.length.toLocaleString('en-US')}`}
-        span
-      >
+      {/* ── ALL RUNS. Dense, because this is where you scan. ──────────────── */}
+      <div className="sechead">
+        <h2 className="sec-title">{ar ? 'كل التشغيلات' : 'All runs'}</h2>
+        <span className="caption">
+          {ar ? 'اختر تشغيلاً لعرض كل خطوة وتكلفتها' : 'Select a run to see every step and what it cost'}
+        </span>
+      </div>
+
+      {/* THE RELOCATED CONTROLS: search, status and Export CSV, directly above
+          the table they act on. They were in the rail; nothing else on this
+          page can reach them. */}
+      <RunsToolbar
+        filters={filters}
+        onFilterChange={setFilters}
+        onExport={handleExport}
+        total={runs.length}
+        matched={filteredRuns.length}
+        disabled={loading}
+      />
+
+      <div className="card" style={{ padding: '12px 14px' }}>
         <AdminRunsTable
           runs={pageRuns}
           total={filteredRuns.length}
           page={safePage}
           limit={PAGE_LIMIT}
           loading={loading}
+          filtered={isFiltered}
           onPageChange={(p) => setPage(Math.min(Math.max(1, p), totalPages))}
           onRunClick={handleRunClick}
           onDelete={(run) => setRunToDelete(run)}
-          onExport={handleExport}
-          filters={filters}
-          onFilterChange={setFilters}
+          onClearFilters={() => setFilters({})}
         />
-      </Band>
+      </div>
 
       <ConfirmDialog
         isOpen={!!runToDelete}
-        title={ar ? 'حذف التشغيل' : 'Delete Run'}
+        title={ar ? 'حذف التشغيل' : 'Delete run'}
         message={ar
           ? `سيُحذف سجل التشغيل رقم ${runToDelete?.id} وبياناته التحليلية. الأصول المُنتَجة لن تُحذف.`
           : `Delete Run #${runToDelete?.id}? This removes the run record and associated analytics. Generated assets will NOT be deleted.`}
