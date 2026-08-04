@@ -57,11 +57,13 @@ export default {
         etch: { DEFAULT: 'var(--line)', strong: 'var(--line-2)' },
         edge: 'var(--line-2)',
         focusring: 'var(--focus)',
-        label: '#FFFFFF',
+        /* the label on a filled accent — flips with the theme, never a fixed
+           white (white on the lifted dark-mode green is 2.9:1) */
+        label: 'var(--on-accent)',
       },
       boxShadow: {
         overlay: 'var(--shadow-overlay)',
-        raise: '0 1px 2px rgba(25,21,18,0.06)',
+        raise: 'var(--raise)',
         etch: 'inset 0 0 0 1px var(--line)',
         'etch-strong': 'inset 0 0 0 1px var(--line-2)',
         edge: 'inset 0 0 0 1px var(--line-2)',

@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    THE TOP BAR — 56px
 
-     [☰] [mark وزّة]  PROJECT ▾  · live run ······  [ACTION]  balance  [account]
+     [☰] [mark وازا]  PROJECT ▾  · live run ······  [ACTION]  balance  [account]
 
    All seven reference products in this register (Frame.io, YouTube Studio,
    Premiere, CapCut, Descript, Runway, Kapwing) converge on this bar, and three
@@ -516,7 +516,7 @@ function TopBar({ onLogout, onToggleRail }) {
         style={{ fontWeight: 600, fontSize: 16, color: 'var(--ink)' }}
       >
         <Mark size={19} />
-        <span className="hidden sm:inline">وزّة</span>
+        <span className="hidden sm:inline">وازا</span>
       </button>
 
       {/* WHAT YOU ARE WORKING ON — named here, switched here. */}

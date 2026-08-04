@@ -130,6 +130,17 @@
   --accent:       #1B5E43;   /* white label 7.4 · 6.8 as text on card */
   --accent-hi:    #164C36;   /* hover — deeper, never brighter */
   --accent-soft:  #E8F0EC;   /* selected row tint, avatar ground */
+  /* THE LABEL ON A FILLED ACCENT IS ITS OWN TOKEN, not a hardcoded #fff.
+     One accent cannot serve both jobs across two themes: light mode wants a
+     DEEP green so a white label clears it, dark mode wants a LIFTED green so
+     the same colour still reads as text on a dark card. Pinning the label to
+     white means dark mode ships white on a light green — 2.9:1, which is not
+     legible. So the fill flips and the label flips with it. */
+  --on-accent:    #FFFFFF;
+  /* Elevation, as one token. Light lifts with a cast shadow; dark cannot (a
+     dark shadow on a dark ground is nothing), so dark lifts with a top light
+     lip instead — the surface catching light at its own upper edge. */
+  --raise:        0 1px 2px rgba(25,21,18,0.09);
 
   /* Status is a field. Muted, semantic, legible, never celebratory. */
   --ok:           #2E6B4F;   /* 5.6 on card */
@@ -197,7 +208,7 @@
   --signal:var(--accent); --signal-deep:var(--accent); --signal-edge:var(--accent);
   --signal-hot:var(--accent-hi); --signal-press:var(--accent-hi);
   --state-done:var(--ok); --state-fail:var(--bad); --state-run:var(--warn); --state-queued:var(--idle);
-  --btn-label:#FFFFFF; --fraction-op:0.75;
+  --btn-label:var(--on-accent); --fraction-op:0.75;
   --lh-body:var(--lh);
   --chamfer-lg:0px; --chamfer-md:0px; --chamfer-sm:0px;
   --rail-spine:var(--rail); --rail-panel:0px; --statusbar:0px;
@@ -209,46 +220,110 @@
 html[dir="ltr"] { --lh: 1.55; }
 
 /* ── TOKENS · DARK ────────────────────────────────────────────────────────
-   Warm charcoal, not the cool blue-slate every dark SaaS ships. Light is the
-   product and the theme the decisions are made in; this is derived. */
+   NEUTRAL GRAPHITE. R = G = B on every chrome surface — no warm cast, no cool
+   cast, and emphatically not the blue-slate every dark SaaS ships. This is the
+   register Premiere, Resolve, Frame.io and Figma all sit in, and for this
+   product it is not a style preference but the correct engineering answer: a
+   tinted chrome biases how you read the frame sitting inside it. Simultaneous
+   contrast is real — a warm surround pushes a neutral grade to look cool, and
+   a client sign-off made against a tinted UI is a sign-off made wrong. The
+   light theme keeps its warm limestone, because light chrome is a document
+   surface; dark chrome is a viewing surround, and a viewing surround is
+   neutral. The green accent is then the only colour on the screen, which is
+   principle 4 stated properly rather than merely obeyed.
+
+   REVISED FOR SUSTAINED READING. The previous dark pass was built by inverting
+   the light ratios, and inverting a light theme is precisely what makes a dark
+   theme hurt. Three faults, all measured, all fixed.
+
+   1  THE INK WAS TOO BRIGHT. #F2EDE4 on #232019 is 13.9:1 — near the ceiling
+      sRGB can produce. High contrast is a FLOOR requirement, not a target:
+      past roughly 12:1 on a dark ground the glyph edges bloom into the
+      surround (halation), the iris cannot settle on one aperture, and long
+      sessions ache. It is worse for astigmatic eyes, which is most people.
+      The ink is now #DEDEDE at 10.8:1 on the card — comfortably above the 7:1
+      AAA floor for body text, with the glare taken out.
+
+   2  THE SURFACES WERE ALL THE SAME DEPTH. rail / page / card / card-2 /
+      card-3 sat at L* 5.2 / 8.0 / 12.4 / 14.5 / 17.6 — five surfaces inside
+      twelve points of lightness, four of them near-black. The eye had to hunt
+      for every boundary, which is its own fatigue, and it is why the chrome
+      never read as chrome. The ladder is now 9.3 / 12.7 / 16.6 / 20.8 / 24.9:
+      the same architecture, in even ~4-point steps, lifted off pure black so
+      the page is not a hole punched in a lit room. The rail still recedes
+      BELOW the page — that relationship was right, it just had no room to be
+      seen.
+
+   3  THE FILLED BUTTON WAS ILLEGIBLE. White on #56A883 is 2.87:1. The label
+      now takes --on-accent, which flips with the theme (see the light block).
+
+   Every ratio below is computed WCAG 2.1 against the surface the token
+   actually sits on, worst case. */
 .dark {
-  --page:         #1A1714;
+  --page:         #212121;   /* L* 12.7 */
   /* Dark inverts the relationship — the rail recedes by going DARKER than the
      page here, because on a dark ground a lighter panel reads as raised
      content rather than as chrome. */
-  --rail-bg:      #141210;
-  --card:         #232019;
-  --card-2:       #2B271F;
-  --card-3:       #332E25;
-  --line:         rgba(240,233,222,0.10);
-  --line-2:       rgba(240,233,222,0.30);
+  --rail-bg:      #1A1A1A;   /* L*  9.3 */
+  --card:         #292929;   /* L* 16.6 */
+  --card-2:       #323232;   /* L* 20.8 — hover / zebra */
+  --card-3:       #3B3B3B;   /* L* 24.9 — rail hover, pressed, seg housing */
+  /* The row rule stays a whisper; the CONTROL boundary was 2.4:1 and is now
+     3.20:1, clearing the WCAG 1.4.11 floor for a non-text UI edge. A field you
+     cannot find is its own eye strain — this is the one thing in the dark
+     theme that got MORE contrast, and it is a 1px border, never a lit surface. */
+  --line:         rgba(255,255,255,0.11);
+  --line-2:       rgba(255,255,255,0.36);
 
-  --ink:          #F2EDE4;
-  --ink-2:        #B5AC9F;
-  --ink-3:        #8F867A;
+  --ink:          #DEDEDE;   /* 10.8 card · 12.0 page · 9.5 card-2 · 8.3 card-3 */
+  --ink-2:        #A6A6A6;   /*  6.0 card ·  5.3 card-2 · 4.6 card-3 */
+  --ink-3:        #999999;   /*  5.1 card ·  4.5 card-2 — captions, labels */
 
-  --accent:       #56A883;
-  --accent-hi:    #6FBE99;
-  --accent-soft:  #24382F;
+  /* The one hue on the screen. Unchanged from the warm build: green needed no
+     correction because it was never borrowing the chrome's temperature, and
+     it reads cleaner against a neutral ground than it did against brown. */
+  --accent:       #56A883;   /*  5.1 as text on card */
+  --accent-hi:    #6FBE99;   /*  6.6 — hover; dark lifts where light deepens */
+  --accent-soft:  #1E2B25;   /* selected tint: accent on it clears 5.1 */
+  --on-accent:    #10201A;   /*  5.9 on accent · 7.6 on accent-hi */
 
-  --ok:           #6FBE99;
-  --warn:         #D2A05A;
-  --bad:          #E08472;
-  --idle:         #8F867A;
+  /* Status stays a field. Pulled off maximum saturation for the same reason
+     the ink was: a vivid red on near-black vibrates. All clear 4.5. */
+  --ok:           #5FB58D;   /*  5.9 */
+  --warn:         #C79A5C;   /*  5.7 */
+  --bad:          #D2796A;   /*  4.6 */
+  --idle:         #999999;   /*  5.1 */
 
-  --well:         #100E0A;
-  --well-2:       #0A0906;
+  /* The well does NOT lift, and here more than anywhere it must not tint. It
+     is where video colour is judged, and that judgement needs a true neutral
+     near-black surround — the one surface in the app whose darkness is a
+     measurement instrument rather than a mood. */
+  --well:         #0F0F0F;
+  --well-2:       #080808;
+  --on-well:      #BFBFBF;   /* 10.4 on well — transport chrome */
+  --on-well-2:    #8F8F8F;   /*  5.9 */
 
-  --focus:        #56A883;
-  --focus-halo:   rgba(86,168,131,0.30);
-  --scrim:        rgba(10,9,6,0.62);
+  --focus:        #6FBE99;
+  --focus-halo:   rgba(111,190,153,0.28);
+  --scrim:        rgba(0,0,0,0.66);
+
+  /* No cast shadow can register on a dark ground. Elevation here is the top
+     lip catching light — the self-coloured edge, not a black bloom. */
+  --raise:        inset 0 1px 0 rgba(255,255,255,0.07);
 
   /* Dark chart steps are SELECTED, not an automatic lightening of the light
      set. Validated against the dark card surface #232019: lightness band PASS
      (all inside L 0.48–0.67 — the light values sat at ~0.70+ and failed),
      chroma PASS, CVD separation PASS at ΔE 13.1 worst adjacent, normal vision
      PASS at 15.1, contrast PASS. Same hue order as light, so a series keeps
-     its identity across themes. */
+     its identity across themes.
+     Re-checked after the card moved #232019 → #292929: lightness-band and CVD
+     separation are properties of the colours themselves and do not move with
+     the surface, and the contrast floor still holds — the tightest are chart-2
+     at 4.29:1 and chart-1 at 4.40:1, both well clear of the 3:1 a non-text
+     encoding requires. The set is NOT renudged for the neutral chrome: a
+     categorical encoding means "which provider", and its identity must not
+     drift because the surround changed temperature. */
   --chart-1:#3E9E74; --chart-2:#5A8FC8; --chart-3:#C4832F;
   --chart-4:#9A83C8; --chart-5:#C8705F;
 
@@ -338,7 +413,7 @@ html[dir="ltr"] { --lh: 1.55; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   block-size: 36px; padding-inline: 16px;
-  background: var(--accent); color: #fff;
+  background: var(--accent); color: var(--on-accent);
   border-radius: var(--r-sm);
   font-size: 14px; font-weight: 500; line-height: 1;
   transition: background-color 120ms var(--ease);
@@ -441,7 +516,7 @@ html[dir="ltr"] { --lh: 1.55; }
    survives if controls stop spending the accent. */
 .seg__cell[data-on="true"] {
   background: var(--card); color: var(--ink); font-weight: 600;
-  box-shadow: 0 1px 2px rgba(25,21,18,0.10);
+  box-shadow: var(--raise);
 }
 /* A hairline between cells. Without it a segmented control with NOTHING
    selected is one flat rectangle and the reader cannot see it has parts. */
@@ -449,7 +524,7 @@ html[dir="ltr"] { --lh: 1.55; }
 [dir="rtl"] .seg__cell + .seg__cell { box-shadow: inset -1px 0 0 0 var(--line); }
 .seg__cell[data-on="true"] + .seg__cell,
 .seg__cell:has(+ .seg__cell[data-on="true"]) { box-shadow: none; }
-.seg__cell[data-on="true"] { box-shadow: 0 1px 2px rgba(25,21,18,0.10); }
+.seg__cell[data-on="true"] { box-shadow: var(--raise); }
 
 /* ── CHIPS — a multiple CHOICE, not a segmented toggle ────────────────────
    A segmented control is for switching a view (theme, language, a filter) and
@@ -524,7 +599,7 @@ html[dir="ltr"] { --lh: 1.55; }
 .navlink:hover { background: var(--card-3); color: var(--ink); }
 .navlink[aria-current="page"] {
   background: var(--card); color: var(--ink); font-weight: 600;
-  box-shadow: 0 1px 2px rgba(25,21,18,0.06);
+  box-shadow: var(--raise);
 }
 .navlink[aria-current="page"] .wz-icon { color: var(--accent); }
 .navlink .wz-icon { flex: none; opacity: 0.8; }
@@ -571,7 +646,9 @@ html[dir="ltr"] { --lh: 1.55; }
   padding: 9px 13px; background: var(--well-2); color: var(--on-well);
   font-size: 12px;
 }
-.seek { flex: 1; block-size: 4px; background: #332E27; border-radius: 99px; position: relative; cursor: pointer; }
+/* The track composites off the well rather than naming a colour, so it cannot
+   go warm against a neutral well (or the reverse) when a theme changes. */
+.seek { flex: 1; block-size: 4px; background: rgba(255,255,255,0.16); border-radius: 99px; position: relative; cursor: pointer; }
 .seek__fill { position: absolute; inset-block: 0; inset-inline-start: 0; background: #fff; border-radius: 99px; }
 .seek__head { position: absolute; inset-block-start: 50%; inline-size: 11px; block-size: 11px; margin-block-start: -5.5px; margin-inline-start: -5.5px; background: #fff; border-radius: 50%; }
 .tc { font-family: 'Commit Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 11px; color: var(--on-well-2); }
@@ -711,7 +788,7 @@ html[dir="ltr"] { --lh: 1.55; }
 .plate--sunken { background: var(--card-2); }
 .plate--recess { background: var(--card-3); }
 .plate--flush { padding: 0; }
-.slab { display: inline-flex; align-items: center; justify-content: center; gap: 8px; block-size: 36px; padding-inline: 16px; background: var(--accent); color: #fff; border-radius: var(--r-sm); font-size: 14px; font-weight: 500; line-height: 1; transition: background-color 120ms var(--ease); cursor: pointer; }
+.slab { display: inline-flex; align-items: center; justify-content: center; gap: 8px; block-size: 36px; padding-inline: 16px; background: var(--accent); color: var(--on-accent); border-radius: var(--r-sm); font-size: 14px; font-weight: 500; line-height: 1; transition: background-color 120ms var(--ease); cursor: pointer; }
 .slab:hover:not(:disabled) { background: var(--accent-hi); }
 .slab:disabled { opacity: 0.45; cursor: not-allowed; }
 .slab--sm { block-size: 30px; padding-inline: 11px; font-size: 13px; }
@@ -722,7 +799,7 @@ html[dir="ltr"] { --lh: 1.55; }
 .rocker { display: inline-flex; align-items: stretch; padding: 2px; background: var(--card-3); border-radius: var(--r-sm); }
 .rocker__cell { padding: 5px 12px; border-radius: var(--r-xs); font-size: 13px; font-weight: 500; line-height: 1.2; color: var(--ink-2); transition: background-color 120ms var(--ease), color 120ms var(--ease); cursor: pointer; white-space: nowrap; }
 .rocker__cell:hover { color: var(--ink); }
-.rocker__cell[data-on="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(25,21,18,0.10); }
+.rocker__cell[data-on="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--raise); }
 .marker { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; }
 .marker--done { color: var(--ok); } .marker--fail { color: var(--bad); }
 .marker--run { color: var(--warn); } .marker--queued { color: var(--idle); }
@@ -741,8 +818,8 @@ html[dir="ltr"] { --lh: 1.55; }
 .wz-meter--full { inline-size: 100%; }
 .ledger { display: inline-flex; align-items: baseline; }
 .ledger__fraction { color: var(--ink-2); }
-.ledger--on-fill { color: #fff; }
-.ledger--on-fill .ledger__fraction { color: #fff; opacity: var(--fraction-op); }
+.ledger--on-fill { color: var(--on-accent); }
+.ledger--on-fill .ledger__fraction { color: var(--on-accent); opacity: var(--fraction-op); }
 .ledger-4 { display: grid; grid-template-columns: minmax(0,1fr) 132px 96px 56px; align-items: center; gap: 16px; block-size: 40px; }
 .ledger-5 { display: grid; grid-template-columns: minmax(0,1fr) 108px 116px 92px 64px; gap: 16px; }
 @media (max-width: 1023.98px) {

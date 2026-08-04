@@ -140,7 +140,7 @@ const STRINGS = {
     loadingProjects: 'جارٍ التحميل',
 
     you: 'أنت',
-    wazza: 'وزّة',
+    wazza: 'وازا',
     retry: 'استئناف',
     retryHint: 'يكمل من حيث توقف — المشاهد المكتملة لا تُحتسب مرة أخرى.',
     somethingFailed: 'حدث خطأ',

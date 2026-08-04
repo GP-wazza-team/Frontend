@@ -22,10 +22,10 @@
    WHAT REPLACED THEM is the system in index.css and nothing else: .card,
    .field, .btn, .btn-t, .seg, .page-title, plus the tokens.
 
-   THE WORDMARK. وزّة leads by size, weight and ink; "Wazza" sits under it as a
+   THE WORDMARK. وازا leads by size, weight and ink; "Wazza" sits under it as a
    transliteration line. This is an Arabic-first product and the Latin does not
    outrank the Arabic on the screen that introduces it. (The previous version
-   set وزّة in a `.record` class that does not exist in this stylesheet, so the
+   set وازا in a `.record` class that does not exist in this stylesheet, so the
    Arabic silently rendered at body size — smaller in effect than the Latin it
    was supposed to lead. Both sizes are explicit now.)
 
@@ -69,7 +69,7 @@ export function Wordmark({ size = 'lead' }) {
           color: 'var(--ink)',
         }}
       >
-        وزّة
+        وازا
       </span>
       <span
         className="ltr:tracking-[0.02em]"
