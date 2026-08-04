@@ -3,11 +3,20 @@ import { Check, X, Pencil, Image as ImageIcon, User, RefreshCw, Film, Loader2, A
 import { useLightbox } from '../MediaLightbox'
 
 // Fields the backend accepts for the free, no-LLM /edit call.
+//
+// Camera and Style were missing until they were added here, and they are the
+// two that decide the shot. Camera carries the blocking — which edge a subject
+// enters from and which way it travels — and Style carries the art direction.
+// Both go to the image and video models verbatim, so a plan whose camera says
+// the wrong thing produces the wrong shot; with neither on the card, the user
+// could see a summary that read fine and no reason for what they got back.
 const EDITABLE_FIELDS = [
   { key: 'brief_summary', label: 'Summary' },
   { key: 'characters', label: 'Characters' },
   { key: 'environment', label: 'Environment' },
   { key: 'scenario', label: 'Scenario' },
+  { key: 'camera', label: 'Camera' },
+  { key: 'style', label: 'Style' },
 ]
 
 // Fallbacks for the very first render, before /generate/models has answered.
