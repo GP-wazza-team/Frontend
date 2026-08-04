@@ -51,6 +51,23 @@ function parseContent(content) {
 }
 
 /**
+ * The label above one clip.
+ *
+ * A scene flagged continues_previous is the second half of the shot before it,
+ * rendered from that clip's final frame — so the two are one moment split in
+ * two, not two scenes. Labelling them "Scene 2" and "Scene 3" would tell the
+ * viewer the opposite of what they are about to watch.
+ */
+function sceneLabel(scenes, index) {
+  const scene = scenes[index]
+  const isPartTwo = scene.continues_previous
+  const isPartOne = scenes[index + 1]?.continues_previous
+  if (isPartTwo) return `Scene ${scenes[index - 1]?.scene_number ?? scene.scene_number} · Part 2 — continues part 1`
+  if (isPartOne) return `Scene ${scene.scene_number} · Part 1`
+  return `Scene ${scene.scene_number}`
+}
+
+/**
  * Multi-scene results arrive as a flat scenes[] on the run result. Rendering
  * them grouped keeps a 4-scene story readable instead of collapsing into an
  * undifferentiated pile of media.
@@ -60,10 +77,10 @@ function SceneResults({ scenes }) {
   if (!scenes || scenes.length === 0) return null
   return (
     <div className="mt-2.5 flex flex-col gap-3">
-      {scenes.map((scene) => (
+      {scenes.map((scene, index) => (
         <div key={scene.scene_number} className="flex flex-col gap-1">
           <span className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
-            Scene {scene.scene_number}
+            {sceneLabel(scenes, index)}
           </span>
           {scene.video_url ? (
             <video

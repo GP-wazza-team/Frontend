@@ -15,7 +15,10 @@ const EDITABLE_FIELDS = [
 // deployment has keys for.
 const FALLBACK_RESOLUTIONS = ['480p', '720p', '1080p']
 const FALLBACK_ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '21:9']
-const FALLBACK_DURATIONS = [5, 10, 15, 20]
+// 5 and 10 are the only clip lengths any video model renders. Longer requests
+// are served by the script agent splitting a beat into a part 1 / part 2 pair,
+// not by asking for a length that gets clamped back down after the fact.
+const FALLBACK_DURATIONS = [5, 10]
 
 /**
  * One labelled dropdown in the output-settings row.
