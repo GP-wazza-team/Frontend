@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WAZZA — THE ICON SET
+   MIKHYAL — THE ICON SET
 
    These are SUPPORTING marks. The navigation carries words, so no icon here
    has to encode meaning on its own. Each one draws the CONVENTIONAL form of

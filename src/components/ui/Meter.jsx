@@ -2,7 +2,7 @@
    METER — the application's ONLY progress indicator.
 
    FOUNDATION-OWNED. Do not write another spinner, another progress bar, or
-   another set of bouncing dots. Every loading state in Wazza is this object:
+   another set of bouncing dots. Every loading state in Mikhyal is this object:
    the status bar, the chat run strip, per-scene progress, the dashboard
    sparkmeter, the admin daily metric, and the auth plate at large scale.
 

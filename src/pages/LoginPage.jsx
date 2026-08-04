@@ -22,12 +22,9 @@
    WHAT REPLACED THEM is the system in index.css and nothing else: .card,
    .field, .btn, .btn-t, .seg, .page-title, plus the tokens.
 
-   THE WORDMARK. وازا leads by size, weight and ink; "Wazza" sits under it as a
-   transliteration line. This is an Arabic-first product and the Latin does not
-   outrank the Arabic on the screen that introduces it. (The previous version
-   set وازا in a `.record` class that does not exist in this stylesheet, so the
-   Arabic silently rendered at body size — smaller in effect than the Latin it
-   was supposed to lead. Both sizes are explicit now.)
+   THE WORDMARK. مِخيال, alone, in both languages. Earlier passes stacked it
+   over a small Latin transliteration line; that line is gone. The reasoning
+   sits on the component itself.
 
    THIS FILE ALSO EXPORTS the auth chrome — Wordmark, AuthPlate, AuthRocker,
    AuthLockup, AuthBlock, FieldRow, SubmitRow, AuthNotice — because the rebuild
@@ -51,40 +48,35 @@ import { authService } from '../services/authService'
 import { clearAllStores } from '../utils/clearStores'
 
 /* ── THE WORDMARK ─────────────────────────────────────────────────────────
-   One hand at two sizes, not two typefaces. Arabic primary, Latin
-   subordinate. Sentence case, not tracked-out caps: A1 forbids tracking in
-   Arabic, and a letterspaced Latin beside an untracked Arabic would rebuild
-   the two-tier lockup by other means. The 0.02em on the Latin line applies
-   only inside [dir=ltr]. */
+   ONE MARK, ARABIC, IN BOTH LANGUAGES. This used to set مِخيال over a small
+   Latin transliteration line. Two things were wrong with that. It printed the
+   name twice — the second time smaller, greyer and directly beneath itself —
+   and a brand is one mark, not a mark plus its own footnote. It also made the
+   identity a two-tier lockup, which is the shape this system rejects
+   everywhere else it appears.
+
+   A Latin-named product does not caption its own logo with an Arabic
+   transliteration, and the reverse is no different. So the Arabic IS the mark,
+   in Arabic and in English alike. The name still transliterates as "Mikhyal"
+   in running English copy — that is what a transliteration is for — but it is
+   not part of the mark.
+
+   A1 is now satisfied by construction: the 0.02em tracking lived only on the
+   Latin line and left with it. No letter-spacing here in either direction. */
 export function Wordmark({ size = 'lead' }) {
   const lead = size === 'lead'
   return (
-    <div>
-      <span
-        style={{
-          display: 'block',
-          fontSize: lead ? 34 : 19,
-          fontWeight: 600,
-          lineHeight: 1.3,
-          color: 'var(--ink)',
-        }}
-      >
-        وازا
-      </span>
-      <span
-        className="ltr:tracking-[0.02em]"
-        style={{
-          display: 'block',
-          fontSize: lead ? 12 : 11,
-          fontWeight: 500,
-          lineHeight: 1.2,
-          color: 'var(--ink-3)',
-          marginBlockStart: lead ? 4 : 1,
-        }}
-      >
-        Wazza
-      </span>
-    </div>
+    <span
+      style={{
+        display: 'block',
+        fontSize: lead ? 34 : 19,
+        fontWeight: 600,
+        lineHeight: 1.3,
+        color: 'var(--ink)',
+      }}
+    >
+      مِخيال
+    </span>
   )
 }
 
@@ -103,8 +95,12 @@ export function AuthPlate({ headline, blurb, children }) {
         padding: '40px 48px',
       }}
     >
-      <div className="flex items-start gap-4">
-        <Mark size={26} style={{ color: 'var(--ink)', marginBlockStart: 4 }} />
+      {/* items-center, not items-start. The 4px top nudge on the mark existed
+          to align it with the FIRST line of a two-line lockup; with the
+          transliteration line gone there is one line, so the mark centres
+          against it and that nudge would only push it off-axis. */}
+      <div className="flex items-center gap-4">
+        <Mark size={26} style={{ color: 'var(--ink)' }} />
         <Wordmark />
       </div>
 
@@ -263,7 +259,7 @@ function LoginPage() {
 
   const t = {
     title:       isAr ? 'تسجيل الدخول' : 'Welcome back',
-    subtitle:    isAr ? 'أهلاً بك في Wazza' : 'Sign in to your Wazza workspace',
+    subtitle:    isAr ? 'أهلاً بك في مِخيال' : 'Sign in to your مِخيال workspace',
     email:       isAr ? 'البريد الإلكتروني' : 'Email address',
     password:    isAr ? 'كلمة المرور' : 'Password',
     submit:      isAr ? 'تسجيل الدخول' : 'Continue',

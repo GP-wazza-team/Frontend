@@ -267,6 +267,7 @@ function MessageBubble({ message, handlers, index }) {
           onEditScript={(scenes) => handlers?.onEditScript?.(message.runId, scenes)}
           onPreview={(type, characterName) => handlers?.onPreview?.(message.runId, type, characterName)}
           onRevise={(feedback) => handlers?.onRevise?.(message.runId, feedback)}
+          onConfirm={() => handlers?.onConfirm?.(message.runId)}
           onCancel={() => handlers?.onCancel?.(message.runId)}
           onSettings={(settings) => handlers?.onSettings?.(message.runId, settings)}
         />
@@ -379,7 +380,8 @@ function MessageBubble({ message, handlers, index }) {
       {message.failedRunId && (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2" style={{ marginBlockStart: 12 }}>
           {/* Quiet, not filled: resuming a paid run is a recovery, and the
-              authorisation in the top bar is the only filled control here. */}
+              authorisation in the work order is the only filled control on
+              this screen. */}
           <button
             type="button"
             onClick={() => handlers?.onRetry?.(message.failedRunId, index)}

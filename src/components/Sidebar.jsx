@@ -1,30 +1,47 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   THE RAIL — NAVIGATION, AND NOTHING ELSE.
+   THE RAIL — AND IT IS NOW THE ONLY CHROME.
 
-   PRINCIPLE 11: LEFT RAIL = WHERE YOU ARE. The rail names the five
-   destinations and marks the one you are on. That is its whole job.
+   There is no top bar. On a desktop screen this column is the entire frame
+   around the work, running the full height of the window:
 
-   WHAT LEFT, AND WHERE IT WENT. This file used to be the only home for the
-   conversation list — create, select, search, rename, delete. So opening a
-   project from the workspace grid pushed a second copy of that project into
-   the rail, and the rail stopped being "where you are" and started being "what
-   you are working on" as well. Those are two different questions and they get
-   two different controls.
+     ┌─────────────┐
+     │  ▣  مِخيال   │   THE IDENTITY, alone, in its own zone with a rule under
+     ├─────────────┤   it. Not a row item competing with the destinations.
+     │ مساحة العمل  │
+     │ لوحة التحكم  │   WHERE YOU ARE. The destinations, one marked current.
+     │ المكتبة      │
+     │ الإعدادات    │
+     ├─────────────┤
+     │ project ▾   │   WHAT YOU ARE WORKING ON, and where you switch it.
+     │             │
+     │     ⋯       │   ← the gap. The bottom block is pinned, not floated up.
+     │ ● run…      │   WHAT IS HAPPENING (only while a run is live).
+     │ rصيد   1,240│   WHAT IT COSTS (only when there is something to say).
+     ├─────────────┤
+     │ ● عبدالمجيد  │   WHO YOU ARE, on the bottom edge. Menu opens upward.
+     └─────────────┘
 
-   The list now lives in the TOP BAR, as a PROJECT SWITCHER on the open
-   project's name — the pattern Frame.io (workspace switcher), YouTube Studio
-   (channel switcher) and Google Cloud (project picker) all converge on: the
-   rail is WHERE YOU ARE, the bar names WHAT YOU ARE WORKING ON and is where
-   you switch it. Every handler moved verbatim; see TopBar.jsx.
+   WHY THE PROJECT LIST IS BACK HERE. An earlier pass moved it OUT of the rail
+   and into the top bar, on the argument that the rail answers "where you are"
+   and a bar answers "what you are working on" — two questions, two controls.
+   That argument was right about the questions and is now moot about the
+   housing: there is no bar to put the second control in. So both live here,
+   and the separation is made the way it should have been made in the first
+   place — by ZONE, not by furniture. Destinations sit in the nav under the
+   brand; the project switcher sits below them, apart, with its own control
+   affordance. Nothing about its behaviour changed; see Chrome.jsx.
 
-   Also gone: the Tier-2 panel slot and the RailPanelPortal export. No route
-   mounts into it any more — the pages hold their own controls — so the slot
-   was a hidden div and the portal was dead code.
+   ⚠ SCROLLING BELONGS TO THE NAV, NOT TO THE RAIL. `.rail` is overflow:visible
+   so the project menu and the account menu can escape a 216px column. Only
+   `.rail__scroll` scrolls. Putting `overflow` back on `.rail` clips both
+   menus at its inner edge — see the warning in Chrome.jsx and .rail in
+   index.css.
 
-   COLLAPSING. `sidebarOpen` drives the drawer below 1024px (see .rail in
-   index.css) AND a real collapse above it (see .shell--rail-closed). The
-   toggle in the top bar is visible at every width, so a collapsed rail is
-   always recoverable.
+   COLLAPSING. `sidebarOpen` drives the DRAWER below 1024px and nothing else.
+   Above 1024px the rail is permanent, exactly as in the reference layout, and
+   there is deliberately no desktop collapse: the control that reversed it
+   lived in the top bar, and a persisted "closed" with nothing to reopen it
+   would strand a user with no navigation at all.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React from 'react'
@@ -32,8 +49,9 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useUIStore } from '../store/uiStore'
 import { useAuthStore } from '../store/authStore'
 import { Chat, Ledger, Library, Admin, Settings } from './Icon'
+import { RailBrand, ProjectSwitcher, LiveRun, RailLedger, AccountMenu } from './Chrome'
 
-function Sidebar() {
+function Sidebar({ onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { sidebarOpen, setSidebarOpen, language, t } = useUIStore()
@@ -62,25 +80,46 @@ function Sidebar() {
   return (
     <aside
       id="wz-rail"
-      className={`rail flex flex-col${sidebarOpen ? ' rail--open' : ''}`}
+      className={`rail${sidebarOpen ? ' rail--open' : ''}`}
       aria-label={ar ? 'التنقل' : 'Primary'}
     >
-      <nav>
-        {destinations.map((d) => (
-          <button
-            key={d.to}
-            type="button"
-            onClick={() => { navigate(d.to); if (window.innerWidth < 1024) setSidebarOpen(false) }}
-            className="navlink"
-            aria-current={location.pathname === d.to ? 'page' : undefined}
-          >
-            <d.icon size={16} />
-            <span className="truncate">{d.label}</span>
-          </button>
-        ))}
-      </nav>
+      <RailBrand />
 
-      <div className="flex-1" />
+      {/* THE ONLY SCROLLING REGION, and it holds the destinations and nothing
+          else. A long list scrolls inside this box; the brand above and
+          everything below stay put. Nothing with a popover may be placed in
+          here — this element clips on both axes. */}
+      <div className="rail__scroll">
+        <nav>
+          {destinations.map((d) => (
+            <button
+              key={d.to}
+              type="button"
+              onClick={() => { navigate(d.to); if (window.innerWidth < 1024) setSidebarOpen(false) }}
+              className="navlink"
+              aria-current={location.pathname === d.to ? 'page' : undefined}
+            >
+              <d.icon size={16} />
+              <span className="truncate">{d.label}</span>
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Apart from the destinations and below them, because switching a
+          project is not the same act as going somewhere. OUTSIDE the scroller
+          because its menu is 300px and has to spill out over <main>. Renders
+          nothing at all when no project is open, and its rule goes with it. */}
+      <ProjectSwitcher ar={ar} t={t} />
+
+      {/* THE BOTTOM BLOCK, on the floor of the rail. It gets there because
+          .rail__scroll takes flex: 1 and eats the slack — there is no spacer
+          element, the gap is simply the absence of content. */}
+      <div className="rail__foot">
+        <LiveRun t={t} />
+        <RailLedger ar={ar} t={t} />
+        <AccountMenu onLogout={onLogout} />
+      </div>
     </aside>
   )
 }

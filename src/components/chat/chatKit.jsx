@@ -46,7 +46,9 @@ const STRINGS = {
 
     /* transcript */
     you: 'You',
-    wazza: 'Wazza',
+    /* The assistant is named in Arabic in BOTH languages — it is the brand
+       mark, not a translatable noun like "You" beside it. */
+    wazza: 'مِخيال',
     retry: 'Resume',
     retryHint: "Picks up where it stopped — finished scenes aren't charged again.",
     somethingFailed: 'Something failed',
@@ -121,7 +123,10 @@ const STRINGS = {
     noCharacters: 'No named characters in this plan',
     total: 'Total to authorise',
     authorise: 'Authorise',
-    authoriseHint: 'The authorisation sits in the bar at the top of the screen.',
+    /* Was "The authorisation sits in the bar at the top of the screen." The
+       bar is gone and the button is directly below this line, so the sentence
+       had stopped being true. It now says the thing worth saying instead. */
+    authoriseHint: 'Nothing has been charged yet. Authorising starts the render.',
     commitCosts: 'Authorises the total above and starts the render',
     cancelled: 'Cancelled',
     empty: '—',
@@ -148,7 +153,7 @@ const STRINGS = {
     loadingProjects: 'جارٍ التحميل',
 
     you: 'أنت',
-    wazza: 'وازا',
+    wazza: 'مِخيال',
     retry: 'استئناف',
     retryHint: 'يكمل من حيث توقف — المشاهد المكتملة لا تُحتسب مرة أخرى.',
     somethingFailed: 'حدث خطأ',
@@ -217,7 +222,7 @@ const STRINGS = {
     noCharacters: 'لا توجد شخصيات مسماة في هذه الخطة',
     total: 'الإجمالي المطلوب اعتماده',
     authorise: 'اعتماد',
-    authoriseHint: 'زر الاعتماد في الشريط أعلى الشاشة.',
+    authoriseHint: 'لم يُخصم شيء بعد. الاعتماد يبدأ التنفيذ.',
     commitCosts: 'يعتمد الإجمالي أعلاه ويبدأ التنفيذ',
     cancelled: 'أُلغي',
     empty: '—',

@@ -14,12 +14,14 @@
      grid, the conversation in the middle, the live run stated as a FIELD
      above the composer, and the composer pinned at the bottom.
 
-   THE AUTHORISATION IS NOT IN THE PAGE. When a work order is waiting, the
-   single filled button on the screen is mounted into the top bar through
-   <TopBarAction>, labelled with the figure it will authorise. That is where
-   Frame.io, YouTube Studio and Premiere put Export / CREATE / Share, it cannot
-   be scrolled past the way the bottom of a long work order can, and it is the
-   mechanism that guarantees one filled control per screen.
+   THE AUTHORISATION IS IN THE WORK ORDER. It used to be mounted into the top
+   bar through <TopBarAction>, on the argument that a bar slot cannot be
+   scrolled past. There is no top bar any more, and the argument was the weaker
+   one anyway: it put the press that spends money in a corner of the window,
+   far from the figure it was committing, so the number you were agreeing to
+   and the control you agreed with were never in the eye at once. It now
+   renders directly under the total inside PlanReviewCard. Still exactly one
+   filled control on the screen — it is simply in the document.
 
    ⚠ WHAT DID NOT CHANGE, AND MUST NOT. The entire run lifecycle below —
    messages addressed BY ARRAY INDEX, the socket-drop recovery that re-queries
@@ -29,14 +31,13 @@
    the transport was touched to make a layout work.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import ChatMessages from '../components/chat/ChatMessages'
 import PromptInput from '../components/chat/PromptInput'
 import { useChatText, isoDay } from '../components/chat/chatKit'
-import { TopBarAction } from '../components/TopBar'
 import { useRunStatus } from '../components/RunStatusContext'
-import { Duration, Money } from '../components/ui/Money'
-import { Commit, Caret } from '../components/Icon'
+import { Duration } from '../components/ui/Money'
+import { Caret } from '../components/Icon'
 import { useUIStore } from '../store/uiStore'
 import { useChatStore } from '../store/chatStore'
 import { generateService } from '../services/generateService'
@@ -1075,31 +1076,13 @@ function ChatPage() {
     }
   }
 
-  /* THE WORK ORDER AWAITING AUTHORISATION.
-     Derived from the message array, read-only, scanning backwards by index —
-     the same identity every other part of this flow uses. Nothing is
-     reordered, filtered or re-keyed; this only reads.
-
-     It is NOT gated on `awaitingUser`, deliberately: that flag drops to false
-     for the duration of every free card call (edit, settings, preview), and
-     gating on it would make the authorisation blink out of the top bar every
-     time the user changed the aspect ratio. The card's own `busy` flag
-     disables the button instead, which is what busy means. */
-  const pendingPlan = useMemo(() => {
-    if (!activeRunId) return null
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      const m = messages[i]
-      if (!m) continue
-      if (m.kind === 'plan' && m.plan && !m.resolved) return m
-      // A clarification still on screen is the thing being answered; there is
-      // no plan to authorise until it resolves into one.
-      if (m.kind === 'clarification' && !m.resolved) return null
-    }
-    return null
-  }, [messages, activeRunId])
-
-  const pendingCost = Number(pendingPlan?.plan?.total_cost_usd)
-  const hasPendingCost = Number.isFinite(pendingCost) && pendingCost > 0
+  /* THE SCAN FOR A WORK ORDER AWAITING AUTHORISATION IS GONE, with the top-bar
+     button it fed. It walked the message array backwards on every render to
+     find the one unresolved plan, purely so a control mounted OUTSIDE the
+     transcript could know which run it was committing. The card renders its own
+     authorisation now and already holds its own plan, its own `busy` and its
+     own runId, so the derivation had no consumer left. Deleted rather than left
+     as an unused memo — see PlanReviewCard's footer. */
 
   const openChat = chats.find((c) => c.id === currentChatId)
   const openTitle = (openChat?.title || '').trim() || tx('untitled')
@@ -1167,26 +1150,6 @@ function ChatPage() {
      is simply h-full. */
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* THE ONE FILLED BUTTON ON THIS SCREEN, in the slot the whole system
-          reserves for the action that spends money. The label carries the
-          figure, so the cost is stated on the control as well as in the
-          document above it. */}
-      {pendingPlan && (
-        <TopBarAction>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => handleConfirm(pendingPlan.runId || activeRunId)}
-            disabled={!!pendingPlan.busy || loading}
-            title={tx('commitCosts')}
-          >
-            <Commit size={16} />
-            <span>{tx('authorise')}</span>
-            {hasPendingCost && <Money usd={pendingCost} onFill style={{ fontSize: 13 }} />}
-          </button>
-        </TopBarAction>
-      )}
-
       <header
         className="shrink-0 px-4 sm:px-6"
         style={{ background: 'var(--card)', borderBlockEnd: '1px solid var(--line)', paddingBlock: 12 }}

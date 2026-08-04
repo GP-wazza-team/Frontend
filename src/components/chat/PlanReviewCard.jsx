@@ -11,13 +11,14 @@
                         stowed on a fine pointer, always present on a coarse
                         one, and reachable by keyboard through :focus-within.
      THE TOTAL          stated in full, in the document, BEFORE the press.
-     THE PRESS          is not here. It is mounted into the top bar by
-                        ChatPage through <TopBarAction>, which is where every
-                        reference product in this register puts the action
-                        that spends money or produces the deliverable, and it
-                        is the reason there is exactly ONE filled button on
-                        this screen. A long work order can be scrolled past;
-                        the bar cannot.
+     THE PRESS          is directly under it. It spent a while mounted into
+                        the top bar instead, on the argument that a bar cannot
+                        be scrolled past the way the foot of a long work order
+                        can. That bar no longer exists — and the trade was bad
+                        anyway, because it separated the figure being agreed
+                        to from the control that agreed to it. It is still the
+                        ONLY filled button on this screen; the free actions
+                        beside it are bordered or bare.
 
    WHAT WAS REMOVED. The arming vocabulary: the cut-corner "seal", the filled
    slab whose label was the price, the amber meters, the instrument-panel spec
@@ -26,11 +27,12 @@
 
    `resolved` freezes the card into a record. `outcome` is how it was resolved
    ('cancelled' | 'confirmed'). Every handler, prop name, guard and network
-   call is exactly as it was, minus onConfirm — which moved to the top bar.
+   call is exactly as it was. `onConfirm` is back on this card after a spell in
+   the top bar; the press that spends money belongs with the total it commits.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState } from 'react'
-import { Amend, Environment, Character, Revise, Caret, Check, Void } from '../Icon'
+import { Amend, Environment, Character, Revise, Caret, Check, Void, Commit } from '../Icon'
 import { Money } from '../ui/Money'
 import { useLightbox } from '../MediaLightbox'
 import { useChatText, MediaWell } from './chatKit'
@@ -378,7 +380,7 @@ const AmendMark = ({ onClick, label }) => (
 
 /* ── THE DOCUMENT ─────────────────────────────────────────────────────────── */
 
-function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEdit, onEditScript, onPreview, onRevise, onCancel, onSettings }) {
+function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEdit, onEditScript, onPreview, onRevise, onConfirm, onCancel, onSettings }) {
   const openMedia = useLightbox()
   const { tx } = useChatText()
   const [feedback, setFeedback] = useState('')
@@ -489,9 +491,16 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
         </div>
       )}
 
-      {/* ── THE TOTAL, AND THE FREE ACTIONS ─────────────────────────────────
-          The figure is stated in the document before anything is pressed. The
-          press itself is in the top bar — see <TopBarAction> in ChatPage. */}
+      {/* ── THE TOTAL, THE AUTHORISATION, AND THE FREE ACTIONS ──────────────
+          THE PRESS SITS WITH THE FIGURE IT COMMITS. It used to be mounted into
+          the top bar, which meant the number you were agreeing to and the
+          control you agreed with were never in the eye at the same time. There
+          is no top bar now, and this is the better place regardless: total,
+          then what that total buys you, then the button, in that order.
+
+          It stays the ONLY filled control on the screen. The free actions
+          under it — revise, the two previews, cancel — are bordered or bare on
+          purpose, because none of them is the decision. */}
       {!resolved && (
         <footer className="card-pad card-2" style={{ borderBlockStart: '1px solid var(--line)' }}>
           {showRevise ? (
@@ -530,6 +539,19 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                 </span>
               </div>
               <p className="caption" style={{ marginBlockEnd: 14 }}>{tx('authoriseHint')}</p>
+
+              <button
+                type="button"
+                className="btn"
+                onClick={onConfirm}
+                disabled={disabled}
+                title={tx('commitCosts')}
+                style={{ marginBlockEnd: 16 }}
+              >
+                <Commit size={16} />
+                <span>{tx('authorise')}</span>
+                {hasCost && <Money usd={cost} onFill style={{ fontSize: 13 }} />}
+              </button>
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <button type="button" onClick={() => setShowRevise(true)} disabled={disabled} className="btn-q btn-q--sm">

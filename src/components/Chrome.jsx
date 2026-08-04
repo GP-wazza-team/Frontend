@@ -1,35 +1,42 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   THE TOP BAR — 56px
+   CHROME — the pieces the rail is assembled from, plus the handheld bar.
 
-     [☰] [mark وازا]  PROJECT ▾  · live run ······  [ACTION]  balance  [account]
+   THERE IS NO TOP BAR. This file was one, 56px, spanning the window. It is now
+   a parts bin for <Sidebar>, which is the only chrome on a desktop screen:
 
-   All seven reference products in this register (Frame.io, YouTube Studio,
-   Premiere, CapCut, Descript, Runway, Kapwing) converge on this bar, and three
-   rules fall out of it:
+     ┌──────────┬─────────┐   the rail runs the FULL height of the window,
+     │          │  mark   │   holds the identity alone at the top, the
+     │   main   ├─────────┤   destinations in the middle, and who you are
+     │          │   nav   │   pinned to the bottom edge.
+     │          │ project │
+     │          │         │
+     │          ├─────────┤
+     │          │ account │
+     └──────────┴─────────┘
 
-     · THE PRIMARY ACTION SITS AT THE FAR END, ALONE. Export, CREATE, Share.
-       Routes mount theirs through <TopBarAction>, so there is exactly one
-       filled control on the screen and it is always in the same place.
-     · IDENTITY IS DOUBLED, and YouTube Studio is the clearest example: the
-       thing you are managing is named on the left, and WHO YOU ARE sits at
-       the far right. The account menu is the only home for sign-out now that
-       the icon spine is gone.
-     · THE THING YOU ARE WORKING ON IS NAMED HERE, AND SWITCHED HERE. That is
-       the <ProjectSwitcher> below — Frame.io's workspace switcher, YouTube
-       Studio's channel switcher, Google Cloud's project picker.
+   WHY THE BAR WENT. It was a second, competing home for chrome running along
+   the top of every screen, and most of what it carried belonged to the rail
+   anyway — the identity, who you are, where you are. What was left was a route
+   label that repeated the page's own <h1>, and a portal slot.
 
-   WHAT MOVED HERE. The old 36px status bar is deleted; the live run and the
-   session cost moved here, the rockers and the API marker into the account
-   menu. And, in this pass, THE WHOLE CONVERSATION LIST out of the rail: the
-   rail is WHERE YOU ARE (principle 11), so a project you have open does not
-   belong in it. Creating, selecting, searching, renaming and deleting a
-   project all happen in the switcher now, with the same handlers, the same
-   service calls and the same optimistic updates they had in Sidebar.jsx.
+   WHAT HAPPENED TO THE PRIMARY ACTION. It used to mount here through
+   <TopBarAction>, so the press that spends money sat in a corner, far from the
+   figure it was committing. That portal is gone. The authorisation now renders
+   inside the work order itself, directly under the total — see the footer of
+   PlanReviewCard. One filled control on the screen is still the rule; it is
+   simply in the document rather than in a bar above it.
+
+   ⚠ NOTHING IN THIS FILE MAY ASSUME A WINDOW-WIDTH CONTAINER any more. Every
+   export lands in a 216px rail, so a row of items that used to spread along a
+   1600px bar has to stack. Where that changed a component, the reason is on
+   the component.
+
+   THE PROJECT SWITCHER stays exactly as it was built — same handlers, same
+   service calls, same optimistic updates. Only its housing moved.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Mark, Account, SignOut, ShapeDone, ShapeFail, Caret, NewJob, Search, Amend, Strike, Check, Close } from './Icon'
 import Rocker from './ui/Rocker'
 import { Money, Duration } from './ui/Money'
@@ -45,21 +52,15 @@ import { useCredits } from '../hooks/useCredits'
 import { CREDITS_ENABLED } from '../config/features'
 import { clearAllStores } from '../utils/clearStores'
 
-const ACTION_SLOT_ID = 'wz-topbar-action-slot'
-
-/** Mount a route's ONE primary action into the top bar. Use it for the action
- *  that spends money or produces the deliverable, and nothing else — the slot
- *  is the reason there is exactly one filled button on any screen. */
-export function TopBarAction({ children }) {
-  const [node, setNode] = useState(null)
-  useEffect(() => { setNode(document.getElementById(ACTION_SLOT_ID)) }, [])
-  return node ? createPortal(children, node) : null
-}
-
 /* The live run, stated compactly. A run in flight is the only thing in this
    system that animates, and it animates by BREATHING a 7px dot (see .st--run)
-   rather than by filling a gauge. Status is a field, not an event. */
-function LiveRun({ ar, t }) {
+   rather than by filling a gauge. Status is a field, not an event.
+
+   STACKED, NOT A ROW. In the bar this was phase · bar · elapsed side by side
+   across whatever width was going spare. A 216px rail has no spare width, so
+   the phase takes its own line and the meter and the clock share the one
+   under it. Same three facts, same order, turned ninety degrees. */
+export function LiveRun({ t }) {
   const { status } = useRunStatus()
   const live = status.activeRunId != null || status.loading
   if (!live) return null
@@ -67,17 +68,21 @@ function LiveRun({ ar, t }) {
   const hasPercent = typeof status.percent === 'number' && Number.isFinite(status.percent)
 
   return (
-    <div className="hidden md:flex items-center gap-3 min-w-0">
-      <span className="st st--run truncate" style={{ maxInlineSize: 220 }}>
+    <div className="min-w-0" style={{ padding: '10px 11px' }}>
+      <span className="st st--run truncate" style={{ maxInlineSize: '100%' }}>
         {status.phase || t('generating')}
       </span>
-      {hasPercent && (
-        <div className="bar" style={{ inlineSize: 88 }} aria-hidden="true">
-          <i className="bar__fill" style={{ inlineSize: `${Math.round(status.percent * 100)}%` }} />
+      {(hasPercent || Number.isFinite(status.elapsedMs)) && (
+        <div className="flex items-center gap-2" style={{ marginBlockStart: 8 }}>
+          {hasPercent && (
+            <div className="bar" style={{ flex: 1 }} aria-hidden="true">
+              <i className="bar__fill" style={{ inlineSize: `${Math.round(status.percent * 100)}%` }} />
+            </div>
+          )}
+          {Number.isFinite(status.elapsedMs) && (
+            <Duration ms={status.elapsedMs} style={{ color: 'var(--ink-3)', fontSize: 12 }} />
+          )}
         </div>
-      )}
-      {Number.isFinite(status.elapsedMs) && (
-        <Duration ms={status.elapsedMs} style={{ color: 'var(--ink-3)', fontSize: 12 }} />
       )}
     </div>
   )
@@ -86,7 +91,7 @@ function LiveRun({ ar, t }) {
 /* ═══════════════════════════════════════════════════════════════════════════
    THE PROJECT SWITCHER
 
-   NO PROJECT OPEN → it is the page name, exactly as before.
+   NO PROJECT OPEN → nothing at all. See the note at the early return.
    A PROJECT OPEN  → it is that project's name with a caret, and the menu under
    it is the whole conversation list that used to fill the rail.
 
@@ -98,13 +103,13 @@ function LiveRun({ ar, t }) {
    silently lose finished work. There is deliberately no fetch in this file's
    selection handler.
    ═══════════════════════════════════════════════════════════════════════════ */
-function ProjectSwitcher({ ar, t, pageName }) {
+export function ProjectSwitcher({ ar, t }) {
   const navigate = useNavigate()
   const { tx } = useChatText()
   const { addToast } = useToastStore()
 
   /* Selectors, not the whole store: `messages` is rewritten on every progress
-     tick of a live run, and subscribing to it would re-render the top bar
+     tick of a live run, and subscribing to it would re-render the rail
      several times a second for a list that has not changed. */
   const chats = useChatStore((s) => s.chats)
   const currentChatId = useChatStore((s) => s.currentChatId)
@@ -124,7 +129,7 @@ function ProjectSwitcher({ ar, t, pageName }) {
 
   /* THE LIST IS LOADED HERE, ONCE. It used to be loaded by the rail, which is
      no longer the thing that needs it. This component is mounted
-     unconditionally by the top bar on every protected route, so the fetch runs
+     unconditionally by the rail on every protected route, so the fetch runs
      exactly once per app mount — not once per route, and not twice. */
   useEffect(() => {
     let cancelled = false
@@ -250,14 +255,26 @@ function ProjectSwitcher({ ar, t, pageName }) {
 
   const allProjects = ar ? 'كل المشاريع' : 'All projects'
 
-  /* NO PROJECT OPEN. The bar names the page, exactly as it did before — and
-     there is no switcher control, because there would be nothing to switch. */
-  if (!hasProject) {
-    return <span className="hidden lg:inline caption" style={{ color: 'var(--ink-3)' }}>{pageName}</span>
-  }
+  /* NO PROJECT OPEN → NOTHING. This slot used to print the current route's
+     name here, which said the same thing THREE times on one screen: the rail
+     already marks the destination you are on, and the page already carries it
+     as its own <h1>. Worse, it was a dead label sitting in the position of a
+     control — the switcher's own place — so it read as something you could
+     press, and nothing happened when you did.
+
+     This slot names WHAT YOU ARE WORKING ON, which is a project. When no
+     project is open there is nothing to name and nothing to switch, so it
+     renders nothing and the rail closes up around it.
+
+     ⚠ THE MENU BELOW IS 300px WIDE INSIDE A 216px RAIL, ON PURPOSE. It escapes
+     because `.rail` is `overflow: visible` and only its nav list scrolls —
+     see the note on .rail in index.css. If anyone ever puts `overflow` back on
+     the rail itself, this menu gets guillotined at the rail's inner edge and
+     the rename and delete controls become unreachable. */
+  if (!hasProject) return null
 
   return (
-    <div className="relative min-w-0" ref={rootRef}>
+    <div className="rail__project relative min-w-0" ref={rootRef}>
       <ConfirmDialog
         isOpen={!!confirmDelete}
         title="Delete Chat"
@@ -277,7 +294,9 @@ function ProjectSwitcher({ ar, t, pageName }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="btn-t min-w-0"
-        style={{ maxInlineSize: 260, fontSize: 14, fontWeight: 600 }}
+        /* 100%, not a 260px cap: this used to sit in a bar with width to
+           spare and now sits in a 216px column. */
+        style={{ maxInlineSize: '100%', fontSize: 14, fontWeight: 600 }}
         aria-expanded={open}
         aria-haspopup="menu"
         title={openTitle}
@@ -291,7 +310,13 @@ function ProjectSwitcher({ ar, t, pageName }) {
           role="menu"
           aria-label={tx('projects')}
           className="absolute card overlay-cast settle z-overlay"
-          style={{ insetBlockStart: 40, insetInlineStart: 0, inlineSize: 300, maxInlineSize: '86vw', padding: 8 }}
+          /* OPENS UPWARD. In the top bar this dropped DOWN from a control at
+             the top of the window. The switcher now sits near the FLOOR of the
+             rail, just above the account, so a downward menu would run off the
+             bottom of the viewport and be clipped by the shell's
+             overflow-hidden — the list is capped at 300px plus a search field
+             and a footer, which is far more than the room left below it. */
+          style={{ insetBlockEnd: 'calc(100% + 6px)', insetInlineStart: 0, inlineSize: 300, maxInlineSize: '86vw', padding: 8 }}
         >
           {chats.length > 3 && (
             <div className="relative" style={{ marginBlockEnd: 8 }}>
@@ -451,13 +476,87 @@ function ProjectSwitcher({ ar, t, pageName }) {
   )
 }
 
-function TopBar({ onLogout, onToggleRail }) {
-  const location = useLocation()
+/* ── THE BRAND, ALONE AT THE TOP OF THE RAIL ──────────────────────────────
+   Its own zone with a rule under it, and nothing else in it. The identity is
+   not a row item competing with the destinations; it sits above them and is
+   separated from them, which is the whole reason the reference layout reads as
+   composed rather than as a list with a logo stuck on the front. */
+export function RailBrand() {
   const navigate = useNavigate()
-  const { darkMode, setDarkMode, language, setLanguage, apiConnected, sidebarOpen, t } = useUIStore()
-  const { user } = useAuthStore()
+  return (
+    <button
+      type="button"
+      onClick={() => navigate('/')}
+      className="rail__brand"
+      aria-label="مِخيال"
+    >
+      <Mark size={20} />
+      <span style={{ fontWeight: 600, fontSize: 17 }}>مِخيال</span>
+    </button>
+  )
+}
+
+/* ── WHAT YOU HAVE, AND WHAT THIS SESSION HAS COST ───────────────────────
+   Both are figures about money, so they sit together as one block rather than
+   at opposite ends of a bar the way they used to. Each still appears only when
+   it has something to say. */
+export function RailLedger({ ar, t }) {
+  const navigate = useNavigate()
   const { status } = useRunStatus()
   const { credits, loading: creditsLoading } = useCredits()
+
+  const showCost = status.sessionCostUsd > 0
+  if (!CREDITS_ENABLED && !showCost) return null
+
+  return (
+    <div style={{ padding: '10px 11px' }}>
+      {/* THE BALANCE. Gated behind CREDITS_ENABLED — see src/config/features.js.
+          The whole surface is built and wired, and stays hidden until the flag
+          is switched on, so a half-tested balance cannot interrupt a test run. */}
+      {CREDITS_ENABLED && (
+        <button
+          type="button"
+          /* /settings, not /billing: there is no /billing route in App.jsx and
+             a control that bounces through `*` back to the chat screen is a
+             dead control. Repoint this when a billing route actually exists. */
+          onClick={() => navigate('/settings')}
+          className="flex w-full items-baseline justify-between gap-2"
+          title={ar ? 'الرصيد' : 'Balance'}
+        >
+          <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{ar ? 'رصيد' : 'Credits'}</span>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>
+            {creditsLoading || credits == null
+              ? <span className="skel" style={{ display: 'inline-block', inlineSize: 40, blockSize: 12 }} />
+              : <span className="mono">{credits.toLocaleString('en-US')}</span>}
+          </span>
+        </button>
+      )}
+
+      {/* Session spend. Shown only once something has actually been spent, so
+          an idle rail carries no figure it does not need. */}
+      {showCost && (
+        <div
+          className="flex items-baseline justify-between gap-2"
+          style={{ marginBlockStart: CREDITS_ENABLED ? 7 : 0 }}
+        >
+          <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('cost')}</span>
+          <Money usd={status.sessionCostUsd} style={{ color: 'var(--ink)', fontSize: 13 }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── WHO YOU ARE — PINNED TO THE BOTTOM EDGE ──────────────────────────────
+   In the bar this was a bare 32px avatar at the far end, because a bar has no
+   room to name anyone. The rail does, so the account states the name it stands
+   for instead of making you hover a circle of initials to find out.
+
+   THE MENU OPENS UPWARD. It is anchored to the bottom of the window, so a
+   downward menu would open straight off the screen. */
+export function AccountMenu({ onLogout }) {
+  const { darkMode, setDarkMode, language, setLanguage, apiConnected, t } = useUIStore()
+  const { user } = useAuthStore()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
 
@@ -472,37 +571,105 @@ function TopBar({ onLogout, onToggleRail }) {
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
   }, [menuOpen])
 
-  const pageName = {
-    '/': ar ? 'مساحة العمل' : 'Workspace',
-    '/dashboard': t('dashboard'),
-    /* Must match the page's own <h1> and the rail label. Three names for one
-       destination is how a product starts feeling unfinished. */
-    '/assets': ar ? 'المكتبة' : 'Library',
-    '/admin': ar ? 'الإدارة' : 'Admin',
-    '/settings': t('settings'),
-  }[location.pathname] || t('chat')
-
   const initials = (user?.name || user?.email || '?').trim().slice(0, 2).toUpperCase()
+  const displayName = (user?.name || '').trim() || user?.email || (ar ? 'الحساب' : 'Account')
 
   return (
-    <header className="topbar safe-inset">
-      {/* THE RAIL TOGGLE, AT EVERY WIDTH. It used to be lg:hidden, which meant
-          a desktop user could not put the chrome away — principle 1 says
-          panels collapse and there is a path to media-only. It is also the
-          only way back from a collapsed rail, and `sidebarOpen` is persisted,
-          so it must never itself be hidden. */}
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((v) => !v)}
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+        title={user?.email}
+        className="rail__account"
+      >
+        <span className="rail__avatar" aria-hidden="true">
+          {initials === '?' ? <Account size={15} /> : initials}
+        </span>
+        <bdi className="truncate min-w-0" style={{ fontSize: 13, fontWeight: 500 }}>{displayName}</bdi>
+      </button>
+
+      {menuOpen && (
+        <div
+          role="menu"
+          className="absolute card overlay-cast settle z-overlay"
+          /* insetBlockEnd, not insetBlockStart: it grows up off the bottom. */
+          style={{ insetBlockEnd: 'calc(100% + 6px)', insetInlineStart: 0, inlineSize: 248, maxInlineSize: '86vw', padding: 8 }}
+        >
+          <p className="truncate" style={{ fontSize: 12, color: 'var(--ink-3)', padding: '4px 8px 8px' }} title={user?.email}>
+            {user?.email}
+          </p>
+          <div style={{ borderBlockStart: '1px solid var(--line)', margin: '0 -8px 8px' }} />
+
+          <div style={{ padding: '0 8px 8px' }}>
+            <div className="label" style={{ marginBlockEnd: 6 }}>{t('theme')}</div>
+            <Rocker
+              ariaLabel={t('theme')}
+              value={darkMode}
+              onChange={setDarkMode}
+              options={[{ value: false, label: t('light') }, { value: true, label: t('dark') }]}
+            />
+          </div>
+          <div style={{ padding: '0 8px 10px' }}>
+            <div className="label" style={{ marginBlockEnd: 6 }}>{t('language')}</div>
+            <Rocker
+              ariaLabel={t('language')}
+              value={language}
+              onChange={setLanguage}
+              options={[{ value: 'en', label: t('english') }, { value: 'ar', label: t('arabic') }]}
+            />
+          </div>
+
+          <div style={{ borderBlockStart: '1px solid var(--line)', margin: '0 -8px 8px' }} />
+          <div className="flex items-center gap-2" style={{ padding: '0 8px 8px', fontSize: 12, color: 'var(--ink-3)' }}>
+            {apiConnected ? <ShapeDone size={9} style={{ color: 'var(--ok)' }} /> : <ShapeFail size={9} style={{ color: 'var(--bad)' }} />}
+            <span>{apiConnected ? t('connected') : t('disconnected')}</span>
+          </div>
+
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => { setMenuOpen(false); clearAllStores(); onLogout() }}
+            className="btn-t btn-t--danger w-full"
+            style={{ padding: '8px' }}
+          >
+            <SignOut size={15} />
+            {ar ? 'تسجيل الخروج' : 'Sign out'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── THE HANDHELD BAR ─────────────────────────────────────────────────────
+   BELOW 1024px ONLY. On a desktop there is no bar of any kind — the rail is
+   permanently in flow and carries everything. On a phone the rail is a drawer
+   over the page, and a drawer needs something to open it, so this strip exists
+   for exactly one reason: to hold that control.
+
+   It carries the mark as well, because a phone screen with the rail closed
+   would otherwise show no identity at all. Nothing else goes in here. If a
+   third thing ever wants a place in this strip, it wants the rail. */
+export default function MobileBar({ onToggleRail }) {
+  const navigate = useNavigate()
+  const { sidebarOpen, language } = useUIStore()
+  const ar = language === 'ar'
+  const label = sidebarOpen
+    ? (ar ? 'إخفاء التنقل' : 'Hide navigation')
+    : (ar ? 'إظهار التنقل' : 'Show navigation')
+
+  return (
+    <header className="topbar safe-inset lg:hidden">
       <button
         type="button"
         className="btn-i"
         onClick={onToggleRail}
         aria-expanded={sidebarOpen}
         aria-controls="wz-rail"
-        aria-label={sidebarOpen
-          ? (ar ? 'إخفاء التنقل' : 'Hide navigation')
-          : (ar ? 'إظهار التنقل' : 'Show navigation')}
-        title={sidebarOpen
-          ? (ar ? 'إخفاء التنقل' : 'Hide navigation')
-          : (ar ? 'إظهار التنقل' : 'Show navigation')}
+        aria-label={label}
+        title={label}
       >
         <svg className="wz-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.6">
           <path d="M2.5 4.5h13M2.5 9h13M2.5 13.5h13" />
@@ -516,120 +683,8 @@ function TopBar({ onLogout, onToggleRail }) {
         style={{ fontWeight: 600, fontSize: 16, color: 'var(--ink)' }}
       >
         <Mark size={19} />
-        <span className="hidden sm:inline">وازا</span>
+        <span>مِخيال</span>
       </button>
-
-      {/* WHAT YOU ARE WORKING ON — named here, switched here. */}
-      <ProjectSwitcher ar={ar} t={t} pageName={pageName} />
-
-      <LiveRun ar={ar} t={t} />
-
-      <div className="flex-1" />
-
-      {/* THE PRIMARY ACTION. One per screen, always here. */}
-      <div id={ACTION_SLOT_ID} className="flex items-center gap-2" />
-
-      {/* Session spend. Shown only once something has actually been spent, so
-          an idle screen carries no figure it does not need. */}
-      {status.sessionCostUsd > 0 && (
-        <span className="hidden lg:flex items-center gap-2">
-          <span className="caption">{t('cost')}</span>
-          <Money usd={status.sessionCostUsd} style={{ color: 'var(--ink)', fontSize: 13 }} />
-        </span>
-      )}
-
-      {/* THE BALANCE. Gated behind CREDITS_ENABLED — see src/config/features.js.
-          The whole surface is built and wired, and stays hidden until the flag
-          is switched on, so a half-tested balance cannot interrupt a test run. */}
-      {CREDITS_ENABLED && (
-        <button
-          type="button"
-          /* /settings, not /billing: there is no /billing route in App.jsx and
-             a control that bounces through `*` back to the chat screen is a
-             dead control. Repoint this when a billing route actually exists. */
-          onClick={() => navigate('/settings')}
-          className="hidden sm:block text-end shrink-0"
-          style={{ lineHeight: 1.25 }}
-          title={ar ? 'الرصيد' : 'Balance'}
-        >
-          <div style={{ fontWeight: 600, fontSize: 14 }}>
-            {creditsLoading || credits == null
-              ? <span className="skel" style={{ display: 'inline-block', inlineSize: 44, blockSize: 13 }} />
-              : <span className="mono">{credits.toLocaleString('en-US')}</span>}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{ar ? 'رصيد' : 'credits'}</div>
-        </button>
-      )}
-
-      <div className="relative shrink-0" ref={menuRef}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-label={user?.name || (ar ? 'الحساب' : 'Account')}
-          title={user?.email}
-          className="grid place-items-center"
-          style={{
-            inlineSize: 32, blockSize: 32, borderRadius: '50%',
-            background: 'var(--accent-soft)', color: 'var(--accent)',
-            fontWeight: 600, fontSize: 12,
-          }}
-        >
-          {initials === '?' ? <Account size={16} /> : initials}
-        </button>
-
-        {menuOpen && (
-          <div
-            role="menu"
-            className="absolute card overlay-cast settle z-overlay"
-            style={{ insetBlockStart: 40, insetInlineEnd: 0, inlineSize: 248, padding: 8 }}
-          >
-            <p className="truncate" style={{ fontSize: 12, color: 'var(--ink-3)', padding: '4px 8px 8px' }} title={user?.email}>
-              {user?.email}
-            </p>
-            <div style={{ borderBlockStart: '1px solid var(--line)', margin: '0 -8px 8px' }} />
-
-            <div style={{ padding: '0 8px 8px' }}>
-              <div className="label" style={{ marginBlockEnd: 6 }}>{t('theme')}</div>
-              <Rocker
-                ariaLabel={t('theme')}
-                value={darkMode}
-                onChange={setDarkMode}
-                options={[{ value: false, label: t('light') }, { value: true, label: t('dark') }]}
-              />
-            </div>
-            <div style={{ padding: '0 8px 10px' }}>
-              <div className="label" style={{ marginBlockEnd: 6 }}>{t('language')}</div>
-              <Rocker
-                ariaLabel={t('language')}
-                value={language}
-                onChange={setLanguage}
-                options={[{ value: 'en', label: t('english') }, { value: 'ar', label: t('arabic') }]}
-              />
-            </div>
-
-            <div style={{ borderBlockStart: '1px solid var(--line)', margin: '0 -8px 8px' }} />
-            <div className="flex items-center gap-2" style={{ padding: '0 8px 8px', fontSize: 12, color: 'var(--ink-3)' }}>
-              {apiConnected ? <ShapeDone size={9} style={{ color: 'var(--ok)' }} /> : <ShapeFail size={9} style={{ color: 'var(--bad)' }} />}
-              <span>{apiConnected ? t('connected') : t('disconnected')}</span>
-            </div>
-
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => { setMenuOpen(false); clearAllStores(); onLogout() }}
-              className="btn-t btn-t--danger w-full"
-              style={{ padding: '8px' }}
-            >
-              <SignOut size={15} />
-              {ar ? 'تسجيل الخروج' : 'Sign out'}
-            </button>
-          </div>
-        )}
-      </div>
     </header>
   )
 }
-
-export default TopBar

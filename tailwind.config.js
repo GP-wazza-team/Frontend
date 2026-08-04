@@ -1,4 +1,4 @@
-/** Wazza — Tailwind is a delivery mechanism for the tokens in src/index.css,
+/** Mikhyal — Tailwind is a delivery mechanism for the tokens in src/index.css,
  *  never a second source of truth. Every colour below is a var() reference, so
  *  a token edit lands everywhere at once.
  *

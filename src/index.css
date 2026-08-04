@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   WAZZA — THE DESIGN SYSTEM
+   MIKHYAL — THE DESIGN SYSTEM
    Register: the creative / media professional tool (Frame.io, YouTube Studio,
    Premiere, CapCut), translated to warm and light.
 
@@ -36,7 +36,7 @@
         THE THING. All seven reference products obey this. Never put selection
         properties in the rail, never put navigation in the panel.
     12  THE PRIMARY ACTION SITS TOP-FAR-END, ALONE. Export, CREATE, Share. For
-        Wazza that slot belongs to the SPEND AUTHORISATION.
+        Mikhyal that slot belongs to the SPEND AUTHORISATION.
 
    WARM IS NOT LOW CONTRAST. Adobe spent the whole Spectrum 2 rewrite undoing
    a receding warm grey that read "washed out", and their published fix was to
@@ -568,7 +568,13 @@ html[dir="ltr"] { --lh: 1.55; }
 .st--run::before { animation: breathe 2s ease-in-out infinite; }
 @keyframes breathe { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
 
-/* ── THE SHELL ───────────────────────────────────────────────────────────── */
+/* ── THE SHELL ───────────────────────────────────────────────────────────
+   THE RAIL IS THE ONLY CHROME. There is no top bar on a desktop screen; the
+   rail runs the full height of the window and carries the identity, the
+   destinations, the project switcher and the account. See Layout.jsx. */
+
+/* THE HANDHELD BAR — BELOW 1024px ONLY, and it exists to hold the drawer
+   toggle. Above that breakpoint it is not displayed at all. */
 .topbar {
   block-size: var(--topbar);
   background: var(--card);
@@ -577,14 +583,74 @@ html[dir="ltr"] { --lh: 1.55; }
   padding-inline: 16px;
   position: sticky; inset-block-start: 0; z-index: 30;
 }
+/* ⚠ THIS RULE IS LOAD-BEARING. It must be REAL CSS and it must live here —
+   Tailwind's `lg:hidden` on the element CANNOT do this job. `@tailwind
+   utilities` is emitted at the top of this file, so `.topbar { display: flex }`
+   below it has later source order, and on an equal-specificity tie (both are
+   one class) later wins. `lg:hidden` therefore loses, the bar renders at every
+   width, and the entire no-top-bar layout silently does not happen. The
+   utility is still on the element as a statement of intent; this is what
+   actually enforces it. */
+@media (min-width: 1024px) { .topbar { display: none; } }
+
 .shell { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); }
+
+/* THREE ZONES: brand (fixed) · nav (scrolls) · foot (pinned to the floor).
+   The foot lands on the bottom edge because .rail__scroll takes flex: 1 and
+   eats the slack — there is no spacer element, the gap is simply the absence
+   of content.
+
+   ⚠ NO `overflow` ON THIS ELEMENT, DELIBERATELY. The project menu is 300px and
+   the account menu 248px, both wider than the 216px rail, and both MUST spill
+   out over <main> to be usable. `overflow-y: auto` here would clip them at the
+   rail's inner edge — and because CSS resolves `overflow-x: visible` to `auto`
+   the moment the other axis is not visible, you cannot scroll one axis and
+   spill the other. So the scrolling belongs to .rail__scroll, which contains
+   no popover, and never to .rail. */
 .rail {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
   background: var(--rail-bg);
   border-inline-end: 1px solid var(--line-2);
-  padding: 14px 10px;
-  overflow-y: auto;
 }
-[dir="rtl"] .rail { border-inline-end: 0; border-inline-start: 1px solid var(--line-2); }
+
+/* THE IDENTITY, ALONE, IN ITS OWN BAND. Same height as the handheld bar so the
+   mark sits on exactly the same line in both layouts. */
+.rail__brand {
+  flex: none;
+  display: flex; align-items: center; gap: 10px;
+  inline-size: 100%; text-align: start;
+  block-size: var(--topbar);
+  padding-inline: 14px;
+  color: var(--ink);
+  border-block-end: 1px solid var(--line);
+}
+
+.rail__scroll { flex: 1; min-block-size: 0; overflow-y: auto; padding: 12px 10px; }
+
+/* Switching a project is not the same act as going somewhere, so it sits below
+   the destinations and outside the scroller — outside because its menu has to
+   escape the rail, and .rail__scroll is a clipping box. */
+.rail__project { flex: none; padding: 10px; border-block-start: 1px solid var(--line); }
+
+.rail__foot { flex: none; border-block-start: 1px solid var(--line); padding: 6px 10px 10px; }
+
+.rail__account {
+  display: flex; align-items: center; gap: 9px;
+  inline-size: 100%; text-align: start;
+  padding: 8px 9px; border-radius: var(--r-sm);
+  color: var(--ink);
+  transition: background-color 120ms var(--ease);
+}
+.rail__account:hover { background: var(--card-3); }
+.rail__avatar {
+  flex: none;
+  display: grid; place-items: center;
+  inline-size: 28px; block-size: 28px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+  font-weight: 600; font-size: 11px;
+}
 
 /* LABELLED navigation. The previous shell was five unlabelled hand-drawn
    marks plus five abstract status glyphs — ten invented symbols to learn
@@ -837,50 +903,19 @@ html[dir="ltr"] { --lh: 1.55; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   THE RAIL COLLAPSES ON DESKTOP TOO.
+   THE DESKTOP RAIL DOES NOT COLLAPSE, AND THAT IS ON PURPOSE.
 
-   Principle 1: RETRACTABLE CHROME — panels collapse, and there is a path to
-   media-only. `sidebarOpen` already drove the drawer below 1024px, but above
-   it the rail was permanent and the toggle was lg:hidden, so the one width
-   where you actually judge a 16:9 frame was the one width where you could not
-   put the chrome away.
+   A previous pass let the rail retract above 1024px, animating the grid track
+   to 0. That worked, and it is deleted anyway, because the control that
+   REVERSED it lived in the top bar — and the top bar is gone.
 
-   Nothing above is altered: .shell and .rail keep their rules, and this is a
-   modifier the shell carries only while the rail is closed. The toggle in the
-   top bar is visible at every width and `sidebarOpen` is persisted, so a rail
-   closed in a previous session is always recoverable.
+   `sidebarOpen` is persisted. A desktop user who collapsed the rail would load
+   the app tomorrow with no rail, no top bar, and therefore nothing anywhere on
+   the screen able to bring the navigation back: no destinations, no project
+   switcher, no account, no sign-out. A retractable panel is only a feature
+   while something can un-retract it.
+
+   So above 1024px the rail is permanent, exactly as in the reference layout,
+   and `sidebarOpen` now drives the handheld drawer alone — where the toggle
+   sits in the handheld bar, on screen, at all times.
    ══════════════════════════════════════════════════════════════════════════ */
-@media (min-width: 1024px) {
-  /* IT HAS TO SLIDE, NOT SNAP. The first version set the track to 0 and the
-     rail to `display: none` in the same frame, so 216px of layout vanished
-     between one paint and the next: the whole transcript re-wrapped and jumped
-     at once, which reads as a glitch rather than as a panel closing.
-
-     `grid-template-columns` is animatable, so the track is what moves. The
-     rail is CLIPPED rather than un-displayed (`display` cannot animate, and
-     removing a grid item mid-transition drops it out of the grid entirely),
-     and its content is pinned to the open width so the labels slide out
-     whole instead of re-wrapping to nothing on the way. */
-  .shell { transition: grid-template-columns 180ms var(--ease); }
-  .shell--rail-closed { grid-template-columns: 0 minmax(0, 1fr); }
-  .shell--rail-closed .rail {
-    padding-inline: 0;
-    border-inline-width: 0;
-    overflow: hidden;
-    pointer-events: none;
-    /* pointer-events alone only stops the MOUSE. The clipped nav buttons stay
-       in the tab order, so a keyboard user tabs into an invisible rail and
-       focus vanishes off screen. `visibility: hidden` removes them from it —
-       delayed by the length of the slide so the panel is still drawn while it
-       animates out, then goes properly away. */
-    visibility: hidden;
-    transition: visibility 0s linear 180ms;
-  }
-  /* Reopening must reveal it immediately, with no delay to undo. */
-  .rail { visibility: visible; transition: visibility 0s linear 0s; }
-  /* The nav keeps its open width while the track closes over it. */
-  .shell--rail-closed .rail > * { inline-size: calc(var(--rail) - 20px); flex: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .shell { transition: none; }
-}

@@ -56,7 +56,7 @@ function RegisterPage() {
 
   const ui = {
     plateHead:   isAr ? 'ابدأ رحلتك مع الذكاء الاصطناعي' : 'Start your AI journey today',
-    plateBlurb:  isAr ? 'انضم إلى آلاف المبدعين الذين يستخدمون Wazza' : 'Join thousands of creators already using Wazza to power their ideas.',
+    plateBlurb:  isAr ? 'انضم إلى آلاف المبدعين الذين يستخدمون مِخيال' : 'Join thousands of creators already using مِخيال to power their ideas.',
     credits:     isAr ? 'رصيد مجاني' : 'Free credits',
     failed:      isAr ? 'تعذر إنشاء الحساب' : 'Could not create account',
     reveal:      isAr ? 'إظهار كلمة المرور' : 'Show password',

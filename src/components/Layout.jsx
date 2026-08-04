@@ -1,36 +1,35 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   THE SHELL
+   THE SHELL — ONE COLUMN OF CHROME, AND NOTHING ELSE.
 
-     ┌────────────────────────────────────────────────────────────────────────┐
-     │  TOP BAR  56px   mark · page · live run ···· [ACTION] balance account  │
-     ├──────────────┬─────────────────────────────────────────────────────────┤
-     │              │                                                         │
-     │  RAIL 216px  │  <main>  the work                                       │
-     │  labelled    │                                                         │
-     │              │                                                         │
-     └──────────────┴─────────────────────────────────────────────────────────┘
+   DESKTOP (≥1024px)                    HANDHELD (<1024px)
+     ┌──────────────┬─────────────┐       ┌───────────────────┐
+     │              │  ▣ مِخيال    │       │ ☰   ▣ مِخيال       │  56px, and it
+     │              ├─────────────┤       ├───────────────────┤  exists ONLY to
+     │   <main>     │  nav        │       │                   │  hold ☰. The
+     │   the work   │  project    │       │      <main>       │  rail is a
+     │              │             │       │                   │  drawer over
+     │              ├─────────────┤       │                   │  the page.
+     │              │  account    │       │                   │
+     └──────────────┴─────────────┘       └───────────────────┘
+        NO BAR OF ANY KIND
 
-   LEFT RAIL = WHERE YOU ARE. CENTRE = THE THING. Selection properties belong
-   in a panel the route owns, never in the rail; navigation never appears in a
-   properties panel. Every reference product in this register obeys that split
-   and it is the rule that keeps the shell legible.
-
-   WHAT THIS REPLACES. A 56px icon-only spine of unlabelled hand-drawn marks,
-   plus a 240px panel that had to force itself open on arrival because it was
-   the only home for a route's controls, plus a 36px status bar. Three tiers of
-   chrome, none of which said a word. Now: one bar that names things, one rail
-   that names destinations.
+   WHAT THIS REPLACES. First a 56px icon spine + a 240px panel + a 36px status
+   bar — three tiers that said nothing. Then a top bar + a rail — two tiers,
+   which is one too many: the bar and the rail were both chrome, both
+   persistent, and they competed for the same jobs. Now there is one.
 
    ⚠ HEIGHT: nothing here may reintroduce a viewport calc. <main> is a grid
    child that owns its own scrolling, so children use h-full, never
    calc(100vh - <a number>). Three files used to hardcode that against a header
-   height and broke every time it changed.
+   height and broke every time it changed. The handheld bar makes this WORSE,
+   not better, because it exists at one breakpoint only — a calc against it is
+   wrong above 1024px by exactly 56px.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import TopBar from './TopBar'
+import MobileBar from './Chrome'
 import ToastContainer from './ToastContainer'
 import { RunStatusProvider } from './RunStatusContext'
 import { useUIStore } from '../store/uiStore'
@@ -77,19 +76,17 @@ function Layout() {
           bar, so a 100vh shell hides its own bottom row — here, the chat
           composer — behind the browser chrome until you scroll. */}
       <div className="flex flex-col h-shell overflow-hidden" style={{ backgroundColor: 'var(--page)' }}>
-        <TopBar onLogout={handleLogout} onToggleRail={() => setSidebarOpen(!sidebarOpen)} />
+        <MobileBar onToggleRail={() => setSidebarOpen(!sidebarOpen)} />
         <ToastContainer />
 
-        {/* `sidebarOpen` drives BOTH tiers of this now: the drawer below
-            1024px (.rail--open) and a real collapse above it
-            (.shell--rail-closed). Principle 1 — panels collapse, there is a
-            path to media-only — was only honoured on a handheld before, so a
-            desktop user could not put the chrome away at all. The toggle that
-            reverses it lives in the top bar and is visible at every width,
-            which matters because `sidebarOpen` is persisted: a rail closed
-            yesterday must be recoverable today. */}
-        <div className={`shell flex-1 min-h-0${sidebarOpen ? '' : ' shell--rail-closed'}`}>
-          <Sidebar />
+        {/* `sidebarOpen` now drives the HANDHELD DRAWER ONLY (.rail--open).
+            The desktop collapse it also used to drive is gone: the control
+            that reversed it lived in the top bar, and `sidebarOpen` is
+            persisted — so a rail closed on a desktop yesterday would come back
+            closed today with nothing anywhere on the screen able to reopen it.
+            Above 1024px the rail is simply always there. */}
+        <div className="shell flex-1 min-h-0">
+          <Sidebar onLogout={handleLogout} />
 
           {/* The drawer scrim. Only below 900px, where the rail overlays the
               page — above that the rail is in flow and a full-screen button
