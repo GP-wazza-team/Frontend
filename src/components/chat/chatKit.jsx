@@ -128,6 +128,14 @@ const STRINGS = {
        bar is gone and the button is directly below this line, so the sentence
        had stopped being true. It now says the thing worth saying instead. */
     authoriseHint: 'Nothing has been charged yet. Authorising starts the render.',
+    /* Said BEFORE the button, not after the bill. Every character needs a
+       reference sheet for their face to survive from one shot to the next, so
+       authorising draws the ones that are missing — which is a real charge the
+       card used to make silently. Previewing by hand does not add to it; it
+       spends the same money earlier and lets you look at the result. */
+    pendingPreview: 'Authorising first draws 1 reference sheet —',
+    pendingPreviews: 'Authorising first draws {n} reference sheets —',
+    pendingPreviewsWhy: 'One per character, plus the environment, so faces and setting stay the same across shots. Anything you have already previewed is reused, not redrawn.',
     commitCosts: 'Authorises the total above and starts the render',
     cancelled: 'Cancelled',
     empty: '—',
@@ -225,6 +233,11 @@ const STRINGS = {
     total: 'الإجمالي المطلوب اعتماده',
     authorise: 'اعتماد',
     authoriseHint: 'لم يُخصم شيء بعد. الاعتماد يبدأ التنفيذ.',
+    /* الصيغة تتجنّب مطابقة العدد للمعدود: العدد بين قوسين بعد الاسم، فتصحّ
+       للواحد وللجمع دون فرعين. */
+    pendingPreview: 'الاعتماد يرسم أولاً ورقة مرجعية واحدة —',
+    pendingPreviews: 'الاعتماد يرسم أولاً أوراقاً مرجعية ({n}) —',
+    pendingPreviewsWhy: 'ورقة لكل شخصية، إضافةً إلى البيئة، لتبقى الوجوه والمكان ثابتة بين اللقطات. وما سبقت معاينته يُعاد استخدامه ولا يُرسم من جديد.',
     commitCosts: 'يعتمد الإجمالي أعلاه ويبدأ التنفيذ',
     cancelled: 'أُلغي',
     empty: '—',

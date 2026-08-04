@@ -413,6 +413,11 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
   const cost = Number(plan.total_cost_usd)
   const hasCost = Number.isFinite(cost) && cost > 0
 
+  // Reference sheets Confirm still has to draw. Falls to 0 as the user
+  // previews characters by hand, since an approved preview is reused rather
+  // than redrawn — so this line is both a price and a progress indicator.
+  const pendingPreviews = Number(plan.pending_preview_count) || 0
+
   /* STATUS IS A FIELD. A word and a dot in a row, never an arming indicator. */
   const state = resolved
     ? (outcome === 'cancelled'
@@ -542,7 +547,22 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                   {hasCost ? <Money usd={cost} /> : <span className="mono">{tx('empty')}</span>}
                 </span>
               </div>
-              <p className="caption" style={{ marginBlockEnd: 14 }}>{tx('authoriseHint')}</p>
+              <p className="caption" style={{ marginBlockEnd: pendingPreviews > 0 ? 6 : 14 }}>
+                {tx('authoriseHint')}
+              </p>
+
+              {/* The one charge on this card that isn't in the total above,
+                  because it hasn't happened yet. It sits between the total and
+                  the button so it is read on the way to the press, and it
+                  disappears on its own as previews get approved. */}
+              {pendingPreviews > 0 && (
+                <p className="caption" style={{ marginBlockEnd: 14 }} title={tx('pendingPreviewsWhy')}>
+                  {tx(pendingPreviews === 1 ? 'pendingPreview' : 'pendingPreviews')
+                    .replace('{n}', pendingPreviews)}
+                  {' '}
+                  <Money usd={plan.pending_preview_cost_usd || 0} />
+                </p>
+              )}
 
               <button
                 type="button"
