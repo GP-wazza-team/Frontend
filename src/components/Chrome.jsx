@@ -694,7 +694,10 @@ export default function MobileBar({ onToggleRail }) {
         style={{ color: 'var(--ink)' }}
         aria-label="مخيال"
       >
-        <Wordmark height={30} aria-hidden="true" />
+        {/* 38 in a 56px bar. The drawer's brand band is hidden at this
+            breakpoint, so this is the ONLY place the identity appears on a
+            phone and it should not be the smallest thing on the screen. */}
+        <Wordmark height={38} aria-hidden="true" />
       </button>
     </header>
   )

@@ -633,7 +633,17 @@ html[dir="ltr"] { --lh: 1.55; }
   border-block-end: 1px solid var(--line);
 }
 
-.rail__scroll { flex: 1; min-block-size: 0; overflow-y: auto; padding: 12px 10px; }
+/* overscroll-behavior: contain stops the SCROLL CHAIN. Without it, flicking
+   the destination list on iOS once it has hit its end scrolls the page behind
+   the open drawer instead — the content moves under a panel that is covering
+   it, which reads as the app coming apart. */
+.rail__scroll {
+  flex: 1; min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 10px;
+}
 
 /* Switching a project is not the same act as going somewhere, so it sits below
    the destinations and outside the scroller — outside because its menu has to
@@ -799,8 +809,22 @@ html[dir="ltr"] { --lh: 1.55; }
    ══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1023.98px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
+
+  /* THE BAR OWNS THE NOTCH. In a standalone/PWA window the viewport starts at
+     the physical top of the screen, so without this the bar's contents sit
+     under the status bar and the clock. In ordinary Safari the inset is 0 and
+     this changes nothing, which is why it is safe to state unconditionally.
+     The drawer below is pinned to the SAME expression — if these two ever
+     disagree, the drawer either overlaps the bar or floats below it. */
+  .topbar {
+    padding-block-start: env(safe-area-inset-top, 0px);
+    block-size: calc(var(--topbar) + env(safe-area-inset-top, 0px));
+  }
+
   .rail {
-    position: fixed; inset-block: var(--topbar) 0; inset-inline-start: 0;
+    position: fixed;
+    inset-block: calc(var(--topbar) + env(safe-area-inset-top, 0px)) 0;
+    inset-inline-start: 0;
     inline-size: min(80vw, 300px); z-index: 80;
     background: var(--rail-bg); border-inline-end: 1px solid var(--line-2);
     transform: translateX(-100%);
@@ -809,10 +833,39 @@ html[dir="ltr"] { --lh: 1.55; }
   [dir="rtl"] .rail { inset-inline-start: auto; inset-inline-end: 0; transform: translateX(100%); }
   .rail--open { transform: none; }
   [dir="rtl"] .rail--open { transform: none; }
-  .main { padding: 18px 16px 56px; }
+
+  /* THE IDENTITY IS NOT SHOWN TWICE. The drawer opens directly beneath the
+     handheld bar, which already carries the logo — so the desktop brand band
+     would put a second, larger copy of the mark about fifteen pixels under the
+     first one. On a desktop the band is the only place the identity appears;
+     here the bar is, so the band stands down and the destinations start at the
+     top of the drawer where the thumb expects them. */
+  .rail__brand { display: none; }
+
+  /* THE HOME INDICATOR SITS OVER THE BOTTOM OF THE SCREEN, and the account
+     row is the bottom of the drawer. Without this the name and the sign-out
+     target are under the bar the user swipes to leave the app. */
+  .rail__foot { padding-block-end: calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+  /* The drawer touches a screen edge, so in landscape it can land under the
+     notch or a rounded corner.
+     PHYSICAL properties here, NOT logical ones — this is the one place in this
+     stylesheet where that is correct. `padding-inline-start` follows the text
+     direction and swaps sides between Arabic and English; the notch does not
+     move when the user changes language. Pinning left-to-left and right-to-
+     right is therefore direction-proof, and it costs nothing on the edge that
+     is not obstructed because that inset is 0 there anyway. */
+  .rail { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+
+  .main { padding: 18px 16px calc(56px + env(safe-area-inset-bottom, 0px)); }
   .grid-media { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
   .page-title { font-size: 22px; }
 }
+
+/* The drawer scrim starts below the bar, not at the top of the window — it
+   must not cover the control that closes it. Same expression as .rail's top,
+   deliberately. */
+.scrim--below-bar { inset-block-start: calc(var(--topbar) + env(safe-area-inset-top, 0px)); }
 
 /* iOS. Safari zooms the page when a focused input is under 16px and does not
    zoom back out, so every field lifts to 16px where the pointer is coarse.

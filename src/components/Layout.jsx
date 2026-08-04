@@ -94,10 +94,9 @@ function Layout() {
           {sidebarOpen && (
             <button
               type="button"
-              className="scrim lg:hidden"
+              className="scrim scrim--below-bar lg:hidden"
               aria-label={language === 'ar' ? 'إغلاق القائمة' : 'Close menu'}
               onClick={() => setSidebarOpen(false)}
-              style={{ insetBlockStart: 'var(--topbar)' }}
             />
           )}
 
