@@ -821,6 +821,25 @@ html[dir="ltr"] { --lh: 1.55; }
     block-size: calc(var(--topbar) + env(safe-area-inset-top, 0px));
   }
 
+  /* ⚠ THE CLOSED DRAWER MUST LEAVE THE SCREEN. This was broken in Arabic and
+     it is worth spelling out, because the failure looked like a layout bug
+     rather than a positioning one: a closed rail sat over the right-hand third
+     of every page, cropping headings, tiles and the filter bar, with no scrim
+     to explain it.
+
+     `inset-inline-start` ALREADY does the right thing in both directions — it
+     resolves to `left` in English and to `right` in Arabic, so one declaration
+     puts the drawer on the correct edge either way. The old rule then added
+     `inset-inline-start: auto; inset-inline-end: 0` for RTL, which moved the
+     drawer to the OPPOSITE (left) edge, and the accompanying
+     `translateX(100%)` pushed it rightward from there — i.e. straight back
+     into the middle of the viewport instead of off it.
+
+     `transform` is the part that has no logical form. translateX is physical
+     and never flips, so it is the ONLY thing that needs a direction override:
+     negative slides off the left edge, positive off the right. Keep the inset
+     logical, keep the transform physical, and never give the two the same
+     job. */
   .rail {
     position: fixed;
     inset-block: calc(var(--topbar) + env(safe-area-inset-top, 0px)) 0;
@@ -830,8 +849,8 @@ html[dir="ltr"] { --lh: 1.55; }
     transform: translateX(-100%);
     transition: transform 180ms var(--ease);
   }
-  [dir="rtl"] .rail { inset-inline-start: auto; inset-inline-end: 0; transform: translateX(100%); }
-  .rail--open { transform: none; }
+  [dir="rtl"] .rail { transform: translateX(100%); }
+  .rail--open,
   [dir="rtl"] .rail--open { transform: none; }
 
   /* THE IDENTITY IS NOT SHOWN TWICE. The drawer opens directly beneath the
