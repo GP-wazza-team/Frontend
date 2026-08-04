@@ -281,6 +281,16 @@ export const Character = (p) => (
   </Svg>
 )
 
+/* A sketch. A pen nib drawing a stroke — the mark being MADE, which is what
+   separates it from Attach (a clip holding a finished thing). */
+export const Sketch = (p) => (
+  <Svg mirror {...p}>
+    <path d="M13.4 3.6 A1.9 1.9 0 0 1 16.4 6.6 L7.9 15.1 L4.4 15.6 L4.9 12.1 Z" />
+    <path d="M11.6 5.4 L14.6 8.4" />
+    <path d="M3.2 17.6 H10" />
+  </Svg>
+)
+
 /* An environment. A landscape. */
 export const Environment = (p) => (
   <Svg {...p}>
