@@ -43,6 +43,10 @@ const EDITABLE_FIELDS = [
   { key: 'characters', label: 'characters' },
   { key: 'environment', label: 'environment' },
   { key: 'scenario', label: 'scenario' },
+  // Style decides how the result LOOKS and was the one field the card could
+  // neither show nor change: a run that came back flat cartoon had to be
+  // thrown away and re-prompted, because there was nowhere to say otherwise.
+  { key: 'style', label: 'style' },
 ]
 
 // Fallbacks for the very first render, before /generate/models has answered.
