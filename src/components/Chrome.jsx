@@ -37,7 +37,8 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mark, Account, SignOut, ShapeDone, ShapeFail, Caret, NewJob, Search, Amend, Strike, Check, Close } from './Icon'
+import { Account, SignOut, ShapeDone, ShapeFail, Caret, NewJob, Search, Amend, Strike, Check, Close } from './Icon'
+import { Wordmark } from './Logo'
 import Rocker from './ui/Rocker'
 import { Money, Duration } from './ui/Money'
 import { useChatText } from './chat/chatKit'
@@ -480,7 +481,14 @@ export function ProjectSwitcher({ ar, t }) {
    Its own zone with a rule under it, and nothing else in it. The identity is
    not a row item competing with the destinations; it sits above them and is
    separated from them, which is the whole reason the reference layout reads as
-   composed rather than as a list with a logo stuck on the front. */
+   composed rather than as a list with a logo stuck on the front.
+
+   It is the real lockup now — see Logo.jsx — not a generic mark beside typed
+   text. `color: var(--ink)` comes off .rail__brand and the mark inherits it,
+   so the logo is ink here rather than accent: the accent means the primary
+   action or the current selection in this system, and a brand sitting in the
+   corner of every screen is neither. The guide permits the mark in any palette
+   colour; this is the palette colour that means "identity". */
 export function RailBrand() {
   const navigate = useNavigate()
   return (
@@ -488,10 +496,9 @@ export function RailBrand() {
       type="button"
       onClick={() => navigate('/')}
       className="rail__brand"
-      aria-label="مِخيال"
+      aria-label="مخيال"
     >
-      <Mark size={20} />
-      <span style={{ fontWeight: 600, fontSize: 17 }}>مِخيال</span>
+      <Wordmark height={34} aria-hidden="true" />
     </button>
   )
 }
@@ -679,11 +686,11 @@ export default function MobileBar({ onToggleRail }) {
       <button
         type="button"
         onClick={() => navigate('/')}
-        className="flex items-center gap-2.5 shrink-0"
-        style={{ fontWeight: 600, fontSize: 16, color: 'var(--ink)' }}
+        className="shrink-0"
+        style={{ color: 'var(--ink)' }}
+        aria-label="مخيال"
       >
-        <Mark size={19} />
-        <span>مِخيال</span>
+        <Wordmark height={30} aria-hidden="true" />
       </button>
     </header>
   )

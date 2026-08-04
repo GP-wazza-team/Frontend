@@ -41,43 +41,25 @@
 
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mark, Reveal, RevealOff, Caret, ShapeFail, ShapeCancelled } from '../components/Icon'
+import { Reveal, RevealOff, Caret, ShapeFail, ShapeCancelled } from '../components/Icon'
+import { Wordmark as BrandWordmark } from '../components/Logo'
 import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { authService } from '../services/authService'
 import { clearAllStores } from '../utils/clearStores'
 
 /* ── THE WORDMARK ─────────────────────────────────────────────────────────
-   ONE MARK, ARABIC, IN BOTH LANGUAGES. This used to set مِخيال over a small
-   Latin transliteration line. Two things were wrong with that. It printed the
-   name twice — the second time smaller, greyer and directly beneath itself —
-   and a brand is one mark, not a mark plus its own footnote. It also made the
-   identity a two-tier lockup, which is the shape this system rejects
-   everywhere else it appears.
+   THE REAL LOGO NOW, from the brand guide — see Logo.jsx. This used to set the
+   name as type: first مِخيال over a small Latin transliteration line, then the
+   Arabic alone once the transliteration was cut. Both were stand-ins for a
+   mark that did not exist yet. It does now, so the stand-in is deleted rather
+   than kept beside it.
 
-   A Latin-named product does not caption its own logo with an Arabic
-   transliteration, and the reverse is no different. So the Arabic IS the mark,
-   in Arabic and in English alike. The name still transliterates as "Mikhyal"
-   in running English copy — that is what a transliteration is for — but it is
-   not part of the mark.
-
-   A1 is now satisfied by construction: the 0.02em tracking lived only on the
-   Latin line and left with it. No letter-spacing here in either direction. */
+   The lockup is COMPLETE — it contains the word and the film strip. That is
+   why the separate <Mark> that used to sit next to it in both callers is gone:
+   a logo does not need a second logo in front of it. */
 export function Wordmark({ size = 'lead' }) {
-  const lead = size === 'lead'
-  return (
-    <span
-      style={{
-        display: 'block',
-        fontSize: lead ? 34 : 19,
-        fontWeight: 600,
-        lineHeight: 1.3,
-        color: 'var(--ink)',
-      }}
-    >
-      مِخيال
-    </span>
-  )
+  return <BrandWordmark height={size === 'lead' ? 52 : 30} style={{ color: 'var(--ink)' }} />
 }
 
 /* ── THE PANEL ────────────────────────────────────────────────────────────
@@ -95,14 +77,10 @@ export function AuthPlate({ headline, blurb, children }) {
         padding: '40px 48px',
       }}
     >
-      {/* items-center, not items-start. The 4px top nudge on the mark existed
-          to align it with the FIRST line of a two-line lockup; with the
-          transliteration line gone there is one line, so the mark centres
-          against it and that nudge would only push it off-axis. */}
-      <div className="flex items-center gap-4">
-        <Mark size={26} style={{ color: 'var(--ink)' }} />
-        <Wordmark />
-      </div>
+      {/* The lockup stands alone. It used to be a generic <Mark> beside the
+          name set as type, aligned by hand; the real logo carries both the
+          word and the strip, so there is nothing left to align it against. */}
+      <Wordmark />
 
       <div className="flex flex-1 flex-col justify-center" style={{ paddingBlock: 40 }}>
         <p style={{ fontSize: 19, fontWeight: 500, lineHeight: 1.45, color: 'var(--ink)', maxInlineSize: '26ch' }}>
@@ -215,8 +193,7 @@ export function AuthNotice({ kind, legend, message }) {
    relationship at a smaller size, rather than a second lockup for the phone. */
 export function AuthLockup() {
   return (
-    <div className="flex items-center gap-3 lg:hidden">
-      <Mark size={20} style={{ color: 'var(--ink)' }} />
+    <div className="flex items-center lg:hidden">
       <Wordmark size="compact" />
     </div>
   )

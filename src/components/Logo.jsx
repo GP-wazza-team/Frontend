@@ -1,0 +1,95 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE LOGO — from "هوية مشروع مخيال / Mikhyal Brand Guide v2", §02.
+
+   THE MARK, in the guide's own words: the word «مخيال» set in the identity
+   face, with a FILM STRIP running beneath it — flowing out of the base of the
+   ل and curling back around the word. The story coming out of the letter and
+   onto the screen. The dashes are sprocket holes, not a decorative dotted
+   line. For small spaces, the monogram «م» sits over the same strip.
+
+   THE GUIDE'S RULES, and they are enforced by this file existing at all:
+     ✓ Safe area on every side equal to the height of the film strip.
+     ✕ Never separate the strip from the word.
+     ✕ Never reverse the direction the strip flows.
+     ✕ Never colour it outside the palette.
+   Because both marks are single components with the strip built in, the strip
+   cannot be detached or flipped by a caller. Only `color` is exposed, and it
+   inherits — so a mark always takes the colour of the surface it is placed on
+   rather than carrying a hard-coded hex to somewhere it does not belong.
+
+   ⚠ THE GLYPHS ARE OUTLINES, NOT <text>. The brand guide draws the wordmark
+   with <text font-family="IBM Plex Sans Arabic">, which is correct in a
+   document that has the font loaded and WRONG for a logo: it renders in
+   whatever fallback face is available until the webfont arrives, and inside a
+   standalone favicon it never gets the webfont at all. These paths were
+   shaped with HarfBuzz — so the letters carry their proper contextual forms
+   (meem-initial, khah-initial, yeh-medial, alef-final, lam) rather than the
+   disconnected isolated forms a naive conversion produces — then outlined from
+   IBMPlexSansArabic-SemiBold at the guide's own sizes. The result is identical
+   to the guide's rendering and depends on no font at all.
+
+   REGENERATING: shape and outline "مخيال" at 46px centred on (100, 46) in the
+   200×88 box, and "م" at 36px centred on (32, 36) in the 64×64 box. HarfBuzz
+   cannot read woff2 — decompress to TTF with fontTools first, or every glyph
+   silently comes back .notdef and the mark renders as tofu boxes.
+
+   NOTE ON THE DIACRITIC. The logo is «مخيال», with no kasra. The NAME is
+   «مِخيال», with one — the guide sets it that way in §01 and uses the bare form
+   for the artwork in §02. That difference is deliberate, so the wordmark here
+   and the running text elsewhere in the app are both correct as they stand.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+import React from 'react'
+
+const STRIP_WORD = 'M58 54 C46 60, 50 72, 64 72 L144 72 C156 72, 162 65, 158 56'
+const STRIP_MONO = 'M18 42 C13 47, 16 54, 25 54 L40 54 C48 54, 51 48, 48 42'
+
+/** The full lockup: word + film strip. `height` drives it; width follows the
+ *  guide's 200:88 ratio. Inherits `currentColor`. */
+export function Wordmark({ height = 40, style, ...rest }) {
+  return (
+    <svg
+      viewBox="0 0 200 88"
+      height={height}
+      width={(height * 200) / 88}
+      role="img"
+      aria-label="مخيال"
+      style={{ display: 'block', flex: 'none', ...style }}
+      {...rest}
+    >
+      <path d="M57.979 57.04Q51.769000000000005 57.04 48.503 53.82Q45.237 50.6 45.237 44.758Q45.237 42.688 45.812 40.158Q46.387 37.628 47.399 35.19L51.355000000000004 36.386Q50.481 38.318 49.929 40.364999999999995Q49.377 42.412 49.377 43.976Q49.377 47.104 51.217 48.829Q53.057 50.554 56.277 50.554H59.681000000000004Q61.613 50.554 62.924 50.094Q64.235 49.634 65.03999999999999 48.622Q65.845 47.61 66.213 45.954Q66.581 44.298 66.581 41.906V11.96H71.45700000000001V41.906Q71.45700000000001 49.68 68.191 53.36Q64.92500000000001 57.04 57.979 57.04Z M86.223 46.0Q81.669 46.0 79.53 43.976Q77.391 41.952 77.391 37.26V11.96H82.313V36.616Q82.313 38.594 83.164 39.284000000000006Q84.015 39.974000000000004 86.08500000000001 39.974000000000004H87.511V44.758L86.269 46.0Z M86.26899999999999 41.216 87.511 39.974000000000004H88.937Q92.70899999999999 39.974000000000004 92.70899999999999 36.524V29.762H97.217V36.524Q97.217 39.974000000000004 100.667 39.974000000000004H102.41499999999999V44.758L101.173 46.0Q97.631 46.0 95.745 44.620000000000005Q93.859 43.24 93.21499999999999 40.296H92.985Q92.387 43.332 90.846 44.666Q89.30499999999999 46.0 86.26899999999999 46.0ZM97.999 55.660000000000004Q96.895 55.660000000000004 96.18199999999999 54.99300000000001Q95.469 54.32600000000001 95.469 52.854Q95.469 51.336 96.18199999999999 50.669Q96.895 50.002 97.999 50.002H98.78099999999999Q99.88499999999999 50.002 100.59799999999998 50.669Q101.31099999999999 51.336 101.31099999999999 52.854Q101.31099999999999 54.32600000000001 100.59799999999998 54.99300000000001Q99.88499999999999 55.660000000000004 98.78099999999999 55.660000000000004ZM91.145 55.660000000000004Q90.041 55.660000000000004 89.328 54.99300000000001Q88.615 54.32600000000001 88.615 52.854Q88.615 51.336 89.328 50.669Q90.041 50.002 91.145 50.002H91.92699999999999Q93.03099999999999 50.002 93.744 50.669Q94.457 51.336 94.457 52.854Q94.457 54.32600000000001 93.744 54.99300000000001Q93.03099999999999 55.660000000000004 91.92699999999999 55.660000000000004Z M101.17299999999999 41.216 102.41499999999999 39.974000000000004H105.12899999999999Q107.52099999999999 39.974000000000004 109.499 39.882000000000005Q111.47699999999999 39.79 113.27099999999999 39.491Q115.065 39.192 116.88199999999999 38.594Q118.69899999999998 37.996 120.86099999999999 36.938L123.29899999999999 35.742000000000004V35.512L116.12299999999999 33.994L108.395 32.062V35.696H103.749V32.153999999999996Q103.749 26.542 108.901 26.542Q109.22299999999998 26.542 109.59099999999998 26.565Q109.95899999999999 26.588 110.442 26.68Q110.925 26.772000000000002 111.615 26.933Q112.30499999999999 27.094 113.27099999999999 27.37L122.839 29.854Q124.90899999999999 30.36 126.91 30.636Q128.911 30.912 130.70499999999998 30.912H131.57899999999998V36.984H128.267Q128.267 38.64 129.072 39.307Q129.87699999999998 39.974000000000004 131.76299999999998 39.974000000000004H133.189V44.758L131.947 46.0Q128.313 45.954 126.47299999999998 44.39Q124.633 42.826 124.26499999999999 39.376L123.06899999999999 40.158Q120.079 42.09 117.73299999999999 43.263000000000005Q115.38699999999999 44.436 113.29399999999998 45.034Q111.201 45.632 109.246 45.816Q107.291 46.0 105.12899999999999 46.0H101.17299999999999ZM114.329 22.402Q113.225 22.402 112.512 21.735Q111.79899999999999 21.068 111.79899999999999 19.596Q111.79899999999999 18.078 112.512 17.411Q113.225 16.744 114.329 16.744H115.11099999999999Q116.21499999999999 16.744 116.928 17.411Q117.64099999999999 18.078 117.64099999999999 19.596Q117.64099999999999 21.068 116.928 21.735Q116.21499999999999 22.402 115.11099999999999 22.402Z M138.525 43.378Q137.46699999999998 44.85 135.94899999999998 45.425Q134.43099999999998 46.0 131.947 46.0V41.216L133.189 39.974000000000004Q134.93699999999998 39.974000000000004 135.719 39.33Q136.501 38.686 137.099 37.122L138.387 33.902Q138.939 32.476 139.675 31.234Q140.411 29.992 141.377 29.095Q142.343 28.198 143.58499999999998 27.692Q144.827 27.186 146.43699999999998 27.186Q150.439 27.186 152.555 30.498Q154.671 33.81 154.671 39.652V41.262L150.807 47.012ZM140.825 37.812 150.301 40.618V39.652Q150.301 36.616 148.99 34.937Q147.679 33.258 145.471 33.258Q143.861 33.258 142.849 34.132000000000005Q141.837 35.006 141.239 36.662Z" fill="currentColor" />
+      <path
+        d={STRIP_WORD}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="5.5"
+        strokeDasharray="14 5"
+      />
+    </svg>
+  )
+}
+
+/** The monogram, for anywhere the lockup will not read: app icon, favicon,
+ *  a collapsed rail. Square. Inherits `currentColor`. */
+export function Monogram({ size = 28, style, ...rest }) {
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      width={size}
+      height={size}
+      role="img"
+      aria-label="مخيال"
+      style={{ display: 'block', flex: 'none', ...style }}
+      {...rest}
+    >
+      <path d="M22.91 38.16Q22.91 33.912 24.71 31.878Q26.51 29.844 30.29 29.844H38.102000000000004Q38.03 27.468 36.824 26.1Q35.618 24.732 33.782 24.732Q32.126000000000005 24.732 31.172000000000004 25.542Q30.218 26.352 29.714 27.72L26.330000000000002 26.28Q26.69 24.552 27.482 23.364Q28.274 22.176000000000002 29.282 21.438000000000002Q30.29 20.700000000000003 31.442 20.358000000000004Q32.594 20.016000000000002 33.71 20.016000000000002Q37.274 20.016000000000002 39.326 22.716Q41.378 25.416 41.378 30.42V34.56H30.29Q29.246000000000002 34.56 28.562 34.74Q27.878 34.92 27.464 35.334Q27.05 35.748 26.87 36.432Q26.69 37.116 26.69 38.16V46.944H22.91Z" fill="currentColor" />
+      <path
+        d={STRIP_MONO}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeDasharray="9 3.5"
+      />
+    </svg>
+  )
+}
