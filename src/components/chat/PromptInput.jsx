@@ -16,7 +16,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Attach, Close } from '../Icon'
+import { Send, Attach, Close, Sketch } from '../Icon'
 import { useUIStore } from '../../store/uiStore'
 import { useChatText } from './chatKit'
 
@@ -24,6 +24,10 @@ function PromptInput({ onSubmit, disabled = false }) {
   const [prompt, setPrompt] = useState('')
   const [attachedFile, setAttachedFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
+  /* SKETCH MODE. Off by default, and deliberately not remembered between
+     sends: it describes THIS file, and silently carrying it to the next one
+     would redraw a photo the user wanted animated as-is. */
+  const [sketchMode, setSketchMode] = useState(false)
   const { t } = useUIStore()
   const { tx } = useChatText()
   const textareaRef = useRef(null)
@@ -53,12 +57,16 @@ function PromptInput({ onSubmit, disabled = false }) {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setAttachedFile(null)
     setPreviewUrl(null)
+    setSketchMode(false)
   }
 
   const handleSubmit = (e) => {
     e?.preventDefault()
     if ((prompt.trim() || attachedFile) && !disabled) {
-      onSubmit(prompt.trim(), attachedFile)
+      // The flag only means anything alongside a file — guarded here rather
+      // than trusted, so a stale true can never reach the backend on a
+      // text-only send.
+      onSubmit(prompt.trim(), attachedFile, Boolean(attachedFile) && sketchMode)
       setPrompt('')
       removeAttachment()
       if (textareaRef.current) textareaRef.current.style.height = 'auto'
@@ -102,10 +110,20 @@ function PromptInput({ onSubmit, disabled = false }) {
             </div>
             <div className="min-w-0">
               <div className="label">{tx('attach')}</div>
-              <button type="button" onClick={removeAttachment} className="btn-t btn-t--danger">
-                <Close size={14} />
-                {tx('removeAttachment')}
-              </button>
+              <div className="flex items-center gap-1 flex-wrap">
+                <button type="button" onClick={removeAttachment} className="btn-t btn-t--danger">
+                  <Close size={14} />
+                  {tx('removeAttachment')}
+                </button>
+              </div>
+              {/* What the switch in the composer will DO to this file. The
+                  toggle itself is an icon down there, so the consequence is
+                  spelled out here in words — the same file animated as-is and
+                  redrawn produce completely different videos, which is not
+                  something the colour of an icon can carry on its own. */}
+              <p className="caption" style={{ marginBlockStart: 2 }}>
+                {sketchMode ? tx('sketchOnHint') : tx('sketchOffHint')}
+              </p>
             </div>
           </div>
         )}
@@ -147,6 +165,29 @@ function PromptInput({ onSubmit, disabled = false }) {
               <Attach size={16} />
             </button>
 
+            {/* THE SKETCH SWITCH. Its own control on the composer row, beside
+                the paperclip, because it is a decision about the whole send —
+                not a property of the thumbnail it used to be buried in, where
+                nobody found it.
+
+                It stays live with no file attached: the natural order is to
+                say "this next one is a drawing" and then go and pick it. The
+                send guard already refuses to pass the flag without a file, so
+                an armed switch on a text-only send costs nothing, and the hint
+                under the field says what it is still waiting for. */}
+            <button
+              type="button"
+              onClick={() => setSketchMode((on) => !on)}
+              disabled={disabled}
+              aria-pressed={sketchMode}
+              title={`${tx('sketchToggle')} — ${tx('sketchModeTitle')}`}
+              aria-label={tx('sketchToggle')}
+              className="btn-i shrink-0"
+              style={sketchMode ? { color: 'var(--accent)' } : undefined}
+            >
+              <Sketch size={16} />
+            </button>
+
             <textarea
               ref={textareaRef}
               value={prompt}
@@ -179,7 +220,11 @@ function PromptInput({ onSubmit, disabled = false }) {
           </div>
         </form>
 
-        <p className="caption" style={{ marginBlockStart: 6 }}>{tx('sendHint')}</p>
+        {/* An armed switch with nothing to apply it to would otherwise be a
+            control that looks active and does nothing. */}
+        <p className="caption" style={{ marginBlockStart: 6 }}>
+          {sketchMode && !attachedFile ? tx('sketchNeedsFile') : tx('sendHint')}
+        </p>
       </div>
     </div>
   )

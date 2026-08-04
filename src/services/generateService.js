@@ -19,11 +19,18 @@ function getWsUrl() {
 }
 
 export const generateService = {
-  start: async (chatId, prompt, imageAttachmentUrl = null) => {
+  // `sketchMode` says the attachment is a rough drawing, not a finished
+  // picture. It changes what happens to the file: off, it becomes the video's
+  // opening frame as-is; on, a vision model reads it and it is redrawn into a
+  // finished still that gets animated instead. It must be passed to plan() as
+  // well as start() — start() only creates the run row, and plan() is the call
+  // that reads the sketch and picks the path.
+  start: async (chatId, prompt, imageAttachmentUrl = null, sketchMode = false) => {
     const response = await api.post('/generate/start', {
       chat_id: chatId,
       prompt,
       image_attachment_path: imageAttachmentUrl || undefined,
+      sketch_mode: sketchMode,
     })
     return response.data
   },
@@ -56,9 +63,10 @@ export const generateService = {
 
   // Legacy one-shot path: plans and generates in a single blocking call.
   // Kept for callers that don't want the confirmation gate.
-  execute: async (runId, imageAttachmentUrl = null) => {
+  execute: async (runId, imageAttachmentUrl = null, sketchMode = false) => {
     const response = await api.post(`/generate/runs/${runId}/execute`, {
       image_attachment_path: imageAttachmentUrl || undefined,
+      sketch_mode: sketchMode,
     })
     return response.data
   },
@@ -69,9 +77,10 @@ export const generateService = {
   // clarification payload (status 'awaiting_clarification') when the prompt is
   // too vague, so callers must branch on response.status.
 
-  plan: async (runId, imageAttachmentUrl = null) => {
+  plan: async (runId, imageAttachmentUrl = null, sketchMode = false) => {
     const response = await api.post(`/generate/runs/${runId}/plan`, {
       image_attachment_path: imageAttachmentUrl || undefined,
+      sketch_mode: sketchMode,
     })
     return response.data
   },
@@ -130,11 +139,12 @@ export const generateService = {
     return response.data
   },
 
-  generate: async (chatId, prompt, imageAttachmentUrl = null) => {
+  generate: async (chatId, prompt, imageAttachmentUrl = null, sketchMode = false) => {
     const response = await api.post('/generate/', {
       chat_id: chatId,
       prompt,
       image_attachment_path: imageAttachmentUrl || undefined,
+      sketch_mode: sketchMode,
     })
     return response.data
   },
