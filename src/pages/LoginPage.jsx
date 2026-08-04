@@ -59,7 +59,7 @@ import { clearAllStores } from '../utils/clearStores'
    why the separate <Mark> that used to sit next to it in both callers is gone:
    a logo does not need a second logo in front of it. */
 export function Wordmark({ size = 'lead' }) {
-  return <BrandWordmark height={size === 'lead' ? 52 : 30} style={{ color: 'var(--ink)' }} />
+  return <BrandWordmark height={size === 'lead' ? 72 : 40} style={{ color: 'var(--ink)' }} />
 }
 
 /* ── THE PANEL ────────────────────────────────────────────────────────────

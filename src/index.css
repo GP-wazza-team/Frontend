@@ -615,14 +615,20 @@ html[dir="ltr"] { --lh: 1.55; }
   border-inline-end: 1px solid var(--line-2);
 }
 
-/* THE IDENTITY, ALONE, IN ITS OWN BAND. Same height as the handheld bar so the
-   mark sits on exactly the same line in both layouts. */
+/* THE IDENTITY, ALONE, IN ITS OWN BAND.
+   88px, NOT the 56px of the handheld bar. It was --topbar for a while, on the
+   idea that the mark should sit on the same line in both layouts — but the two
+   are never on screen together (one is desktop, the other is below 1024px), so
+   that bought nothing and cost the logo its presence: a 34px lockup in a 56px
+   band read smaller than the nav labels beneath it, which is backwards. The
+   band is now tall enough to give the mark real size AND still clear the brand
+   guide's safe area, which is one film-strip height on every side. */
 .rail__brand {
   flex: none;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center;
   inline-size: 100%; text-align: start;
-  block-size: var(--topbar);
-  padding-inline: 14px;
+  block-size: 88px;
+  padding-inline: 16px;
   color: var(--ink);
   border-block-end: 1px solid var(--line);
 }

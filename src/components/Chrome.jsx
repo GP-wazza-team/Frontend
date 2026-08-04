@@ -498,7 +498,11 @@ export function RailBrand() {
       className="rail__brand"
       aria-label="مخيال"
     >
-      <Wordmark height={34} aria-hidden="true" />
+      {/* 60, in an 88px band. The ink fills about 73% of the lockup's box, so
+          the drawn mark is ~44px tall with ~22px clear above and below — past
+          the guide's one-strip-height safe area, and finally larger than the
+          nav labels under it rather than smaller. */}
+      <Wordmark height={60} aria-hidden="true" />
     </button>
   )
 }
