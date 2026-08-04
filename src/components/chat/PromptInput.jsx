@@ -110,31 +110,17 @@ function PromptInput({ onSubmit, disabled = false }) {
             </div>
             <div className="min-w-0">
               <div className="label">{tx('attach')}</div>
-              {/* THE SKETCH SWITCH. It sits on the attachment, not in the
-                  field, because that is what it describes — and it decides
-                  something the picture itself cannot tell us: whether this is
-                  a finished frame or a drawing to be redrawn. The two produce
-                  completely different videos from the same file, so the state
-                  is spelled out in words underneath rather than left to the
-                  colour of an icon. */}
               <div className="flex items-center gap-1 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setSketchMode((on) => !on)}
-                  disabled={disabled}
-                  aria-pressed={sketchMode}
-                  title={tx('sketchModeTitle')}
-                  className="btn-t"
-                  style={sketchMode ? { color: 'var(--accent)' } : undefined}
-                >
-                  <Sketch size={14} />
-                  {tx('sketchMode')}
-                </button>
                 <button type="button" onClick={removeAttachment} className="btn-t btn-t--danger">
                   <Close size={14} />
                   {tx('removeAttachment')}
                 </button>
               </div>
+              {/* What the switch in the composer will DO to this file. The
+                  toggle itself is an icon down there, so the consequence is
+                  spelled out here in words — the same file animated as-is and
+                  redrawn produce completely different videos, which is not
+                  something the colour of an icon can carry on its own. */}
               <p className="caption" style={{ marginBlockStart: 2 }}>
                 {sketchMode ? tx('sketchOnHint') : tx('sketchOffHint')}
               </p>
@@ -179,6 +165,29 @@ function PromptInput({ onSubmit, disabled = false }) {
               <Attach size={16} />
             </button>
 
+            {/* THE SKETCH SWITCH. Its own control on the composer row, beside
+                the paperclip, because it is a decision about the whole send —
+                not a property of the thumbnail it used to be buried in, where
+                nobody found it.
+
+                It stays live with no file attached: the natural order is to
+                say "this next one is a drawing" and then go and pick it. The
+                send guard already refuses to pass the flag without a file, so
+                an armed switch on a text-only send costs nothing, and the hint
+                under the field says what it is still waiting for. */}
+            <button
+              type="button"
+              onClick={() => setSketchMode((on) => !on)}
+              disabled={disabled}
+              aria-pressed={sketchMode}
+              title={`${tx('sketchToggle')} — ${tx('sketchModeTitle')}`}
+              aria-label={tx('sketchToggle')}
+              className="btn-i shrink-0"
+              style={sketchMode ? { color: 'var(--accent)' } : undefined}
+            >
+              <Sketch size={16} />
+            </button>
+
             <textarea
               ref={textareaRef}
               value={prompt}
@@ -211,7 +220,11 @@ function PromptInput({ onSubmit, disabled = false }) {
           </div>
         </form>
 
-        <p className="caption" style={{ marginBlockStart: 6 }}>{tx('sendHint')}</p>
+        {/* An armed switch with nothing to apply it to would otherwise be a
+            control that looks active and does nothing. */}
+        <p className="caption" style={{ marginBlockStart: 6 }}>
+          {sketchMode && !attachedFile ? tx('sketchNeedsFile') : tx('sendHint')}
+        </p>
       </div>
     </div>
   )

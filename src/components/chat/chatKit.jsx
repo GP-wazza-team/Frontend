@@ -78,9 +78,13 @@ const STRINGS = {
     sendHint: 'Enter to send · Shift+Enter for a new line',
     costsCredits: 'Plans a run. Nothing is spent until you authorise it.',
     sketchMode: 'This is a sketch',
+    // The composer control is an icon, so its name has to carry on hover and
+    // to a screen reader — the sentence below is the explanation, not the name.
+    sketchToggle: 'Sketch',
     sketchModeTitle: 'Redraw this rough drawing into a finished shot, then animate that — instead of animating the drawing itself.',
     sketchOnHint: 'Your drawing sets the shot. It gets redrawn properly, then animated.',
     sketchOffHint: 'Used as the opening frame, as-is.',
+    sketchNeedsFile: 'Attach the drawing you want redrawn.',
 
     /* the work order */
     workOrder: 'Work order',
@@ -173,9 +177,11 @@ const STRINGS = {
     sendHint: 'Enter للإرسال · Shift+Enter لسطر جديد',
     costsCredits: 'يجهّز خطة التنفيذ. لا يُصرف شيء قبل اعتمادك.',
     sketchMode: 'هذا رسم تخطيطي',
+    sketchToggle: 'رسم تخطيطي',
     sketchModeTitle: 'يعيد رسم هذا المخطط كلقطة نهائية مكتملة ثم يحرّكها، بدلاً من تحريك الرسم نفسه.',
     sketchOnHint: 'رسمك يحدّد اللقطة. سيُعاد رسمه بشكل كامل ثم يُحرَّك.',
     sketchOffHint: 'يُستخدم كأول إطار في الفيديو كما هو.',
+    sketchNeedsFile: 'أرفق الرسم الذي تريد إعادة رسمه.',
 
     workOrder: 'أمر العمل',
     reviewBefore: 'بانتظار اعتمادك',
