@@ -16,7 +16,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Send, Attach, Close } from '../Icon'
+import { Send, Attach, Close, Sketch } from '../Icon'
 import { useUIStore } from '../../store/uiStore'
 import { useChatText } from './chatKit'
 
@@ -24,6 +24,10 @@ function PromptInput({ onSubmit, disabled = false }) {
   const [prompt, setPrompt] = useState('')
   const [attachedFile, setAttachedFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
+  /* SKETCH MODE. Off by default, and deliberately not remembered between
+     sends: it describes THIS file, and silently carrying it to the next one
+     would redraw a photo the user wanted animated as-is. */
+  const [sketchMode, setSketchMode] = useState(false)
   const { t } = useUIStore()
   const { tx } = useChatText()
   const textareaRef = useRef(null)
@@ -53,12 +57,16 @@ function PromptInput({ onSubmit, disabled = false }) {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
     setAttachedFile(null)
     setPreviewUrl(null)
+    setSketchMode(false)
   }
 
   const handleSubmit = (e) => {
     e?.preventDefault()
     if ((prompt.trim() || attachedFile) && !disabled) {
-      onSubmit(prompt.trim(), attachedFile)
+      // The flag only means anything alongside a file — guarded here rather
+      // than trusted, so a stale true can never reach the backend on a
+      // text-only send.
+      onSubmit(prompt.trim(), attachedFile, Boolean(attachedFile) && sketchMode)
       setPrompt('')
       removeAttachment()
       if (textareaRef.current) textareaRef.current.style.height = 'auto'
@@ -102,10 +110,34 @@ function PromptInput({ onSubmit, disabled = false }) {
             </div>
             <div className="min-w-0">
               <div className="label">{tx('attach')}</div>
-              <button type="button" onClick={removeAttachment} className="btn-t btn-t--danger">
-                <Close size={14} />
-                {tx('removeAttachment')}
-              </button>
+              {/* THE SKETCH SWITCH. It sits on the attachment, not in the
+                  field, because that is what it describes — and it decides
+                  something the picture itself cannot tell us: whether this is
+                  a finished frame or a drawing to be redrawn. The two produce
+                  completely different videos from the same file, so the state
+                  is spelled out in words underneath rather than left to the
+                  colour of an icon. */}
+              <div className="flex items-center gap-1 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setSketchMode((on) => !on)}
+                  disabled={disabled}
+                  aria-pressed={sketchMode}
+                  title={tx('sketchModeTitle')}
+                  className="btn-t"
+                  style={sketchMode ? { color: 'var(--accent)' } : undefined}
+                >
+                  <Sketch size={14} />
+                  {tx('sketchMode')}
+                </button>
+                <button type="button" onClick={removeAttachment} className="btn-t btn-t--danger">
+                  <Close size={14} />
+                  {tx('removeAttachment')}
+                </button>
+              </div>
+              <p className="caption" style={{ marginBlockStart: 2 }}>
+                {sketchMode ? tx('sketchOnHint') : tx('sketchOffHint')}
+              </p>
             </div>
           </div>
         )}

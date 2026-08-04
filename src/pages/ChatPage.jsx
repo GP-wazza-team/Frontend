@@ -752,7 +752,7 @@ function ChatPage() {
     return all.length ? (all[all.length - 1].failedRunId || null) : null
   }
 
-  const handleSendPrompt = async (prompt, attachmentFile = null) => {
+  const handleSendPrompt = async (prompt, attachmentFile = null, sketchMode = false) => {
     if (loading) return
 
     // "retry" typed after a failure means the button, not a new prompt. Only a
@@ -827,11 +827,17 @@ function ChatPage() {
       if (attachmentFile) {
         attachmentPreviewUrl = URL.createObjectURL(attachmentFile)
         try {
-          imageAttachmentUrl = await assetService.uploadImage(attachmentFile, chatId)
+          imageAttachmentUrl = await assetService.uploadImage(attachmentFile, chatId, sketchMode)
         } catch (err) {
           console.error('Failed to upload attachment:', err)
         }
       }
+
+      // The upload can fail while the prompt still goes through (above swallows
+      // the error on purpose, so a dead S3 does not eat the user's text). With
+      // no file there is no sketch, and telling the backend otherwise would put
+      // it into sketch mode with nothing to read.
+      const isSketchRun = sketchMode && Boolean(imageAttachmentUrl)
 
       addMessage({
         role: 'user',
@@ -847,14 +853,18 @@ function ChatPage() {
         created_at: new Date().toISOString(),
       })
 
-      const startedRun = await generateService.start(chatId, prompt, imageAttachmentUrl)
+      const startedRun = await generateService.start(
+        chatId, prompt, imageAttachmentUrl, isSketchRun,
+      )
       setActiveRunId(startedRun.run_id)
       progressTargetRef.current = progressIndex
 
       const socket = await openRunSocket(startedRun.run_id)
 
       // Plan only — nothing is generated until the user confirms.
-      const result = await generateService.plan(startedRun.run_id, imageAttachmentUrl)
+      const result = await generateService.plan(
+        startedRun.run_id, imageAttachmentUrl, isSketchRun,
+      )
       renderPlanResponse(result, startedRun.run_id, { replaceIndex: progressIndex })
     } catch (error) {
       console.error('Failed to plan generation:', error)

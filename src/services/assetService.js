@@ -27,13 +27,21 @@ export const assetService = {
     await api.delete(`/assets/${id}`)
   },
 
-  uploadImage: async (file, chatId) => {
+  // `isSketch` marks the upload as a rough drawing rather than a finished
+  // picture. It is recorded on the asset for the library's benefit; what
+  // actually drives the pipeline is the same flag sent to /generate, so both
+  // must be passed for one send.
+  uploadImage: async (file, chatId, isSketch = false) => {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await api.post(`/assets/upload?chat_id=${chatId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 60000,
-    })
+    const response = await api.post(
+      `/assets/upload?chat_id=${chatId}&is_sketch=${isSketch ? 'true' : 'false'}`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,
+      },
+    )
     return response.data.url
   },
 }
