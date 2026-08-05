@@ -19,6 +19,27 @@ export const adminService = {
     return response.data
   },
 
+  // Which model each pipeline stage runs on, plus EVERY model in the registry
+  // for each stage — including the ones that cannot be selected, each carrying
+  // the reason. See app/core/runtime_config.py.
+  getConfig: async () => {
+    const response = await api.get('/admin/config')
+    return response.data
+  },
+
+  // One stage per call. The provider is derived server-side from the registry
+  // and must not be sent — a provider and model id that disagree is a mid-run
+  // 404. Returns the full refreshed config alongside the applied value.
+  setModelDefault: async (key, model) => {
+    const response = await api.put('/admin/config', { key, model })
+    return response.data
+  },
+
+  resetModelDefault: async (key) => {
+    const response = await api.delete(`/admin/config/${key}`)
+    return response.data
+  },
+
   getRunDetail: async (runId) => {
     const response = await api.get(`/admin/runs/${runId}`)
     return response.data

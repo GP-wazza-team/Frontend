@@ -56,6 +56,7 @@ import ProviderBalances from '../components/admin/ProviderBalances'
 import DailyMetricsChart from '../components/admin/DailyMetricsChart'
 import AdminRunsTable, { RunsToolbar } from '../components/admin/AdminRunsTable'
 import RunDetailDrawer from '../components/admin/RunDetailDrawer'
+import ModelDefaults, { ModelDefaultsSkeleton } from '../components/admin/ModelDefaults'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Rocker from '../components/ui/Rocker'
 import EmptyState from '../components/ui/EmptyState'
@@ -89,6 +90,9 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState(null)
   const [providerBalances, setProviderBalances] = useState([])
   const [balancesLoading, setBalancesLoading] = useState(false)
+  const [configSlots, setConfigSlots] = useState([])
+  const [configLoading, setConfigLoading] = useState(true)
+  const [configSaving, setConfigSaving] = useState(false)
 
   /* Presentation state over the runs already loaded by loadAll. No requests. */
   const [filters, setFilters] = useState({})
@@ -148,6 +152,79 @@ export default function AdminDashboardPage() {
       loadBalances()
     }
   }, [loadBalances, user])
+
+  /* MODEL DEFAULTS. Loaded on its own, not through the overview, because it is
+     the one region here that does not depend on `days` — the window scopes
+     every figure on this page, but not which model the pipeline runs on. */
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true)
+    try {
+      const data = await adminService.getConfig()
+      setConfigSlots(Array.isArray(data?.slots) ? data.slots : [])
+    } catch (err) {
+      console.error('Failed to load model defaults:', err)
+      addToast(
+        describeFailure(ar ? 'تعذّرت قراءة النماذج الافتراضية' : 'Could not read the model defaults', err),
+        'error',
+      )
+    } finally {
+      setConfigLoading(false)
+    }
+  }, [addToast, ar])
+
+  useEffect(() => {
+    if (user?.is_admin || user?.role === 'admin') {
+      loadConfig()
+    }
+  }, [loadConfig, user])
+
+  /* Applied one stage at a time — the endpoint takes a single slot, so a
+     partial success is possible and is reported as one. Stop at the first
+     rejection rather than pressing on: the reasons compound (a missing key
+     usually blocks more than one stage) and three stacked error toasts say
+     less than the first one does. */
+  const handleApplyConfig = useCallback(async (changes) => {
+    if (!changes.length) return false
+    setConfigSaving(true)
+    let applied = 0
+    let latest = null
+    let ok = false
+    try {
+      for (const change of changes) {
+        const data = await adminService.setModelDefault(change.key, change.model)
+        latest = data?.config
+        applied += 1
+      }
+      ok = true
+      addToast(
+        ar
+          ? `تم تحديث ${applied} من النماذج الافتراضية`
+          : `${applied} model default${applied === 1 ? '' : 's'} updated`,
+        'success',
+      )
+      return true
+    } catch (err) {
+      console.error('Failed to apply model default:', err)
+      addToast(
+        describeFailure(
+          applied
+            ? (ar ? `طُبِّق ${applied} ثم توقّف` : `Applied ${applied}, then stopped`)
+            : (ar ? 'تعذّر تطبيق التغيير' : 'Could not apply the change'),
+          err,
+        ),
+        'error',
+      )
+      return false
+    } finally {
+      setConfigSaving(false)
+      /* On success the last response already carries the refreshed config, so
+         take it. A rejection has no config in its body and may have landed
+         part of the batch, so re-read rather than infer — the selects must
+         show what the server actually holds, not what we hoped it would. */
+      if (ok && latest?.slots) setConfigSlots(latest.slots)
+      else loadConfig()
+    }
+  }, [addToast, ar, loadConfig])
 
   const handleRunClick = async (run) => {
     setSelectedRun(run)
@@ -355,6 +432,35 @@ export default function AdminDashboardPage() {
               days={days}
               loading={balancesLoading}
               onRefresh={() => loadBalances(true)}
+            />
+          )}
+      </div>
+
+      {/* ── MODEL DEFAULTS ───────────────────────────────────────────────────
+          Placed directly under the cost ledger and the balances ON PURPOSE:
+          this is the control you reach for having just read what each model
+          cost and what is left upstream. The evidence and the lever that acts
+          on it belong on the same screen, in that order.
+
+          Unlike everything above it, this region does NOT depend on `days` —
+          the window scopes the figures, not the configuration — so it carries
+          no day count in its caption and reloads on its own. */}
+      <div className="sechead">
+        <h2 className="sec-title">{ar ? 'النماذج الافتراضية' : 'Model defaults'}</h2>
+        <span className="caption">
+          {ar
+            ? 'المزود والنموذج لكل مرحلة من مراحل التوليد'
+            : 'The provider and model behind each stage of a generation'}
+        </span>
+      </div>
+      <div className="card card-pad">
+        {configLoading
+          ? <ModelDefaultsSkeleton />
+          : (
+            <ModelDefaults
+              slots={configSlots}
+              saving={configSaving}
+              onApply={handleApplyConfig}
             />
           )}
       </div>
