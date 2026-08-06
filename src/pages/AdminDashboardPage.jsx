@@ -56,6 +56,8 @@ import ProviderBalances from '../components/admin/ProviderBalances'
 import DailyMetricsChart from '../components/admin/DailyMetricsChart'
 import AdminRunsTable, { RunsToolbar } from '../components/admin/AdminRunsTable'
 import RunDetailDrawer from '../components/admin/RunDetailDrawer'
+import AdminUsersTable from '../components/admin/AdminUsersTable'
+import AdminActivityLog from '../components/admin/AdminActivityLog'
 import ModelDefaults, { ModelDefaultsSkeleton } from '../components/admin/ModelDefaults'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Rocker from '../components/ui/Rocker'
@@ -498,6 +500,39 @@ export default function AdminDashboardPage() {
           onDelete={(run) => setRunToDelete(run)}
           onClearFilters={() => setFilters({})}
         />
+      </div>
+
+      {/* ── ACCOUNTS. Self-contained on purpose, unlike the regions above:
+             its pagination, search and role filter are SERVER-SIDE requests,
+             not views over data the page already holds, and none of it is
+             scoped by `days` — so the component owns its own loading the way
+             loadBalances and loadConfig own theirs, without adding a fourth
+             loader to this file. */}
+      <div className="sechead">
+        <h2 className="sec-title">{ar ? 'الحسابات' : 'Accounts'}</h2>
+        <span className="caption">
+          {ar
+            ? 'اختر حساباً لعرض ملفه وسجل رصيده وتشغيلاته'
+            : 'Select an account to see its profile, credit ledger and runs'}
+        </span>
+      </div>
+      <div className="card" style={{ padding: '12px 14px' }}>
+        <AdminUsersTable />
+      </div>
+
+      {/* ── ACTIVITY. The one live region on this page: it polls on a 5s
+             cursor and stops itself while paused or unmounted, so its state
+             stays inside the component — the page has nothing to schedule. */}
+      <div className="sechead">
+        <h2 className="sec-title">{ar ? 'النشاط' : 'Activity'}</h2>
+        <span className="caption">
+          {ar
+            ? 'كل طلب وتسجيل دخول وإجراء إداري، لحظة وقوعه'
+            : 'Every request, sign-in and admin act, as it happens'}
+        </span>
+      </div>
+      <div className="card" style={{ padding: '12px 14px' }}>
+        <AdminActivityLog />
       </div>
 
       <ConfirmDialog
