@@ -46,6 +46,7 @@ import { assetService } from '../services/assetService'
 import { useUIStore } from '../store/uiStore'
 import { Strike, Download, Revise, Expand, Close, AudioMark } from '../components/Icon'
 import { useLightbox } from '../components/MediaLightbox'
+import { useMediaDownload } from '../hooks/useMediaDownload'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { EmptyState } from '../components/ui/EmptyState'
 
@@ -125,7 +126,7 @@ function fmtClock(seconds) {
    The wrapper carries `.group` and the row actions; the button carries the
    media. They are siblings, never nested — a control inside a control is
    invalid markup and the browser drops one of them. */
-function AssetTile({ asset, ar, selected, probe, onSelect, onOpen, onProbe, onBroken, labels }) {
+function AssetTile({ asset, ar, selected, probe, onSelect, onOpen, onProbe, onBroken, onDownload, downloading, labels }) {
   const url = urlOf(asset)
   const type = String(asset.asset_type || '').toLowerCase()
   const meta = metaOf(asset)
@@ -235,20 +236,23 @@ function AssetTile({ asset, ar, selected, probe, onSelect, onOpen, onProbe, onBr
             <Expand size={14} />
           </button>
         )}
-        <a
-          href={url || undefined}
-          target="_blank"
-          rel="noreferrer"
-          download
+        {/* A link with `download` on it does not save a cross-origin file —
+            it opened the print in a new tab instead. The save goes through
+            the API, which returns it as an attachment. */}
+        <button
+          type="button"
+          onClick={() => onDownload(asset)}
+          disabled={!url || downloading}
           aria-label={labels.download}
           title={labels.download}
+          aria-busy={downloading || undefined}
           style={{
             color: '#fff', display: 'grid', placeItems: 'center', padding: 5,
-            opacity: url ? 1 : 0.4, pointerEvents: url ? undefined : 'none',
+            opacity: url && !downloading ? 1 : 0.4,
           }}
         >
           <Download size={14} />
-        </a>
+        </button>
         <button
           type="button"
           onClick={() => onSelect(asset, { del: true })}
@@ -282,6 +286,7 @@ function AssetsPage() {
   const { t, language } = useUIStore()
   const ar = language === 'ar'
   const openMedia = useLightbox()
+  const { download, saving: downloading } = useMediaDownload()
 
   const [assets, setAssets] = useState([])
   const [total, setTotal] = useState(0)
@@ -403,8 +408,16 @@ function AssetsPage() {
     const url = urlOf(asset)
     if (!url) return
     setSelectedId(asset.id)
-    openMedia(url, String(asset.asset_type).toLowerCase() === 'video' ? 'video' : 'image')
+    openMedia(
+      url,
+      String(asset.asset_type).toLowerCase() === 'video' ? 'video' : 'image',
+      /* The library knows the row, so the lightbox can save by id and skip
+         resolving the URL back to an asset. */
+      { assetId: asset.id },
+    )
   }
+
+  const onDownload = (asset) => download({ id: asset.id, fallbackName: fileNameOf(urlOf(asset)) })
 
   const countLine = ar ? (
     <>
@@ -532,6 +545,8 @@ function AssetsPage() {
                     onOpen={onOpen}
                     onProbe={onProbe}
                     onBroken={onBroken}
+                    onDownload={onDownload}
+                    downloading={downloading}
                   />
                 ))}
               </div>
@@ -646,17 +661,16 @@ function AssetsPage() {
                       </button>
                     )}
                     {url && (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        download
+                      <button
+                        type="button"
                         className="btn-q btn-q--sm"
-                        style={{ textDecoration: 'none' }}
+                        onClick={() => onDownload(selected)}
+                        disabled={downloading}
+                        aria-busy={downloading || undefined}
                       >
                         <Download size={14} />
                         {labels.download}
-                      </a>
+                      </button>
                     )}
                     <button
                       type="button"

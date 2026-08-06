@@ -13,16 +13,21 @@
    is the surface a user lands on every time they open an image, and it was the
    last screen still carrying the previous design's vocabulary.
 
-   The two controls are bare marks in the Frame's caption rail — no floating
-   tiles, no tinted boxes, and no absolute `top-3 right-3`, which pinned them to
-   the visual right in Arabic instead of the reading end. There is nothing left
-   to mirror: the rail is a flex row on logical properties.
+   The controls are bare marks in the Frame's caption rail — no floating tiles,
+   no tinted boxes, and no absolute `top-3 right-3`, which pinned them to the
+   visual right in Arabic instead of the reading end. There is nothing left to
+   mirror: the rail is a flex row on logical properties.
+
+   Save is one of those marks. This is the screen a user opens to look at a
+   result properly, so it is where they reach to keep it — and a `download`
+   attribute here would not have worked anyway, the media being cross-origin.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import Frame from './ui/Frame'
-import { Close, External } from './Icon'
+import { Close, External, Download } from './Icon'
 import { useUIStore } from '../store/uiStore'
+import { useMediaDownload } from '../hooks/useMediaDownload'
 
 const LightboxContext = createContext(() => {})
 
@@ -44,9 +49,13 @@ export function LightboxProvider({ children }) {
   const [item, setItem] = useState(null)
   const language = useUIStore((s) => s.language)
   const ar = language === 'ar'
+  const { download, saving, label: downloadLabel } = useMediaDownload()
 
-  const openMedia = useCallback((url, type = 'image') => {
-    if (url) setItem({ url, type })
+  /* `meta` is optional and only carries an asset id where the caller has one.
+     The transcript does not — its media comes from a message's attachment
+     list, which is URLs — so the save falls back to resolving by URL. */
+  const openMedia = useCallback((url, type = 'image', meta = {}) => {
+    if (url) setItem({ url, type, assetId: meta.assetId })
   }, [])
 
   const close = useCallback(() => setItem(null), [])
@@ -94,6 +103,20 @@ export function LightboxProvider({ children }) {
               caption={[item.type === 'video' ? 'video' : 'image', fileNameOf(item.url)]}
               actions={(
                 <span className="flex items-center gap-3 flex-none">
+                  {/* This is the screen a user lands on to look at the result
+                      properly, so it is where they reach for the save. */}
+                  <button
+                    type="button"
+                    onClick={() => download({ id: item.assetId, url: item.url })}
+                    disabled={saving}
+                    className="text-action"
+                    style={{ padding: 0 }}
+                    title={downloadLabel}
+                    aria-label={downloadLabel}
+                    aria-busy={saving || undefined}
+                  >
+                    <Download size={14} />
+                  </button>
                   <a
                     href={item.url}
                     target="_blank"

@@ -26,6 +26,8 @@
 
 import React, { useState } from 'react'
 import { useUIStore } from '../../store/uiStore'
+import { useMediaDownload } from '../../hooks/useMediaDownload'
+import { Download } from '../Icon'
 
 /* ── STRINGS ─────────────────────────────────────────────────────────────── */
 
@@ -300,9 +302,17 @@ export function MediaWell({
   openLabel,
   maxHeight = '58vh',
   maxWidth,
+  assetId,
+  downloadable = true,
 }) {
   // A dead URL must not leave a broken-image glyph sitting in the transcript.
   const [broken, setBroken] = useState(false)
+  const { download, saving, label: downloadLabel } = useMediaDownload()
+
+  /* The save sits on the artifact itself, so the clip a user just watched
+     render can be kept without going to the library to find it again. Audio
+     and a URL we already know is dead are the exceptions. */
+  const canDownload = downloadable && !broken && url && type !== 'audio'
   const facts = caption.filter((c) => c !== null && c !== undefined && c !== '')
 
   const mediaStyle = {
@@ -361,7 +371,7 @@ export function MediaWell({
         {body}
       </div>
 
-      {(facts.length > 0 || onOpen) && (
+      {(facts.length > 0 || onOpen || canDownload) && (
         <figcaption className="tile__row" style={{ padding: '9px 12px' }}>
           {/* A3 — each fact is isolated with <bdi> so a resolution, a scene
               number or a model name inside an Arabic run keeps its own
@@ -377,6 +387,21 @@ export function MediaWell({
           {onOpen && (
             <button type="button" className="btn-t" onClick={onOpen} title={openLabel} aria-label={openLabel}>
               {openLabel}
+            </button>
+          )}
+          {canDownload && (
+            <button
+              type="button"
+              className="btn-t"
+              onClick={() => download({ id: assetId, url })}
+              disabled={saving}
+              title={downloadLabel}
+              aria-label={downloadLabel}
+              aria-busy={saving || undefined}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Download size={14} />
+              {downloadLabel}
             </button>
           )}
         </figcaption>
