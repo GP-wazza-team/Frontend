@@ -192,8 +192,53 @@ function OutputClause({ plan, catalog, disabled, onChange, tx }) {
   const videoOptions = modelOptions(catalog?.video, plan.video_model)
   const imageOptions = modelOptions(catalog?.image, plan.image_model)
 
+  // The backend reports "draft" while the run is parked on the cheap-iteration
+  // settings, and remembers what draft displaced — so Final is a restore, not
+  // a guess. Only the state the run is NOT in is sendable; clicking the cell
+  // that is already on would spend a request to change nothing.
+  const inDraft = plan.quality_mode === 'draft'
+
   return (
     <div className="flex flex-col" style={{ maxInlineSize: 520 }}>
+      {isVideo && onChange && (
+        <SpecRow
+          label={tx('renderMode')}
+          title={tx('renderModeWhy')}
+        >
+          <span className="seg" role="group" aria-label={tx('renderMode')}>
+            <button
+              type="button"
+              className="seg__cell"
+              data-on={inDraft ? 'true' : 'false'}
+              aria-pressed={inDraft}
+              disabled={disabled}
+              onClick={() => !inDraft && onChange({ quality_mode: 'draft' })}
+            >
+              {tx('draft')}
+            </button>
+            <button
+              type="button"
+              className="seg__cell"
+              data-on={!inDraft ? 'true' : 'false'}
+              aria-pressed={!inDraft}
+              disabled={disabled}
+              onClick={() => inDraft && onChange({ quality_mode: 'final' })}
+            >
+              {tx('final')}
+            </button>
+          </span>
+        </SpecRow>
+      )}
+
+      {/* Said while it is true, in the warning voice the render notes already
+          use: a draft render is deliberately the cheap one, and authorising in
+          this state must not be a surprise afterwards. */}
+      {isVideo && inDraft && (
+        <span style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--warn)', marginBlockEnd: 6 }}>
+          {tx('draftNote')}
+        </span>
+      )}
+
       {/* Both pickers are shown on a video run: the reference image and the
           video are produced by different models, and the image model is what
           decides whether an uploaded photo's likeness can be kept. */}
