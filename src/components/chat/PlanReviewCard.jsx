@@ -443,6 +443,24 @@ const AmendMark = ({ onClick, label }) => (
   </button>
 )
 
+/* One step of the guided sequence: a small "1/3" marker, a question, a line of
+   context, and its controls. The controls are passed in because each step
+   offers something different (preview environment, preview a character, or the
+   generate buttons). */
+function StageBlock({ n, label, q, sub, children }) {
+  return (
+    <div style={{ marginBlockEnd: 16 }}>
+      <div className="flex items-center gap-2" style={{ marginBlockEnd: 4 }}>
+        <span className="mono caption">{n}/3</span>
+        <span className="label">{label}</span>
+      </div>
+      <p style={{ fontSize: 15, color: 'var(--ink)', marginBlockEnd: 2 }}>{q}</p>
+      {sub && <p className="caption" style={{ marginBlockEnd: 12 }}>{sub}</p>}
+      <div className="flex flex-wrap items-center gap-3">{children}</div>
+    </div>
+  )
+}
+
 /* ── THE DOCUMENT ─────────────────────────────────────────────────────────── */
 
 function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEdit, onEditScript, onPreview, onRevise, onConfirm, onCancel, onSettings }) {
@@ -482,6 +500,19 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
   const perScene = Number(plan.per_scene_cost_usd)
   const offerSceneByScene = scenesTotal > 1 && scenesDone < scenesTotal
   const inSceneFlow = scenesDone > 0
+
+  // The guided sequence. A fresh run that draws stills walks the user through
+  // the two preview offers before the generate buttons appear, one step at a
+  // time, instead of showing every button at once. A run with no stills, or a
+  // continuation where scenes are already being made, goes straight to
+  // Generate. `stage` is seeded once from the plan; changing quality on the
+  // card keeps the user where they are rather than snapping back to step 1.
+  const previewFlow = plan.needs_images && !inSceneFlow
+  const envPreviewed = (previews || []).some((p) => p.preview_type === 'environment')
+  const previewedNames = new Set((previews || []).filter((p) => p.preview_type === 'character').map((p) => p.character_name))
+  const [stage, setStage] = useState(() =>
+    (plan.needs_images && (Number(plan.scenes_done) || 0) === 0) ? 'env' : 'generate'
+  )
 
   // Reference sheets Confirm still has to draw. Falls to 0 as the user
   // previews characters by hand, since an approved preview is reused rather
@@ -643,23 +674,94 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                 </p>
               )}
 
-              {/* The recommended path, said before the spend: check the look
-                  cheaply (previews), then buy the film one scene at a time.
-                  Shown only on a fresh multi-scene card — a continuation is
-                  already following it. */}
-              {offerSceneByScene && !inSceneFlow && (
-                <p className="caption" style={{ marginBlockEnd: 14 }}>
-                  {tx('guidedHint')}
-                </p>
+              {/* STEP 1 — the environment. Offered first, on its own, so the
+                  user can look at the setting before anyone is drawn into it. */}
+              {stage === 'env' && (
+                <StageBlock n={1} label={tx('stepEnv')} q={tx('envQ')} sub={tx('envSub')}>
+                  <button
+                    type="button"
+                    onClick={() => onPreview('environment')}
+                    disabled={disabled}
+                    className="btn-q btn-q--sm"
+                    title={tx('previewCosts')}
+                  >
+                    <Environment size={15} />
+                    {envPreviewed ? tx('previewAgain') : tx('previewEnvironment')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setStage(characterNames.length > 0 ? 'characters' : 'generate')}
+                    disabled={disabled}
+                  >
+                    {tx('continue')}
+                    <Caret size={15} direction="end" />
+                  </button>
+                </StageBlock>
               )}
 
-              {/* ONE filled button, always — but which one depends on where
-                  the run is. Fresh card: authorising the whole film is the
-                  decision, scene-by-scene is the cautious alternative beside
-                  it. Continuation card: the next scene is the decision the
-                  user signed up for, finishing the rest in one go is the
-                  alternative. */}
-              {inSceneFlow ? (
+              {/* STEP 2 — the cast, one sheet at a time. The user picks a
+                  character, previews it, can preview the others, or moves on. */}
+              {stage === 'characters' && (
+                <StageBlock n={2} label={tx('stepChars')} q={tx('charQ')} sub={tx('charSub')}>
+                  {characterNames.length > 1 && (
+                    <select
+                      value={selectedCharacter}
+                      disabled={disabled}
+                      onChange={(e) => setSelectedCharacter(e.target.value)}
+                      className="field field--sm"
+                      style={{ inlineSize: 'auto', maxInlineSize: '18ch' }}
+                      aria-label={tx('whichCharacter')}
+                      title={tx('whichCharacter')}
+                    >
+                      {characterNames.map((name, i) => (
+                        <option key={`${name}-${i}`} value={name}>
+                          {name}{previewedNames.has(name) ? ' ✓' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onPreview('character', selectedCharacter)}
+                    disabled={disabled || characterNames.length === 0}
+                    className="btn-q btn-q--sm"
+                    title={characterNames.length === 0 ? tx('noCharacters') : tx('previewCosts')}
+                  >
+                    <Character size={15} />
+                    {previewedNames.has(selectedCharacter) ? tx('previewAgain') : tx('previewCharacter')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setStage('generate')}
+                    disabled={disabled}
+                  >
+                    {tx('continue')}
+                    <Caret size={15} direction="end" />
+                  </button>
+                </StageBlock>
+              )}
+
+              {/* STEP 3 — generate. Only now do the paying buttons appear.
+                  ONE filled button, always — which one depends on where the
+                  run is. Fresh card: authorising the whole film is the
+                  decision, scene-by-scene the cautious alternative. Continuation
+                  card: the next scene is the decision the user signed up for. */}
+              {stage === 'generate' && previewFlow && (
+                <button
+                  type="button"
+                  className="btn-t"
+                  onClick={() => setStage('env')}
+                  disabled={disabled}
+                  style={{ marginBlockEnd: 10 }}
+                >
+                  <Caret size={14} direction="start" />
+                  {tx('backToPreviews')}
+                </button>
+              )}
+
+              {stage === 'generate' && (inSceneFlow ? (
                 <div className="flex flex-wrap items-center gap-3" style={{ marginBlockEnd: 16 }}>
                   <button
                     type="button"
@@ -713,55 +815,17 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                     </button>
                   )}
                 </div>
-              )}
+              ))}
 
+              {/* Revise and Cancel stay available at every step. The two
+                  preview buttons are not here any more — each lives inside the
+                  step that offers it, so the card asks for one decision at a
+                  time instead of showing every control at once. */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <button type="button" onClick={() => setShowRevise(true)} disabled={disabled} className="btn-q btn-q--sm">
                   <Revise size={15} />
                   {tx('revise')}
                 </button>
-
-                {/* Both previews spend credits, so both say so in their title
-                    and neither is filled — the authorisation above is the
-                    decision, these are rehearsals for it. */}
-                {characterNames.length > 1 && (
-                  <select
-                    value={selectedCharacter}
-                    disabled={disabled}
-                    onChange={(e) => setSelectedCharacter(e.target.value)}
-                    className="field field--sm"
-                    style={{ inlineSize: 'auto', maxInlineSize: '18ch' }}
-                    aria-label={tx('whichCharacter')}
-                    title={tx('whichCharacter')}
-                  >
-                    {characterNames.map((name, i) => (
-                      <option key={`${name}-${i}`} value={name}>{name}</option>
-                    ))}
-                  </select>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => onPreview('character', selectedCharacter)}
-                  disabled={disabled || characterNames.length === 0}
-                  className="btn-q btn-q--sm"
-                  title={characterNames.length === 0 ? tx('noCharacters') : tx('previewCosts')}
-                >
-                  <Character size={15} />
-                  {tx('previewCharacter')}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onPreview('environment')}
-                  disabled={disabled}
-                  className="btn-q btn-q--sm"
-                  title={tx('previewCosts')}
-                >
-                  <Environment size={15} />
-                  {tx('previewEnvironment')}
-                </button>
-
                 <button
                   type="button"
                   onClick={onCancel}
