@@ -347,7 +347,7 @@ function useAmend() {
  * The scene list. Scene numbers are the run's own identity for a shot and they
  * carry all the way through to the player in the transcript.
  */
-function SceneLines({ scenes, scenesDone = 0, editing, setEditing, disabled, onSave, tx }) {
+function SceneLines({ scenes, doneNumbers, editing, setEditing, disabled, onSave, tx }) {
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -407,7 +407,7 @@ function SceneLines({ scenes, scenesDone = 0, editing, setEditing, disabled, onS
         // Scene-by-scene mode: a scene whose video already exists is a fact,
         // not a plan — marked so the card reads as "where the run is", and
         // the next press is obvious.
-        const done = scene.scene_number <= scenesDone
+        const done = (doneNumbers || new Set()).has(scene.scene_number)
         return (
           <li
             key={scene.scene_number}
@@ -444,10 +444,10 @@ const AmendMark = ({ onClick, label }) => (
 )
 
 /* One step of the guided sequence: a small "1/3" marker, a question, a line of
-   context, and its controls. The controls are passed in because each step
-   offers something different (preview environment, preview a character, or the
-   generate buttons). */
-function StageBlock({ n, label, q, sub, children }) {
+   context, the images previewed so far shown INLINE, then its controls. The
+   images live here (not only in the separate reference-images section) because
+   the user asked to see the preview right where they pressed for it. */
+function StageBlock({ n, label, q, sub, media = [], onOpen, children }) {
   return (
     <div style={{ marginBlockEnd: 16 }}>
       <div className="flex items-center gap-2" style={{ marginBlockEnd: 4 }}>
@@ -456,6 +456,20 @@ function StageBlock({ n, label, q, sub, children }) {
       </div>
       <p style={{ fontSize: 15, color: 'var(--ink)', marginBlockEnd: 2 }}>{q}</p>
       {sub && <p className="caption" style={{ marginBlockEnd: 12 }}>{sub}</p>}
+      {media.length > 0 && (
+        <div className="grid-media" style={{ marginBlockEnd: 12 }}>
+          {media.map((m) => (
+            <MediaWell
+              key={m.key}
+              type="image"
+              url={m.url}
+              maxHeight={240}
+              caption={m.caption}
+              onOpen={onOpen ? () => onOpen(m.url) : undefined}
+            />
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3">{children}</div>
     </div>
   )
@@ -510,9 +524,27 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
   const previewFlow = plan.needs_images && !inSceneFlow
   const envPreviewed = (previews || []).some((p) => p.preview_type === 'environment')
   const previewedNames = new Set((previews || []).filter((p) => p.preview_type === 'character').map((p) => p.character_name))
-  const [stage, setStage] = useState(() =>
-    (plan.needs_images && (Number(plan.scenes_done) || 0) === 0) ? 'env' : 'generate'
-  )
+  // Characters are step 1, environment step 2 — the user asked to meet the cast
+  // before the setting. A run that draws stills but has no named characters
+  // opens on the environment step instead.
+  const [stage, setStage] = useState(() => {
+    if (!(plan.needs_images && (Number(plan.scenes_done) || 0) === 0)) return 'generate'
+    return (plan.character_names?.length || 0) > 0 ? 'characters' : 'env'
+  })
+
+  // Which scenes already have a video, and the scene the picker is pointed at.
+  // Order is arbitrary, so this is a set of numbers, not a count.
+  const doneNumbers = new Set(plan.scenes_done_numbers || [])
+  const sceneNumbers = (plan.scenes || []).map((s) => s.scene_number)
+  const firstUndone = sceneNumbers.find((num) => !doneNumbers.has(num))
+  const [pickedScene, setPickedScene] = useState(null)
+  const activeScene = pickedScene != null && !doneNumbers.has(pickedScene) ? pickedScene : (firstUndone ?? null)
+  const envMedia = (previews || [])
+    .filter((p) => p.preview_type === 'environment')
+    .map((p) => ({ key: 'env', url: p.image_url, caption: [tx('stepEnv'), plan.aspect_ratio] }))
+  const charMedia = (previews || [])
+    .filter((p) => p.preview_type === 'character')
+    .map((p) => ({ key: `char:${p.character_name}`, url: p.image_url, caption: [p.character_name, plan.aspect_ratio] }))
 
   // Reference sheets Confirm still has to draw. Falls to 0 as the user
   // previews characters by hand, since an approved preview is reused rather
@@ -575,7 +607,7 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
           >
             <SceneLines
               scenes={plan.scenes}
-              scenesDone={plan.scenes_done}
+              doneNumbers={doneNumbers}
               editing={script.editing}
               setEditing={script.setEditing}
               disabled={disabled}
@@ -674,36 +706,14 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                 </p>
               )}
 
-              {/* STEP 1 — the environment. Offered first, on its own, so the
-                  user can look at the setting before anyone is drawn into it. */}
-              {stage === 'env' && (
-                <StageBlock n={1} label={tx('stepEnv')} q={tx('envQ')} sub={tx('envSub')}>
-                  <button
-                    type="button"
-                    onClick={() => onPreview('environment')}
-                    disabled={disabled}
-                    className="btn-q btn-q--sm"
-                    title={tx('previewCosts')}
-                  >
-                    <Environment size={15} />
-                    {envPreviewed ? tx('previewAgain') : tx('previewEnvironment')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => setStage(characterNames.length > 0 ? 'characters' : 'generate')}
-                    disabled={disabled}
-                  >
-                    {tx('continue')}
-                    <Caret size={15} direction="end" />
-                  </button>
-                </StageBlock>
-              )}
-
-              {/* STEP 2 — the cast, one sheet at a time. The user picks a
-                  character, previews it, can preview the others, or moves on. */}
+              {/* STEP 1 — the cast, one sheet at a time. Pick a character,
+                  preview it (it appears right here), then the others, or move
+                  on. The user asked to meet the characters before the setting. */}
               {stage === 'characters' && (
-                <StageBlock n={2} label={tx('stepChars')} q={tx('charQ')} sub={tx('charSub')}>
+                <StageBlock
+                  n={1} label={tx('stepChars')} q={tx('charQ')} sub={tx('charSub')}
+                  media={charMedia} onOpen={(url) => openMedia(url, 'image')}
+                >
                   {characterNames.length > 1 && (
                     <select
                       value={selectedCharacter}
@@ -734,25 +744,49 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                   <button
                     type="button"
                     className="btn"
-                    onClick={() => setStage('generate')}
+                    onClick={() => setStage('env')}
                     disabled={disabled}
                   >
-                    {tx('continue')}
+                    {tx('continueToEnv')}
                     <Caret size={15} direction="end" />
                   </button>
                 </StageBlock>
               )}
 
-              {/* STEP 3 — generate. Only now do the paying buttons appear.
-                  ONE filled button, always — which one depends on where the
-                  run is. Fresh card: authorising the whole film is the
-                  decision, scene-by-scene the cautious alternative. Continuation
-                  card: the next scene is the decision the user signed up for. */}
+              {/* STEP 2 — the environment, shown inline the same way. */}
+              {stage === 'env' && (
+                <StageBlock
+                  n={2} label={tx('stepEnv')} q={tx('envQ')} sub={tx('envSub')}
+                  media={envMedia} onOpen={(url) => openMedia(url, 'image')}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onPreview('environment')}
+                    disabled={disabled}
+                    className="btn-q btn-q--sm"
+                    title={tx('previewCosts')}
+                  >
+                    <Environment size={15} />
+                    {envPreviewed ? tx('previewAgain') : tx('previewEnvironment')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setStage('generate')}
+                    disabled={disabled}
+                  >
+                    {tx('continueToGenerate')}
+                    <Caret size={15} direction="end" />
+                  </button>
+                </StageBlock>
+              )}
+
+              {/* STEP 3 — generate. Only now do the paying buttons appear. */}
               {stage === 'generate' && previewFlow && (
                 <button
                   type="button"
                   className="btn-t"
-                  onClick={() => setStage('env')}
+                  onClick={() => setStage(characterNames.length > 0 ? 'characters' : 'env')}
                   disabled={disabled}
                   style={{ marginBlockEnd: 10 }}
                 >
@@ -761,17 +795,34 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                 </button>
               )}
 
-              {stage === 'generate' && (inSceneFlow ? (
+              {stage === 'generate' && (scenesTotal > 1 ? (
+                // A multi-scene story: the user picks WHICH scene to make (any
+                // order), or generates all the rest at once.
                 <div className="flex flex-wrap items-center gap-3" style={{ marginBlockEnd: 16 }}>
+                  <select
+                    value={activeScene ?? ''}
+                    disabled={disabled}
+                    onChange={(e) => setPickedScene(Number(e.target.value))}
+                    className="field field--sm"
+                    style={{ inlineSize: 'auto', maxInlineSize: '16ch' }}
+                    aria-label={tx('whichScene')}
+                    title={tx('whichScene')}
+                  >
+                    {sceneNumbers.map((num) => (
+                      <option key={num} value={num} disabled={doneNumbers.has(num)}>
+                        {tx('sceneN').replace('{n}', num)}{doneNumbers.has(num) ? ' ✓' : ''}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="button"
                     className="btn"
-                    onClick={() => onConfirm({ pauseAfterScene: true })}
-                    disabled={disabled}
+                    onClick={() => onConfirm({ sceneNumber: activeScene })}
+                    disabled={disabled || activeScene == null}
                     title={tx('sceneBySceneWhy')}
                   >
                     <Commit size={16} />
-                    <span>{tx('generateScene').replace('{n}', scenesDone + 1)}</span>
+                    <span>{tx('generateThisScene').replace('{n}', activeScene ?? '')}</span>
                     {Number.isFinite(perScene) && perScene > 0 && (
                       <Money usd={perScene} onFill style={{ fontSize: 13 }} />
                     )}
@@ -800,20 +851,6 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                     <span>{tx('authorise')}</span>
                     {hasCost && <Money usd={cost} onFill style={{ fontSize: 13 }} />}
                   </button>
-                  {offerSceneByScene && (
-                    <button
-                      type="button"
-                      className="btn-q"
-                      onClick={() => onConfirm({ pauseAfterScene: true })}
-                      disabled={disabled}
-                      title={tx('sceneBySceneWhy')}
-                    >
-                      {tx('sceneByScene')}
-                      {Number.isFinite(perScene) && perScene > 0 && (
-                        <Money usd={perScene} style={{ fontSize: 13 }} />
-                      )}
-                    </button>
-                  )}
                 </div>
               ))}
 

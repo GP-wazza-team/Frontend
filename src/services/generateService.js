@@ -123,11 +123,13 @@ export const generateService = {
 
   // Grant permission — this is the call that actually spends money.
   // pauseAfterScene is scene-by-scene mode: the server generates exactly one
-  // more scene, writes it into the chat, and parks the run back at awaiting
-  // confirmation — each further scene is another confirm() with the same flag.
-  confirm: async (runId, { pauseAfterScene = false } = {}) => {
+  // more scene and parks the run for the next decision. sceneNumber picks a
+  // SPECIFIC scene to make (scene 4 before scene 1, any order); it also renders
+  // one scene and parks while others remain. Neither set = generate everything.
+  confirm: async (runId, { pauseAfterScene = false, sceneNumber = null } = {}) => {
     const response = await api.post(`/generate/runs/${runId}/confirm`, {
       pause_after_scene: pauseAfterScene,
+      scene_number: sceneNumber,
     })
     return response.data
   },
