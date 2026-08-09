@@ -347,7 +347,7 @@ function useAmend() {
  * The scene list. Scene numbers are the run's own identity for a shot and they
  * carry all the way through to the player in the transcript.
  */
-function SceneLines({ scenes, editing, setEditing, disabled, onSave, tx }) {
+function SceneLines({ scenes, scenesDone = 0, editing, setEditing, disabled, onSave, tx }) {
   const [draft, setDraft] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -403,20 +403,36 @@ function SceneLines({ scenes, editing, setEditing, disabled, onSave, tx }) {
 
   return (
     <ol>
-      {(scenes || []).map((scene) => (
-        <li
-          key={scene.scene_number}
-          className="grid items-baseline"
-          style={{ gridTemplateColumns: '34px minmax(0, 1fr)', paddingBlock: 5 }}
-        >
-          <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-            {String(scene.scene_number).padStart(2, '0')}
-          </span>
-          <span className="break-anywhere" style={{ fontSize: 14, lineHeight: 'var(--lh)', color: 'var(--ink)' }}>
-            {scene.summary || scene.scene_prompt}
-          </span>
-        </li>
-      ))}
+      {(scenes || []).map((scene) => {
+        // Scene-by-scene mode: a scene whose video already exists is a fact,
+        // not a plan — marked so the card reads as "where the run is", and
+        // the next press is obvious.
+        const done = scene.scene_number <= scenesDone
+        return (
+          <li
+            key={scene.scene_number}
+            className="grid items-baseline"
+            style={{ gridTemplateColumns: '34px minmax(0, 1fr) auto', paddingBlock: 5 }}
+          >
+            <span className="mono" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+              {String(scene.scene_number).padStart(2, '0')}
+            </span>
+            <span
+              className="break-anywhere"
+              style={{
+                fontSize: 14,
+                lineHeight: 'var(--lh)',
+                color: done ? 'var(--ink-2)' : 'var(--ink)',
+              }}
+            >
+              {scene.summary || scene.scene_prompt}
+            </span>
+            {done && (
+              <span className="st st--ok" style={{ marginInlineStart: 8 }}>{tx('sceneDone')}</span>
+            )}
+          </li>
+        )
+      })}
     </ol>
   )
 }
@@ -458,6 +474,15 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
   const cost = Number(plan.total_cost_usd)
   const hasCost = Number.isFinite(cost) && cost > 0
 
+  // Scene-by-scene mode. Offered whenever the script has more than one scene;
+  // once a scene is done, the card is a continuation gate and the per-scene
+  // press becomes the primary one — the user chose this rhythm at scene 1.
+  const scenesTotal = plan.scenes?.length || 0
+  const scenesDone = Number(plan.scenes_done) || 0
+  const perScene = Number(plan.per_scene_cost_usd)
+  const offerSceneByScene = scenesTotal > 1 && scenesDone < scenesTotal
+  const inSceneFlow = scenesDone > 0
+
   // Reference sheets Confirm still has to draw. Falls to 0 as the user
   // previews characters by hand, since an approved preview is reused rather
   // than redrawn — so this line is both a price and a progress indicator.
@@ -482,9 +507,21 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
       >
         <h2 className="sec-title">{tx('workOrder')}</h2>
         <span className={`st ${state.cls}`}>{state.word}</span>
+        {inSceneFlow && !resolved && (
+          <span className="caption mono">
+            {tx('scenesProgress').replace('{done}', scenesDone).replace('{total}', scenesTotal)}
+          </span>
+        )}
       </header>
 
       <ol className="card-pad" style={{ paddingBlock: 0 }}>
+        {/* Output first. Model, mode and quality decide what everything below
+            will cost and look like, so they are the first thing set, not a
+            detail discovered at the bottom of the document. */}
+        <Clause n={(n += 1)} title={tx('output')}>
+          <OutputClause plan={plan} catalog={catalog} disabled={disabled} onChange={onSettings} tx={tx} />
+        </Clause>
+
         {EDITABLE_FIELDS.map(({ key, label }) => (
           <ProseClause
             key={key}
@@ -507,6 +544,7 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
           >
             <SceneLines
               scenes={plan.scenes}
+              scenesDone={plan.scenes_done}
               editing={script.editing}
               setEditing={script.setEditing}
               disabled={disabled}
@@ -515,10 +553,6 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
             />
           </Clause>
         )}
-
-        <Clause n={(n += 1)} title={tx('output')}>
-          <OutputClause plan={plan} catalog={catalog} disabled={disabled} onChange={onSettings} tx={tx} />
-        </Clause>
       </ol>
 
       {/* Reference images the user has already paid for. They are media, so
@@ -609,18 +643,77 @@ function PlanReviewCard({ plan, resolved, outcome, busy, previews, catalog, onEd
                 </p>
               )}
 
-              <button
-                type="button"
-                className="btn"
-                onClick={onConfirm}
-                disabled={disabled}
-                title={tx('commitCosts')}
-                style={{ marginBlockEnd: 16 }}
-              >
-                <Commit size={16} />
-                <span>{tx('authorise')}</span>
-                {hasCost && <Money usd={cost} onFill style={{ fontSize: 13 }} />}
-              </button>
+              {/* The recommended path, said before the spend: check the look
+                  cheaply (previews), then buy the film one scene at a time.
+                  Shown only on a fresh multi-scene card — a continuation is
+                  already following it. */}
+              {offerSceneByScene && !inSceneFlow && (
+                <p className="caption" style={{ marginBlockEnd: 14 }}>
+                  {tx('guidedHint')}
+                </p>
+              )}
+
+              {/* ONE filled button, always — but which one depends on where
+                  the run is. Fresh card: authorising the whole film is the
+                  decision, scene-by-scene is the cautious alternative beside
+                  it. Continuation card: the next scene is the decision the
+                  user signed up for, finishing the rest in one go is the
+                  alternative. */}
+              {inSceneFlow ? (
+                <div className="flex flex-wrap items-center gap-3" style={{ marginBlockEnd: 16 }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => onConfirm({ pauseAfterScene: true })}
+                    disabled={disabled}
+                    title={tx('sceneBySceneWhy')}
+                  >
+                    <Commit size={16} />
+                    <span>{tx('generateScene').replace('{n}', scenesDone + 1)}</span>
+                    {Number.isFinite(perScene) && perScene > 0 && (
+                      <Money usd={perScene} onFill style={{ fontSize: 13 }} />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-q"
+                    onClick={() => onConfirm()}
+                    disabled={disabled}
+                    title={tx('commitCosts')}
+                  >
+                    {tx('generateRest')}
+                    {hasCost && <Money usd={cost} style={{ fontSize: 13 }} />}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-3" style={{ marginBlockEnd: 16 }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => onConfirm()}
+                    disabled={disabled}
+                    title={tx('commitCosts')}
+                  >
+                    <Commit size={16} />
+                    <span>{tx('authorise')}</span>
+                    {hasCost && <Money usd={cost} onFill style={{ fontSize: 13 }} />}
+                  </button>
+                  {offerSceneByScene && (
+                    <button
+                      type="button"
+                      className="btn-q"
+                      onClick={() => onConfirm({ pauseAfterScene: true })}
+                      disabled={disabled}
+                      title={tx('sceneBySceneWhy')}
+                    >
+                      {tx('sceneByScene')}
+                      {Number.isFinite(perScene) && perScene > 0 && (
+                        <Money usd={perScene} style={{ fontSize: 13 }} />
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
                 <button type="button" onClick={() => setShowRevise(true)} disabled={disabled} className="btn-q btn-q--sm">

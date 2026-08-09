@@ -131,6 +131,17 @@ const STRINGS = {
     noCharacters: 'No named characters in this plan',
     total: 'Total to authorise',
     authorise: 'Authorise',
+    sceneByScene: 'Scene-by-scene',
+    guidedHint: 'Recommended: preview the environment and each character below first (cheap images you approve), then generate scene-by-scene — you decide after every scene.',
+    sceneBySceneWhy: 'Generates one scene, then stops for your decision before the next scene is paid for.',
+    generateScene: 'Generate scene {n}',
+    generateRest: 'Generate all remaining',
+    sceneDone: 'done',
+    scenesProgress: '{done}/{total} scenes done',
+    stopRun: 'Stop',
+    stopWhy: 'The scene being rendered finishes and is kept; nothing after it starts or is charged.',
+    deleteProject: 'Delete project',
+    deleteProjectWhy: 'This project and all its messages and media links will be permanently removed. This cannot be undone.',
     /* Was "The authorisation sits in the bar at the top of the screen." The
        bar is gone and the button is directly below this line, so the sentence
        had stopped being true. It now says the thing worth saying instead. */
@@ -244,6 +255,17 @@ const STRINGS = {
     noCharacters: 'لا توجد شخصيات مسماة في هذه الخطة',
     total: 'الإجمالي المطلوب اعتماده',
     authorise: 'اعتماد',
+    sceneByScene: 'مشهدًا بمشهد',
+    guidedHint: 'الموصى به: عاين البيئة وكل شخصية أولًا (صور رخيصة توافق عليها)، ثم أنتج مشهدًا بمشهد — القرار لك بعد كل مشهد.',
+    sceneBySceneWhy: 'يُنتج مشهدًا واحدًا ثم يتوقف بانتظار قرارك قبل دفع تكلفة المشهد التالي.',
+    generateScene: 'إنتاج المشهد {n}',
+    generateRest: 'إنتاج كل المتبقي',
+    sceneDone: 'تم',
+    scenesProgress: 'أُنجز {done} من {total} مشاهد',
+    stopRun: 'إيقاف',
+    stopWhy: 'المشهد الجاري إنتاجه يكتمل ويُحفظ، وما بعده لا يبدأ ولا يُحتسب.',
+    deleteProject: 'حذف المشروع',
+    deleteProjectWhy: 'سيُحذف هذا المشروع وكل رسائله وروابط وسائطه نهائيًا. لا يمكن التراجع عن هذا.',
     authoriseHint: 'لم يُخصم شيء بعد. الاعتماد يبدأ التنفيذ.',
     /* الصيغة تتجنّب مطابقة العدد للمعدود: العدد بين قوسين بعد الاسم، فتصحّ
        للواحد وللجمع دون فرعين. */

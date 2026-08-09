@@ -37,7 +37,8 @@ import PromptInput from '../components/chat/PromptInput'
 import { useChatText, isoDay } from '../components/chat/chatKit'
 import { useRunStatus } from '../components/RunStatusContext'
 import { Duration } from '../components/ui/Money'
-import { Caret } from '../components/Icon'
+import { Caret, Strike } from '../components/Icon'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useUIStore } from '../store/uiStore'
 import { useChatStore } from '../store/chatStore'
 import { generateService } from '../services/generateService'
@@ -56,7 +57,7 @@ import { describeError } from '../services/errorText'
    Status is a FIELD: a word, and the one dot in this system allowed to move.
    The bar beside it is a JOB progress bar, not a media time axis, so it fills
    in the reading direction and mirrors correctly (A4). */
-function RunBand({ phase, percent, sceneNumber, elapsedMs }) {
+function RunBand({ phase, percent, sceneNumber, elapsedMs, onStop }) {
   const { t } = useUIStore()
   const { tx } = useChatText()
   const hasPercent = typeof percent === 'number' && Number.isFinite(percent)
@@ -96,6 +97,15 @@ function RunBand({ phase, percent, sceneNumber, elapsedMs }) {
             <Duration ms={elapsedMs} style={{ color: 'var(--ink-2)' }} />
           </span>
         )}
+
+        {/* Cooperative: the scene at the provider finishes and is kept;
+            nothing after it starts or is charged. Present whenever the band
+            is — a run you cannot stop is a run you don't control. */}
+        {onStop && (
+          <button type="button" className="btn-t btn-t--danger" onClick={onStop} title={tx('stopWhy')}>
+            {tx('stopRun')}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -126,7 +136,7 @@ function assetMeta(asset) {
   }
 }
 
-function ProjectTile({ chat, asset, tx, onOpen }) {
+function ProjectTile({ chat, asset, tx, onOpen, onDelete }) {
   const meta = assetMeta(asset)
   const declaredTall = meta.aspect_ratio === '9:16' || meta.orientation === 'vertical'
   const [tall, setTall] = useState(declaredTall)
@@ -139,6 +149,22 @@ function ProjectTile({ chat, asset, tx, onOpen }) {
   const measure = (w, h) => { if (w > 0 && h > 0) setTall(h > w) }
 
   return (
+    /* A wrapper, because the tile itself is a <button> and a delete control
+       cannot legally nest inside it. The delete sits over the corner and
+       stops the click from opening the project it is removing. */
+    <div className="relative">
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          className="text-action text-action--danger absolute"
+          style={{ insetInlineEnd: 8, insetBlockStart: 8, zIndex: 1, padding: 4 }}
+          aria-label={`${tx('deleteProject')} — ${title}`}
+          title={tx('deleteProject')}
+        >
+          <Strike size={14} />
+        </button>
+      )}
     <button type="button" className="tile group" onClick={onOpen} title={title}>
       {/* THE DARK WELL IS FOR MEDIA. With nothing generated yet there is no
           media to judge, and the well rendered as a solid black rectangle that
@@ -183,6 +209,7 @@ function ProjectTile({ chat, asset, tx, onOpen }) {
         </div>
       </div>
     </button>
+    </div>
   )
 }
 
@@ -227,6 +254,8 @@ function ChatPage() {
   // can show the work it stands for.
   const [workByChat, setWorkByChat] = useState({})
   const [workLoading, setWorkLoading] = useState(true)
+  // Chat id awaiting delete confirmation from the workspace grid, or null.
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   // ── PRESENTATION-ONLY RUN TELEMETRY ───────────────────────────────────────
   // The same values `openRunSocket`'s onmessage already parses out of the
@@ -473,8 +502,48 @@ function ChatPage() {
    * as soon as the work is queued, so this — not the HTTP response — is where
    * generated media actually arrives.
    */
-  const renderCompletion = (data, runId) => {
+  const renderCompletion = async (data, runId) => {
     const target = progressTargetRef.current
+
+    // Scene-by-scene mode: one scene finished and the run is parked awaiting
+    // the next decision. Show the scene, then pull the refreshed plan so the
+    // continuation card (scene N of M, priced per scene) replaces the spinner.
+    if (data.status === 'completed' && data.result?.status === 'paused') {
+      const result = data.result
+      patchMessage(target, {
+        content: `Scene ${result.scenes_done} of ${result.scenes_total} ready.`,
+        media: result.video_url ? [{ type: 'video', url: result.video_url }] : [],
+      })
+      try {
+        const active = await generateService.getActiveRun(currentChatId)
+        if (active?.status === 'awaiting_confirmation' && active.plan) {
+          renderPlanResponse(active.plan, runId)
+          if (active.previews?.length > 0) {
+            patchMessage(cardIndexRef.current, { previews: active.previews })
+          }
+          return
+        }
+      } catch {
+        // The card can't be rebuilt right now — the scene above is safe in the
+        // chat, and reopening the chat restores the gate via /active-run.
+      }
+      endRun()
+      return
+    }
+
+    // The stop button's outcome: whatever finished before the stop is kept
+    // and already in the chat history; say so and stand down.
+    if (data.status === 'completed' && data.result?.status === 'cancelled') {
+      const result = data.result
+      patchMessage(target, {
+        content: `Stopped — ${result.scenes_done} of ${result.scenes_total} scene(s) generated.`,
+        media: (result.scenes || [])
+          .filter((s) => s.video_url)
+          .map((s) => ({ type: 'video', url: s.video_url })),
+      })
+      endRun()
+      return
+    }
 
     if (data.status !== 'completed' || !data.result) {
       // Keep the run id on the message: the plan and any scenes it already
@@ -592,6 +661,24 @@ function ChatPage() {
           endRun()
           return
         }
+
+        // The run is alive and only the CHANNEL died — so get the channel
+        // back instead of giving up. This is the bug where a finished video
+        // never appeared until a manual refresh: the completion event is
+        // broadcast once, to whoever is connected at that instant, and after
+        // a drop nobody was. Each retry lands back here on failure, and the
+        // active-run check above catches a run that finished while we were
+        // disconnected.
+        patchMessage(progressTargetRef.current, {
+          content: 'Connection dropped — reconnecting to the run…',
+        })
+        runFinishedRef.current = false
+        setTimeout(() => {
+          openRunSocket(runId).catch(() => {
+            reportLostContact(detail, short)
+          })
+        }, 3000)
+        return
       } catch {
         // Fall through to the error row — if we cannot reach the server to ask,
         // reporting the lost connection is the honest outcome.
@@ -984,11 +1071,18 @@ function ChatPage() {
     }
   })
 
-  const handleConfirm = (runId) => withCardBusy(async (index) => {
+  const handleConfirm = (runId, options = {}) => withCardBusy(async (index) => {
+    // Guarded truthiness on purpose: the card's plain press hands the click
+    // event through this argument, and a MouseEvent must not read as a mode.
+    const pauseAfterScene = options?.pauseAfterScene === true
+
     // Read before the patch: this is what the user just authorised, and it is
     // what the session spend in the top bar accumulates. Presentation only —
     // the figure comes off the card that is already on screen.
-    const authorised = Number(useChatStore.getState().messages[index]?.plan?.total_cost_usd)
+    const cardPlan = useChatStore.getState().messages[index]?.plan
+    const authorised = Number(
+      pauseAfterScene ? cardPlan?.per_scene_cost_usd : cardPlan?.total_cost_usd
+    )
 
     patchMessage(index, { resolved: true, resolution: 'confirmed' })
     if (Number.isFinite(authorised)) setSessionCostUsd((total) => total + authorised)
@@ -1004,7 +1098,7 @@ function ChatPage() {
     try {
       // Returns as soon as the work is queued. The generated media arrives
       // later on the WebSocket — see renderCompletion.
-      await generateService.confirm(runId)
+      await generateService.confirm(runId, { pauseAfterScene })
     } catch (error) {
       console.error('Failed to start generation:', error)
       // Rejected before any work began — out of credits, card declined, plan
@@ -1025,6 +1119,24 @@ function ChatPage() {
       setLoading(false)
     }
   })
+
+  /**
+   * The stop button during generation. Cancel is cooperative server-side: the
+   * scene at the provider finishes and is kept, nothing after it starts. The
+   * run's own completion event (status "cancelled") closes things out — this
+   * handler only asks and narrates, it does not tear the run down itself.
+   */
+  const handleStop = async () => {
+    if (!activeRunId) return
+    try {
+      await generateService.cancel(activeRunId)
+      patchMessage(progressTargetRef.current, {
+        content: 'Stopping — the scene being rendered will finish and be kept; nothing after it is charged…',
+      })
+    } catch (error) {
+      pushError(error, 'Could not stop the run', { runId: activeRunId })
+    }
+  }
 
   const handlers = {
     onEdit: handleEdit,
@@ -1136,10 +1248,32 @@ function ChatPage() {
                 asset={workByChat[chat.id]}
                 tx={tx}
                 onOpen={() => openProject(chat.id)}
+                onDelete={() => setConfirmDeleteId(chat.id)}
               />
             ))}
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={!!confirmDeleteId}
+          title={tx('deleteProject')}
+          message={tx('deleteProjectWhy')}
+          confirmLabel={tx('deleteProject')}
+          cancelLabel={tx('cancel')}
+          danger
+          onConfirm={async () => {
+            const chatId = confirmDeleteId
+            try {
+              await chatService.deleteChat(chatId)
+              useChatStore.getState().removeChat(chatId)
+            } catch (error) {
+              pushError(error, 'Could not delete the project')
+            } finally {
+              setConfirmDeleteId(null)
+            }
+          }}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
       </div>
     )
   }
@@ -1186,7 +1320,13 @@ function ChatPage() {
       />
 
       {composerDisabled && (
-        <RunBand phase={phase} percent={percent} sceneNumber={sceneNumber} elapsedMs={elapsedMs} />
+        <RunBand
+          phase={phase}
+          percent={percent}
+          sceneNumber={sceneNumber}
+          elapsedMs={elapsedMs}
+          onStop={activeRunId && loading ? handleStop : null}
+        />
       )}
 
       <PromptInput onSubmit={handleSendPrompt} disabled={composerDisabled} />

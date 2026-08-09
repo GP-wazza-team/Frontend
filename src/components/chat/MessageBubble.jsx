@@ -267,7 +267,7 @@ function MessageBubble({ message, handlers, index }) {
           onEditScript={(scenes) => handlers?.onEditScript?.(message.runId, scenes)}
           onPreview={(type, characterName) => handlers?.onPreview?.(message.runId, type, characterName)}
           onRevise={(feedback) => handlers?.onRevise?.(message.runId, feedback)}
-          onConfirm={() => handlers?.onConfirm?.(message.runId)}
+          onConfirm={(options) => handlers?.onConfirm?.(message.runId, options)}
           onCancel={() => handlers?.onCancel?.(message.runId)}
           onSettings={(settings) => handlers?.onSettings?.(message.runId, settings)}
         />
