@@ -641,57 +641,29 @@ function ChatPage() {
    * as soon as the work is queued, so this — not the HTTP response — is where
    * generated media actually arrives.
    */
+  // Reload the chat from the server and drop the local progress placeholder.
+  // The backend writes every finished scene (and every final result) into the
+  // chat as its own message with its video attached, in order — so the server
+  // history IS the truth. Rendering from it means each clip appears exactly
+  // once, at the bottom, and the live view becomes identical to a refresh.
+  const reloadHistoryAfterRun = async () => {
+    try {
+      const data = await chatService.getMessages(currentChatId)
+      if (Array.isArray(data)) setMessages(data)
+    } catch (error) {
+      console.error('Could not reload chat history after the run:', error)
+    }
+    progressTargetRef.current = null
+  }
+
   const renderCompletion = async (data, runId) => {
     const target = progressTargetRef.current
 
-    // Scene-by-scene mode: one scene finished and the run is parked awaiting
-    // the next decision. Show the scene, then pull the refreshed plan so the
-    // continuation card (scene N of M, priced per scene) replaces the spinner.
-    if (data.status === 'completed' && data.result?.status === 'paused') {
-      const result = data.result
-      patchMessage(target, {
-        content: `Scene ${result.scenes_done} of ${result.scenes_total} ready.`,
-        media: result.video_url ? [{ type: 'video', url: result.video_url }] : [],
-      })
-      try {
-        const active = await generateService.getActiveRun(currentChatId)
-        if (active?.status === 'awaiting_confirmation' && active.plan) {
-          renderPlanResponse(active.plan, runId)
-          if (active.previews?.length > 0) {
-            patchMessage(cardIndexRef.current, { previews: active.previews })
-          }
-          return
-        }
-      } catch {
-        // The card can't be rebuilt right now — the scene above is safe in the
-        // chat, and reopening the chat restores the gate via /active-run.
-      }
-      endRun()
-      return
-    }
-
-    // The stop button's outcome: whatever finished before the stop is kept
-    // and already in the chat history; say so and stand down.
-    if (data.status === 'completed' && data.result?.status === 'cancelled') {
-      const result = data.result
-      patchMessage(target, {
-        content: `Stopped — ${result.scenes_done} of ${result.scenes_total} scene(s) generated.`,
-        media: (result.scenes || [])
-          .filter((s) => s.video_url)
-          .map((s) => ({ type: 'video', url: s.video_url })),
-      })
-      endRun()
-      return
-    }
-
+    // A failure is NOT persisted as a normal message, so it can't come from a
+    // history reload — it stays a local error row, and keeps the run id so the
+    // plan and any finished scenes can be resumed. `data.error` is the agent's
+    // own words and gets its own field so the row prints it verbatim.
     if (data.status !== 'completed' || !data.result) {
-      // Keep the run id on the message: the plan and any scenes it already
-      // finished are still on the server, so this is resumable rather than
-      // something the user has to describe from scratch.
-      // `data.error` is the agent's own message, and it is the single most
-      // useful string in this whole flow — it is what the pipeline said when it
-      // gave up. It gets its own field so the row prints it verbatim instead of
-      // burying it in prose.
       patchMessage(target, {
         kind: 'error',
         errorTitle: 'Generation failed',
@@ -704,27 +676,34 @@ function ChatPage() {
       return
     }
 
+    // Success in every shape — one scene, a whole film, a stop, or one scene of
+    // a scene-by-scene run — has already been written into the chat by the
+    // backend. Reload it rather than patching media into the spinner: patching
+    // left the same clip showing twice (once as the live `media`, once as the
+    // persisted `attachments` when history reloaded) and could land it above
+    // the card instead of at the bottom. One reload fixes both.
     const result = data.result
-    const media = []
-    if (result.image_urls?.length > 0) {
-      result.image_urls.forEach((url) => media.push({ type: 'image', url }))
-    }
-    if (result.video_url) {
-      media.push({ type: 'video', url: result.video_url })
+    await reloadHistoryAfterRun()
+
+    // Scene-by-scene: the run is parked for the next decision, so put the
+    // continuation card (scene N of M, priced per scene) below the scene that
+    // just landed.
+    if (result.status === 'paused') {
+      try {
+        const active = await generateService.getActiveRun(currentChatId)
+        if (active?.status === 'awaiting_confirmation' && active.plan) {
+          renderPlanResponse(active.plan, runId)
+          if (active.previews?.length > 0) {
+            patchMessage(cardIndexRef.current, { previews: active.previews })
+          }
+          return
+        }
+      } catch {
+        // The card can't be rebuilt right now — the scene is safe in the chat,
+        // and reopening the project restores the gate via /active-run.
+      }
     }
 
-    const scenes = result.scenes || []
-    const multiScene = scenes.length > 1
-
-    patchMessage(target, {
-      content: multiScene
-        ? `${scenes.length} scenes generated.`
-        : (result.status === 'succeeded' ? 'Generation complete.' : `Status: ${result.status}`),
-      // Multi-scene results render per scene; the flat media list would
-      // otherwise only show the final scene.
-      media: multiScene ? [] : media,
-      scenes: multiScene ? scenes : [],
-    })
     endRun()
   }
 
