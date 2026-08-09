@@ -32,6 +32,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import React, { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ChatMessages from '../components/chat/ChatMessages'
 import PromptInput from '../components/chat/PromptInput'
 import { useChatText, isoDay } from '../components/chat/chatKit'
@@ -357,6 +358,7 @@ const RETRY_PHRASE = /^(retry|resume|try again|again|continue|go on|أعد|أع�
 
 function ChatPage() {
   const { chats, currentChatId, setCurrentChatId, messages, setMessages, addMessage, updateMessage, loading, setLoading } = useChatStore()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { tx } = useChatText()
   const wsRef = useRef(null)
   // Index of the card message (plan or clarification) currently awaiting the user.
@@ -443,6 +445,30 @@ function ChatPage() {
         console.error('Could not load the model list:', error)
       })
   }, [])
+
+  // Keep the open chat in the URL (?c=<id>) so a refresh reopens it instead of
+  // dropping to the workspace grid — the store is in-memory and resets on
+  // reload, so the id would otherwise be lost. One effect: on the first pass it
+  // adopts the id the URL carries (and stops there, letting the resulting
+  // re-render settle); every later pass mirrors the current id back into the
+  // URL, or clears it when the user returns to the workspace.
+  const urlBootstrapped = useRef(false)
+  useEffect(() => {
+    const fromUrl = searchParams.get('c')
+    if (!urlBootstrapped.current) {
+      urlBootstrapped.current = true
+      if (fromUrl && fromUrl !== currentChatId) {
+        setCurrentChatId(fromUrl)
+        return
+      }
+    }
+    if (currentChatId && fromUrl !== currentChatId) {
+      setSearchParams({ c: currentChatId }, { replace: true })
+    } else if (!currentChatId && fromUrl) {
+      setSearchParams({}, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentChatId])
 
   /* One page of recent assets, reduced to the newest per chat. The list comes
      back newest-first, so the FIRST asset seen for a chat id is the one that
@@ -1198,13 +1224,17 @@ function ChatPage() {
     // Guarded truthiness on purpose: the card's plain press hands the click
     // event through this argument, and a MouseEvent must not read as a mode.
     const pauseAfterScene = options?.pauseAfterScene === true
+    // A specific scene the user chose to make (scene 4 before scene 1). Any
+    // finite number counts; everything else means "no specific scene".
+    const sceneNumber = Number.isFinite(options?.sceneNumber) ? options.sceneNumber : null
+    const oneScene = pauseAfterScene || sceneNumber !== null
 
     // Read before the patch: this is what the user just authorised, and it is
     // what the session spend in the top bar accumulates. Presentation only —
     // the figure comes off the card that is already on screen.
     const cardPlan = useChatStore.getState().messages[index]?.plan
     const authorised = Number(
-      pauseAfterScene ? cardPlan?.per_scene_cost_usd : cardPlan?.total_cost_usd
+      oneScene ? cardPlan?.per_scene_cost_usd : cardPlan?.total_cost_usd
     )
 
     patchMessage(index, { resolved: true, resolution: 'confirmed' })
@@ -1221,7 +1251,7 @@ function ChatPage() {
     try {
       // Returns as soon as the work is queued. The generated media arrives
       // later on the WebSocket — see renderCompletion.
-      await generateService.confirm(runId, { pauseAfterScene })
+      await generateService.confirm(runId, { pauseAfterScene, sceneNumber })
     } catch (error) {
       console.error('Failed to start generation:', error)
       // Rejected before any work began — out of credits, card declined, plan
