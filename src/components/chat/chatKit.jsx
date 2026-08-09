@@ -142,6 +142,13 @@ const STRINGS = {
     stopWhy: 'The scene being rendered finishes and is kept; nothing after it starts or is charged.',
     deleteProject: 'Delete project',
     deleteProjectWhy: 'This project and all its messages and media links will be permanently removed. This cannot be undone.',
+    combineVideos: 'Combine videos',
+    combineWhy: 'Join this project’s clips into one film, in an order you choose. Free — no generation involved.',
+    combinePick: 'Tap the clips in the order they should play — the number shows each clip’s position. Tap again to remove.',
+    combineNoVideos: 'This project needs at least two finished videos to combine.',
+    combineGo: 'Combine',
+    combining: 'Combining…',
+    combinedReady: 'Combined video ready.',
     /* Was "The authorisation sits in the bar at the top of the screen." The
        bar is gone and the button is directly below this line, so the sentence
        had stopped being true. It now says the thing worth saying instead. */
@@ -266,6 +273,13 @@ const STRINGS = {
     stopWhy: 'المشهد الجاري إنتاجه يكتمل ويُحفظ، وما بعده لا يبدأ ولا يُحتسب.',
     deleteProject: 'حذف المشروع',
     deleteProjectWhy: 'سيُحذف هذا المشروع وكل رسائله وروابط وسائطه نهائيًا. لا يمكن التراجع عن هذا.',
+    combineVideos: 'دمج الفيديوهات',
+    combineWhy: 'يجمع مقاطع هذا المشروع في فيلم واحد بالترتيب الذي تختاره. مجاني — لا إنتاج فيه.',
+    combinePick: 'اضغط على المقاطع بترتيب عرضها — الرقم يوضح موضع كل مقطع. اضغط مجددًا للإزالة.',
+    combineNoVideos: 'يحتاج هذا المشروع إلى فيديوهين مكتملين على الأقل للدمج.',
+    combineGo: 'دمج',
+    combining: 'جارٍ الدمج…',
+    combinedReady: 'الفيديو المدمج جاهز.',
     authoriseHint: 'لم يُخصم شيء بعد. الاعتماد يبدأ التنفيذ.',
     /* الصيغة تتجنّب مطابقة العدد للمعدود: العدد بين قوسين بعد الاسم، فتصحّ
        للواحد وللجمع دون فرعين. */

@@ -42,8 +42,8 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { useUIStore } from '../store/uiStore'
 import { useChatStore } from '../store/chatStore'
 import { generateService } from '../services/generateService'
-import { chatService } from '../services/chatService'
 import { assetService } from '../services/assetService'
+import { chatService } from '../services/chatService'
 import { describeError } from '../services/errorText'
 
 /* ── THE RUN BAND ─────────────────────────────────────────────────────────
@@ -134,6 +134,143 @@ function assetMeta(asset) {
   } catch {
     return {}
   }
+}
+
+/**
+ * Pick the chat's clips in play order and combine them into one film.
+ *
+ * Selection IS the ordering: each tap appends the clip to the sequence and
+ * stamps it with its position, tapping again removes it. No drag-and-drop —
+ * an order you dial in by tapping 1, 2, 3 is the same order with far less
+ * machinery, and it works on a phone.
+ */
+function CombineDialog({ chatId, isOpen, onClose, onDone, tx }) {
+  const [clips, setClips] = useState(null) // null = loading
+  const [order, setOrder] = useState([])   // asset ids, in chosen play order
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    setClips(null)
+    setOrder([])
+    setError(null)
+    assetService.getChatAssets(chatId, 100)
+      .then((list) => {
+        const videos = list.filter((a) => (a.asset_type || '').toLowerCase() === 'video')
+        // Oldest first — scene 1 was made first, so the natural reading order
+        // of the grid is already the film's order.
+        setClips(videos.reverse())
+      })
+      .catch(() => setClips([]))
+  }, [isOpen, chatId])
+
+  if (!isOpen) return null
+
+  const toggle = (id) => {
+    setOrder((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const combine = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await assetService.stitchVideos(chatId, order)
+      onDone(result?.url)
+      onClose()
+    } catch (e) {
+      setError(e?.response?.data?.detail || e?.message || 'Could not combine the clips')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-overlay flex items-center justify-center" style={{ padding: 16 }}>
+      <div className="absolute inset-0" style={{ backgroundColor: 'var(--scrim)' }} onClick={busy ? undefined : onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={tx('combineVideos')}
+        className="relative settle overlay-cast"
+        style={{
+          inlineSize: '100%', maxInlineSize: 640, maxBlockSize: '85vh', overflowY: 'auto',
+          backgroundColor: 'var(--panel)', boxShadow: 'inset 0 0 0 1px var(--etch-strong)',
+          padding: 24,
+        }}
+      >
+        <h2 className="page-title" style={{ marginBlockEnd: 4 }}>{tx('combineVideos')}</h2>
+        <p className="caption" style={{ marginBlockEnd: 16 }}>{tx('combinePick')}</p>
+
+        {clips === null ? (
+          <div className="skel" style={{ blockSize: 120 }} />
+        ) : clips.length < 2 ? (
+          <p style={{ fontSize: 14, color: 'var(--ink-2)' }}>{tx('combineNoVideos')}</p>
+        ) : (
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+            {clips.map((clip) => {
+              const position = order.indexOf(clip.id)
+              const picked = position >= 0
+              return (
+                <button
+                  key={clip.id}
+                  type="button"
+                  onClick={() => toggle(clip.id)}
+                  disabled={busy}
+                  className="relative"
+                  aria-pressed={picked}
+                  style={{
+                    borderRadius: 'var(--r-sm)', overflow: 'hidden', padding: 0,
+                    boxShadow: picked
+                      ? 'inset 0 0 0 2px var(--ink)'
+                      : 'inset 0 0 0 1px var(--line)',
+                  }}
+                >
+                  <video src={clip.url} muted playsInline preload="metadata"
+                    style={{ display: 'block', inlineSize: '100%', aspectRatio: '16/9', objectFit: 'cover' }} />
+                  {picked && (
+                    <span
+                      className="mono"
+                      style={{
+                        position: 'absolute', insetBlockStart: 6, insetInlineStart: 6,
+                        background: 'var(--ink)', color: 'var(--panel)',
+                        borderRadius: 999, inlineSize: 24, blockSize: 24,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 13, fontWeight: 700,
+                      }}
+                    >
+                      {position + 1}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {error && (
+          <p style={{ fontSize: 13, color: 'var(--bad)', marginBlockStart: 12 }}>{error}</p>
+        )}
+
+        <div className="flex items-center justify-end gap-6" style={{ marginBlockStart: 20 }}>
+          <button type="button" onClick={onClose} disabled={busy} className="text-action">
+            {tx('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={combine}
+            disabled={busy || order.length < 2}
+            className="btn-q btn-q--sm"
+            title={tx('combineWhy')}
+          >
+            {busy
+              ? tx('combining')
+              : `${tx('combineGo')}${order.length >= 2 ? ` (${order.length})` : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ProjectTile({ chat, asset, tx, onOpen, onDelete }) {
@@ -256,6 +393,8 @@ function ChatPage() {
   const [workLoading, setWorkLoading] = useState(true)
   // Chat id awaiting delete confirmation from the workspace grid, or null.
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  // The combine-videos picker.
+  const [combineOpen, setCombineOpen] = useState(false)
 
   // ── PRESENTATION-ONLY RUN TELEMETRY ───────────────────────────────────────
   // The same values `openRunSocket`'s onmessage already parses out of the
@@ -741,7 +880,12 @@ function ChatPage() {
     // Media the run already produced. Shown first, because it happened first —
     // and because a run that is still going, or that died partway, has no
     // message carrying it (that is only written once the whole run succeeds).
-    if (assets?.length > 0) {
+    //
+    // EXCEPT a run parked awaiting confirmation: the only way such a run has
+    // assets is scene-by-scene mode, and there every finished scene already
+    // wrote its own message into the history just loaded — repeating them
+    // here is the "why do I see the videos twice" bug.
+    if (status !== 'awaiting_confirmation' && assets?.length > 0) {
       addMessage({
         role: 'assistant',
         content: assets.length === 1 ? 'Generated so far:' : `Generated so far (${assets.length}):`,
@@ -1308,8 +1452,38 @@ function ChatPage() {
               and an English title inside the Arabic UI otherwise has its
               punctuation dragged to the wrong end (A3). */}
           <h1 className="sec-title truncate min-w-0" title={openTitle}><bdi>{openTitle}</bdi></h1>
+
+          {/* On the trailing edge, apart from the way back. Opens a picker of
+              this project's clips; the dialog explains itself from there. */}
+          <button
+            type="button"
+            className="btn-q btn-q--sm"
+            style={{ marginInlineStart: 'auto' }}
+            onClick={() => setCombineOpen(true)}
+            title={tx('combineWhy')}
+          >
+            {tx('combineVideos')}
+          </button>
         </div>
       </header>
+
+      <CombineDialog
+        chatId={currentChatId}
+        isOpen={combineOpen}
+        onClose={() => setCombineOpen(false)}
+        onDone={(url) => {
+          // Appended locally rather than refetching history — a refetch would
+          // wipe a live plan card. The backend persisted its own copy of this
+          // message, so the next open of the chat shows the same thing.
+          addMessage({
+            role: 'assistant',
+            content: tx('combinedReady'),
+            media: url ? [{ type: 'video', url }] : [],
+            created_at: new Date().toISOString(),
+          })
+        }}
+        tx={tx}
+      />
 
       <ChatMessages
         messages={messages}
