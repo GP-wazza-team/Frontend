@@ -47,6 +47,25 @@ export const assetService = {
     return response.data
   },
 
+  // All of one chat's finished (non-preview) assets, newest first.
+  getChatAssets: async (chatId, limit = 100) => {
+    const response = await api.get(`/assets/chat/${chatId}/assets`, { params: { limit } })
+    return Array.isArray(response.data) ? response.data : []
+  },
+
+  // Combine the chat's clips, in the given order, into one film. Synchronous —
+  // a handful of short clips re-encode in seconds. The backend also writes the
+  // result into the chat as a message. Generous timeout: re-encoding is real
+  // work and the default API timeout is tuned for JSON calls.
+  stitchVideos: async (chatId, assetIds) => {
+    const response = await api.post(
+      '/assets/stitch',
+      { chat_id: chatId, asset_ids: assetIds },
+      { timeout: 300000 },
+    )
+    return response.data
+  },
+
   deleteAsset: async (id) => {
     await api.delete(`/assets/${id}`)
   },

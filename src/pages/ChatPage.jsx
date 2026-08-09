@@ -37,12 +37,13 @@ import PromptInput from '../components/chat/PromptInput'
 import { useChatText, isoDay } from '../components/chat/chatKit'
 import { useRunStatus } from '../components/RunStatusContext'
 import { Duration } from '../components/ui/Money'
-import { Caret } from '../components/Icon'
+import { Caret, Strike } from '../components/Icon'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { useUIStore } from '../store/uiStore'
 import { useChatStore } from '../store/chatStore'
 import { generateService } from '../services/generateService'
-import { chatService } from '../services/chatService'
 import { assetService } from '../services/assetService'
+import { chatService } from '../services/chatService'
 import { describeError } from '../services/errorText'
 
 /* ── THE RUN BAND ─────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ import { describeError } from '../services/errorText'
    Status is a FIELD: a word, and the one dot in this system allowed to move.
    The bar beside it is a JOB progress bar, not a media time axis, so it fills
    in the reading direction and mirrors correctly (A4). */
-function RunBand({ phase, percent, sceneNumber, elapsedMs }) {
+function RunBand({ phase, percent, sceneNumber, elapsedMs, onStop }) {
   const { t } = useUIStore()
   const { tx } = useChatText()
   const hasPercent = typeof percent === 'number' && Number.isFinite(percent)
@@ -96,6 +97,15 @@ function RunBand({ phase, percent, sceneNumber, elapsedMs }) {
             <Duration ms={elapsedMs} style={{ color: 'var(--ink-2)' }} />
           </span>
         )}
+
+        {/* Cooperative: the scene at the provider finishes and is kept;
+            nothing after it starts or is charged. Present whenever the band
+            is — a run you cannot stop is a run you don't control. */}
+        {onStop && (
+          <button type="button" className="btn-t btn-t--danger" onClick={onStop} title={tx('stopWhy')}>
+            {tx('stopRun')}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -126,7 +136,144 @@ function assetMeta(asset) {
   }
 }
 
-function ProjectTile({ chat, asset, tx, onOpen }) {
+/**
+ * Pick the chat's clips in play order and combine them into one film.
+ *
+ * Selection IS the ordering: each tap appends the clip to the sequence and
+ * stamps it with its position, tapping again removes it. No drag-and-drop —
+ * an order you dial in by tapping 1, 2, 3 is the same order with far less
+ * machinery, and it works on a phone.
+ */
+function CombineDialog({ chatId, isOpen, onClose, onDone, tx }) {
+  const [clips, setClips] = useState(null) // null = loading
+  const [order, setOrder] = useState([])   // asset ids, in chosen play order
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!isOpen) return
+    setClips(null)
+    setOrder([])
+    setError(null)
+    assetService.getChatAssets(chatId, 100)
+      .then((list) => {
+        const videos = list.filter((a) => (a.asset_type || '').toLowerCase() === 'video')
+        // Oldest first — scene 1 was made first, so the natural reading order
+        // of the grid is already the film's order.
+        setClips(videos.reverse())
+      })
+      .catch(() => setClips([]))
+  }, [isOpen, chatId])
+
+  if (!isOpen) return null
+
+  const toggle = (id) => {
+    setOrder((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
+  const combine = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await assetService.stitchVideos(chatId, order)
+      onDone(result?.url)
+      onClose()
+    } catch (e) {
+      setError(e?.response?.data?.detail || e?.message || 'Could not combine the clips')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-overlay flex items-center justify-center" style={{ padding: 16 }}>
+      <div className="absolute inset-0" style={{ backgroundColor: 'var(--scrim)' }} onClick={busy ? undefined : onClose} />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={tx('combineVideos')}
+        className="relative settle overlay-cast"
+        style={{
+          inlineSize: '100%', maxInlineSize: 640, maxBlockSize: '85vh', overflowY: 'auto',
+          backgroundColor: 'var(--panel)', boxShadow: 'inset 0 0 0 1px var(--etch-strong)',
+          padding: 24,
+        }}
+      >
+        <h2 className="page-title" style={{ marginBlockEnd: 4 }}>{tx('combineVideos')}</h2>
+        <p className="caption" style={{ marginBlockEnd: 16 }}>{tx('combinePick')}</p>
+
+        {clips === null ? (
+          <div className="skel" style={{ blockSize: 120 }} />
+        ) : clips.length < 2 ? (
+          <p style={{ fontSize: 14, color: 'var(--ink-2)' }}>{tx('combineNoVideos')}</p>
+        ) : (
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+            {clips.map((clip) => {
+              const position = order.indexOf(clip.id)
+              const picked = position >= 0
+              return (
+                <button
+                  key={clip.id}
+                  type="button"
+                  onClick={() => toggle(clip.id)}
+                  disabled={busy}
+                  className="relative"
+                  aria-pressed={picked}
+                  style={{
+                    borderRadius: 'var(--r-sm)', overflow: 'hidden', padding: 0,
+                    boxShadow: picked
+                      ? 'inset 0 0 0 2px var(--ink)'
+                      : 'inset 0 0 0 1px var(--line)',
+                  }}
+                >
+                  <video src={clip.url} muted playsInline preload="metadata"
+                    style={{ display: 'block', inlineSize: '100%', aspectRatio: '16/9', objectFit: 'cover' }} />
+                  {picked && (
+                    <span
+                      className="mono"
+                      style={{
+                        position: 'absolute', insetBlockStart: 6, insetInlineStart: 6,
+                        background: 'var(--ink)', color: 'var(--panel)',
+                        borderRadius: 999, inlineSize: 24, blockSize: 24,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 13, fontWeight: 700,
+                      }}
+                    >
+                      {position + 1}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {error && (
+          <p style={{ fontSize: 13, color: 'var(--bad)', marginBlockStart: 12 }}>{error}</p>
+        )}
+
+        <div className="flex items-center justify-end gap-6" style={{ marginBlockStart: 20 }}>
+          <button type="button" onClick={onClose} disabled={busy} className="text-action">
+            {tx('cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={combine}
+            disabled={busy || order.length < 2}
+            className="btn-q btn-q--sm"
+            title={tx('combineWhy')}
+          >
+            {busy
+              ? tx('combining')
+              : `${tx('combineGo')}${order.length >= 2 ? ` (${order.length})` : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProjectTile({ chat, asset, tx, onOpen, onDelete }) {
   const meta = assetMeta(asset)
   const declaredTall = meta.aspect_ratio === '9:16' || meta.orientation === 'vertical'
   const [tall, setTall] = useState(declaredTall)
@@ -139,6 +286,22 @@ function ProjectTile({ chat, asset, tx, onOpen }) {
   const measure = (w, h) => { if (w > 0 && h > 0) setTall(h > w) }
 
   return (
+    /* A wrapper, because the tile itself is a <button> and a delete control
+       cannot legally nest inside it. The delete sits over the corner and
+       stops the click from opening the project it is removing. */
+    <div className="relative">
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          className="text-action text-action--danger absolute"
+          style={{ insetInlineEnd: 8, insetBlockStart: 8, zIndex: 1, padding: 4 }}
+          aria-label={`${tx('deleteProject')} — ${title}`}
+          title={tx('deleteProject')}
+        >
+          <Strike size={14} />
+        </button>
+      )}
     <button type="button" className="tile group" onClick={onOpen} title={title}>
       {/* THE DARK WELL IS FOR MEDIA. With nothing generated yet there is no
           media to judge, and the well rendered as a solid black rectangle that
@@ -183,6 +346,7 @@ function ProjectTile({ chat, asset, tx, onOpen }) {
         </div>
       </div>
     </button>
+    </div>
   )
 }
 
@@ -227,6 +391,10 @@ function ChatPage() {
   // can show the work it stands for.
   const [workByChat, setWorkByChat] = useState({})
   const [workLoading, setWorkLoading] = useState(true)
+  // Chat id awaiting delete confirmation from the workspace grid, or null.
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  // The combine-videos picker.
+  const [combineOpen, setCombineOpen] = useState(false)
 
   // ── PRESENTATION-ONLY RUN TELEMETRY ───────────────────────────────────────
   // The same values `openRunSocket`'s onmessage already parses out of the
@@ -473,8 +641,48 @@ function ChatPage() {
    * as soon as the work is queued, so this — not the HTTP response — is where
    * generated media actually arrives.
    */
-  const renderCompletion = (data, runId) => {
+  const renderCompletion = async (data, runId) => {
     const target = progressTargetRef.current
+
+    // Scene-by-scene mode: one scene finished and the run is parked awaiting
+    // the next decision. Show the scene, then pull the refreshed plan so the
+    // continuation card (scene N of M, priced per scene) replaces the spinner.
+    if (data.status === 'completed' && data.result?.status === 'paused') {
+      const result = data.result
+      patchMessage(target, {
+        content: `Scene ${result.scenes_done} of ${result.scenes_total} ready.`,
+        media: result.video_url ? [{ type: 'video', url: result.video_url }] : [],
+      })
+      try {
+        const active = await generateService.getActiveRun(currentChatId)
+        if (active?.status === 'awaiting_confirmation' && active.plan) {
+          renderPlanResponse(active.plan, runId)
+          if (active.previews?.length > 0) {
+            patchMessage(cardIndexRef.current, { previews: active.previews })
+          }
+          return
+        }
+      } catch {
+        // The card can't be rebuilt right now — the scene above is safe in the
+        // chat, and reopening the chat restores the gate via /active-run.
+      }
+      endRun()
+      return
+    }
+
+    // The stop button's outcome: whatever finished before the stop is kept
+    // and already in the chat history; say so and stand down.
+    if (data.status === 'completed' && data.result?.status === 'cancelled') {
+      const result = data.result
+      patchMessage(target, {
+        content: `Stopped — ${result.scenes_done} of ${result.scenes_total} scene(s) generated.`,
+        media: (result.scenes || [])
+          .filter((s) => s.video_url)
+          .map((s) => ({ type: 'video', url: s.video_url })),
+      })
+      endRun()
+      return
+    }
 
     if (data.status !== 'completed' || !data.result) {
       // Keep the run id on the message: the plan and any scenes it already
@@ -592,6 +800,24 @@ function ChatPage() {
           endRun()
           return
         }
+
+        // The run is alive and only the CHANNEL died — so get the channel
+        // back instead of giving up. This is the bug where a finished video
+        // never appeared until a manual refresh: the completion event is
+        // broadcast once, to whoever is connected at that instant, and after
+        // a drop nobody was. Each retry lands back here on failure, and the
+        // active-run check above catches a run that finished while we were
+        // disconnected.
+        patchMessage(progressTargetRef.current, {
+          content: 'Connection dropped — reconnecting to the run…',
+        })
+        runFinishedRef.current = false
+        setTimeout(() => {
+          openRunSocket(runId).catch(() => {
+            reportLostContact(detail, short)
+          })
+        }, 3000)
+        return
       } catch {
         // Fall through to the error row — if we cannot reach the server to ask,
         // reporting the lost connection is the honest outcome.
@@ -654,7 +880,12 @@ function ChatPage() {
     // Media the run already produced. Shown first, because it happened first —
     // and because a run that is still going, or that died partway, has no
     // message carrying it (that is only written once the whole run succeeds).
-    if (assets?.length > 0) {
+    //
+    // EXCEPT a run parked awaiting confirmation: the only way such a run has
+    // assets is scene-by-scene mode, and there every finished scene already
+    // wrote its own message into the history just loaded — repeating them
+    // here is the "why do I see the videos twice" bug.
+    if (status !== 'awaiting_confirmation' && assets?.length > 0) {
       addMessage({
         role: 'assistant',
         content: assets.length === 1 ? 'Generated so far:' : `Generated so far (${assets.length}):`,
@@ -984,11 +1215,18 @@ function ChatPage() {
     }
   })
 
-  const handleConfirm = (runId) => withCardBusy(async (index) => {
+  const handleConfirm = (runId, options = {}) => withCardBusy(async (index) => {
+    // Guarded truthiness on purpose: the card's plain press hands the click
+    // event through this argument, and a MouseEvent must not read as a mode.
+    const pauseAfterScene = options?.pauseAfterScene === true
+
     // Read before the patch: this is what the user just authorised, and it is
     // what the session spend in the top bar accumulates. Presentation only —
     // the figure comes off the card that is already on screen.
-    const authorised = Number(useChatStore.getState().messages[index]?.plan?.total_cost_usd)
+    const cardPlan = useChatStore.getState().messages[index]?.plan
+    const authorised = Number(
+      pauseAfterScene ? cardPlan?.per_scene_cost_usd : cardPlan?.total_cost_usd
+    )
 
     patchMessage(index, { resolved: true, resolution: 'confirmed' })
     if (Number.isFinite(authorised)) setSessionCostUsd((total) => total + authorised)
@@ -1004,7 +1242,7 @@ function ChatPage() {
     try {
       // Returns as soon as the work is queued. The generated media arrives
       // later on the WebSocket — see renderCompletion.
-      await generateService.confirm(runId)
+      await generateService.confirm(runId, { pauseAfterScene })
     } catch (error) {
       console.error('Failed to start generation:', error)
       // Rejected before any work began — out of credits, card declined, plan
@@ -1025,6 +1263,24 @@ function ChatPage() {
       setLoading(false)
     }
   })
+
+  /**
+   * The stop button during generation. Cancel is cooperative server-side: the
+   * scene at the provider finishes and is kept, nothing after it starts. The
+   * run's own completion event (status "cancelled") closes things out — this
+   * handler only asks and narrates, it does not tear the run down itself.
+   */
+  const handleStop = async () => {
+    if (!activeRunId) return
+    try {
+      await generateService.cancel(activeRunId)
+      patchMessage(progressTargetRef.current, {
+        content: 'Stopping — the scene being rendered will finish and be kept; nothing after it is charged…',
+      })
+    } catch (error) {
+      pushError(error, 'Could not stop the run', { runId: activeRunId })
+    }
+  }
 
   const handlers = {
     onEdit: handleEdit,
@@ -1136,10 +1392,32 @@ function ChatPage() {
                 asset={workByChat[chat.id]}
                 tx={tx}
                 onOpen={() => openProject(chat.id)}
+                onDelete={() => setConfirmDeleteId(chat.id)}
               />
             ))}
           </div>
         )}
+
+        <ConfirmDialog
+          isOpen={!!confirmDeleteId}
+          title={tx('deleteProject')}
+          message={tx('deleteProjectWhy')}
+          confirmLabel={tx('deleteProject')}
+          cancelLabel={tx('cancel')}
+          danger
+          onConfirm={async () => {
+            const chatId = confirmDeleteId
+            try {
+              await chatService.deleteChat(chatId)
+              useChatStore.getState().removeChat(chatId)
+            } catch (error) {
+              pushError(error, 'Could not delete the project')
+            } finally {
+              setConfirmDeleteId(null)
+            }
+          }}
+          onCancel={() => setConfirmDeleteId(null)}
+        />
       </div>
     )
   }
@@ -1174,8 +1452,38 @@ function ChatPage() {
               and an English title inside the Arabic UI otherwise has its
               punctuation dragged to the wrong end (A3). */}
           <h1 className="sec-title truncate min-w-0" title={openTitle}><bdi>{openTitle}</bdi></h1>
+
+          {/* On the trailing edge, apart from the way back. Opens a picker of
+              this project's clips; the dialog explains itself from there. */}
+          <button
+            type="button"
+            className="btn-q btn-q--sm"
+            style={{ marginInlineStart: 'auto' }}
+            onClick={() => setCombineOpen(true)}
+            title={tx('combineWhy')}
+          >
+            {tx('combineVideos')}
+          </button>
         </div>
       </header>
+
+      <CombineDialog
+        chatId={currentChatId}
+        isOpen={combineOpen}
+        onClose={() => setCombineOpen(false)}
+        onDone={(url) => {
+          // Appended locally rather than refetching history — a refetch would
+          // wipe a live plan card. The backend persisted its own copy of this
+          // message, so the next open of the chat shows the same thing.
+          addMessage({
+            role: 'assistant',
+            content: tx('combinedReady'),
+            media: url ? [{ type: 'video', url }] : [],
+            created_at: new Date().toISOString(),
+          })
+        }}
+        tx={tx}
+      />
 
       <ChatMessages
         messages={messages}
@@ -1186,7 +1494,13 @@ function ChatPage() {
       />
 
       {composerDisabled && (
-        <RunBand phase={phase} percent={percent} sceneNumber={sceneNumber} elapsedMs={elapsedMs} />
+        <RunBand
+          phase={phase}
+          percent={percent}
+          sceneNumber={sceneNumber}
+          elapsedMs={elapsedMs}
+          onStop={activeRunId && loading ? handleStop : null}
+        />
       )}
 
       <PromptInput onSubmit={handleSendPrompt} disabled={composerDisabled} />
